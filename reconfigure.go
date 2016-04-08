@@ -113,6 +113,7 @@ frontend %s-fe
 	use_backend %s-be if url_%s%s
 
 backend %s-be
+  reqrep ^([^\ ]*)\ %s%s/(.*) \1\ /\2
 	{{range $i, $e := service "%s" "any"}}
 	server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
 	{{end}}`,
@@ -124,6 +125,8 @@ backend %s-be
 		m.ServiceName,
 		aclCondition,
 		m.ServiceName,
+		m.ServiceName,
+		acl,
 		fullServiceName,
 	))
 }
