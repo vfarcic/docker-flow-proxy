@@ -24,7 +24,7 @@ func (s *ReconfigureTestSuite) SetupTest() {
 	s.ServiceName = "myService"
 	s.Pid = "123"
 	s.ConsulAddress = "1.2.3.4:1234"
-	s.ServicePath = []string{"path/to/my/service/api", "path/to/my/other/service/api"}
+	s.ServicePath = []string{"path/to/my/service/api"}
 	s.ServiceDomain = "my-domain.com"
 	s.ConfigsPath = "path/to/configs/dir"
 	s.TemplatesPath = "test_configs/tmpl"
@@ -32,10 +32,11 @@ func (s *ReconfigureTestSuite) SetupTest() {
 	bind *:80
 	bind *:443
 	option http-server-close
-	acl url_myService path_beg path/to/my/service/api path_beg path/to/my/other/service/api
+	acl url_myService path_beg path/to/my/service/api
 	use_backend myService-be if url_myService
 
 backend myService-be
+  reqrep ^([^\ ]*)\ path/to/my/service/api/(.*) \1\ /\2
 	{{range $i, $e := service "myService" "any"}}
 	server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
 	{{end}}`
@@ -86,11 +87,12 @@ func (s ReconfigureTestSuite) Test_GetConsulTemplate_AddsHost() {
 	bind *:80
 	bind *:443
 	option http-server-close
-	acl url_myService path_beg path/to/my/service/api path_beg path/to/my/other/service/api
+	acl url_myService path_beg path/to/my/service/api
 	acl domain_myService hdr_dom(host) -i my-domain.com
 	use_backend myService-be if url_myService domain_myService
 
 backend myService-be
+  reqrep ^([^\ ]*)\ path/to/my/service/api/(.*) \1\ /\2
 	{{range $i, $e := service "myService" "any"}}
 	server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
 	{{end}}`
@@ -367,6 +369,3 @@ func getReconfigureMock(skipMethod string) *ReconfigureMock {
 	}
 	return mockObj
 }
-
-
-

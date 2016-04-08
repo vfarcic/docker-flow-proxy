@@ -113,21 +113,20 @@ frontend %s-fe
 	use_backend %s-be if url_%s%s
 
 backend %s-be
-  reqrep ^([^\ ]*)\ %s%s/(.*) \1\ /\2
+  reqrep ^([^\ ]*)\ %s/(.*) \1\ /\2
 	{{range $i, $e := service "%s" "any"}}
 	server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
 	{{end}}`,
-		m.ServiceName,
-		m.ServiceName,
-		strings.Join(m.ServicePath, " path_beg "),
-		acl,
-		m.ServiceName,
-		m.ServiceName,
-		aclCondition,
-		m.ServiceName,
-		m.ServiceName,
-		acl,
-		fullServiceName,
+	m.ServiceName,
+	m.ServiceName,
+	strings.Join(m.ServicePath, " path_beg "),
+	acl,
+	m.ServiceName,
+	m.ServiceName,
+	aclCondition,
+	m.ServiceName,
+	strings.Join(m.ServicePath, ""),
+	fullServiceName,
 	))
 }
 
