@@ -268,6 +268,17 @@ func (m *Reconfigure) putToConsul(addresses []string, sr ServiceReconfigure, ins
 	return nil
 }
 
+//This function should replace the getTemplateFromGo last lines.
+func (m *Reconfigure) parseTemplate(front, back string, sr ServiceReconfigure) (pFront, pBack string) {
+	tmplFront, _ := template.New("consulTemplate").Parse(front)
+	tmplBack, _ := template.New("consulTemplate").Parse(back)
+	var ctFront bytes.Buffer
+	var ctBack bytes.Buffer
+	tmplFront.Execute(&ctFront, sr)
+	tmplBack.Execute(&ctBack, sr)
+	return ctFront.String(), ctBack.String()
+}
+
 func (m *Reconfigure) GetTemplates(sr ServiceReconfigure) (front, back string, err error) {
 	if len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0 {
 		front, err = m.getConsulTemplateFromFile(sr.ConsulTemplateFePath)
@@ -278,9 +289,17 @@ func (m *Reconfigure) GetTemplates(sr ServiceReconfigure) (front, back string, e
 		if err != nil {
 			return "", "", err
 		}
+
+		//TODO: remove this line when Test are ready.
+		front, back = m.parseTemplate(front, back, sr)
 	} else {
 		front, back = m.getTemplateFromGo(sr)
 	}
+
+	//TODO: remove comment when Tests are ready.
+	//This requires rewrite test and remove last lines of getTemplateFromGo (Best solution).
+	//front, back = m.parseTemplate(front, back, sr)
+
 	return front, back, nil
 }
 
@@ -336,13 +355,19 @@ func (m *Reconfigure) getTemplateFromGo(sr ServiceReconfigure) (frontend, backen
     acl defaultUsersAcl http_auth(defaultUsers)
     http-request auth realm defaultRealm if !defaultUsersAcl`
 	}
+
+	//TODO: remove this lines when Tests are ready.
 	tmplFront, _ := template.New("consulTemplate").Parse(srcFront)
 	tmplBack, _ := template.New("consulTemplate").Parse(srcBack)
 	var ctFront bytes.Buffer
 	var ctBack bytes.Buffer
 	tmplFront.Execute(&ctFront, sr)
 	tmplBack.Execute(&ctBack, sr)
+
 	return ctFront.String(), ctBack.String()
+
+	//TODO: remove this comment when Tests are ready.
+	//return srcFront, srcBack
 }
 
 // TODO: Move to registry package
