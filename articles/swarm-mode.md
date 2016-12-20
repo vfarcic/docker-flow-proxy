@@ -1,4 +1,4 @@
-# Docker Flow: Proxy - Swarm Mode (Docker 1.12+) With Automatic Configuration
+# Docker Flow: Proxy - Swarm Mode (Docker 1.12+) With Manual Configuration
 
 * [Examples](#examples)
 
