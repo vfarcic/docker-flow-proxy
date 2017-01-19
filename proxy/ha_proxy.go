@@ -36,6 +36,7 @@ type ConfigData struct {
 	ExtraDefaults        string
 	ExtraFrontend        string
 	ContentFrontend      string
+	ProxyMode            string
 	ContentFrontendTcp   string
 }
 
@@ -178,6 +179,7 @@ func (m HaProxy) getConfigData() ConfigData {
 		TimeoutHttpKeepAlive: "15",
 		StatsUser:            "admin",
 		StatsPass:            "admin",
+		ProxyMode:            "http",
 	}
 	if len(os.Getenv("TIMEOUT_CONNECT")) > 0 {
 		d.TimeoutConnect = os.Getenv("TIMEOUT_CONNECT")
@@ -205,6 +207,9 @@ func (m HaProxy) getConfigData() ConfigData {
 	}
 	if len(os.Getenv("STATS_PASS")) > 0 {
 		d.StatsPass = os.Getenv("STATS_PASS")
+	}
+	if len(os.Getenv("PROXY_MODE")) > 0 {
+		d.ProxyMode = os.Getenv("PROXY_MODE")
 	}
 	if len(os.Getenv("USERS")) > 0 {
 		d.UserList = "\nuserlist defaultUsers\n"

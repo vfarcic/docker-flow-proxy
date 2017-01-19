@@ -346,10 +346,15 @@ func (m *Reconfigure) getBackTemplateProtocol(protocol string, sr *proxy.Service
 	if strings.EqualFold(protocol, "https") {
 		prefix = "https-"
 	}
+	proxy_mode := "http"
+	if len(os.Getenv("PROXY_MODE")) > 0 {
+		proxy_mode = os.Getenv("PROXY_MODE")
+	}
 	tmpl := fmt.Sprintf(`{{range .ServiceDest}}
-backend %s{{$.ServiceName}}-be{{.Port}}
-    mode {{$.ReqMode}}`,
+backend %s{{$.AclName}}-be{{.Port}}
+    mode %s`,
 		prefix,
+		proxy_mode,
 	)
 	// TODO: Deprecated (dec. 2016).
 	if len(sr.TimeoutServer) > 0 {
