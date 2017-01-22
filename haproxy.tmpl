@@ -10,12 +10,14 @@ global
     ssl-default-server-ciphers ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS
 
 defaults
-    mode    http
+    mode    {{.ProxyMode}}
     balance roundrobin
 {{.ExtraDefaults}}
+    {{if eq .ProxyMode "http"}}
     option  http-server-close
     option  forwardfor
     option  redispatch
+    {{end}}
 
     errorfile 400 /errorfiles/400.http
     errorfile 403 /errorfiles/403.http
@@ -36,6 +38,16 @@ defaults
     timeout http-request {{.TimeoutHttpRequest}}s
     timeout http-keep-alive {{.TimeoutHttpKeepAlive}}s
 
+frontend fe_haproxy_stats
+    bind 127.0.0.1:9080
+    mode http
+    timeout client 5000
+    default_backend haproxy_stats
+
+backend haproxy_stats
+    mode http
+    timeout connect 4000
+    timeout server 30000
     stats enable
     stats refresh 30s
     stats realm Strictly\ Private
@@ -43,7 +55,7 @@ defaults
     stats uri /admin?stats
 {{.UserList}}
 frontend services
-    bind *:80
     bind *:443{{.CertsString}}
-    mode http
+    tcp-request inspect-delay 5s
+    tcp-request content accept if { req_ssl_hello_type 1 }
 {{.ExtraFrontend}}{{.ContentFrontend}}{{.ContentFrontendTcp}}
