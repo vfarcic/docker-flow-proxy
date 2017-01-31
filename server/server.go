@@ -21,10 +21,10 @@ func NewServer() *Serve {
 }
 
 type Response struct {
-	Mode                 string
-	Status               string
-	Message              string
-	ServiceName          string
+	Mode        string
+	Status      string
+	Message     string
+	ServiceName string
 	proxy.Service
 }
 

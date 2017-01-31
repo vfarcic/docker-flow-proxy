@@ -4,7 +4,7 @@
 /docker-flow-proxy
 *.bak
 /tmp
-/certs/test.pem
+/certs
 /*.log
 /*-token
 secrets*

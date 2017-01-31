@@ -153,7 +153,7 @@ func (m *Reconfigure) reloadFromRegistry(addresses []string, instanceName, mode 
 		var data map[string]interface{}
 		json.Unmarshal(body, &data)
 		count = len(data)
-		for key, _ := range data {
+		for key := range data {
 			go m.getService(addresses, key, instanceName, c)
 		}
 	}
@@ -346,10 +346,14 @@ func (m *Reconfigure) getBackTemplateProtocol(protocol string, sr *proxy.Service
 	if strings.EqualFold(protocol, "https") {
 		prefix = "https-"
 	}
+	rmode := sr.ReqMode
+	if strings.EqualFold(sr.ReqMode, "sni") {
+		rmode = "tcp"
+	}
 	tmpl := fmt.Sprintf(`{{range .ServiceDest}}
 backend %s{{$.ServiceName}}-be{{.Port}}
-    mode {{$.ReqMode}}`,
-		prefix,
+    mode %s`,
+		prefix, rmode,
 	)
 	// TODO: Deprecated (dec. 2016).
 	if len(sr.TimeoutServer) > 0 {

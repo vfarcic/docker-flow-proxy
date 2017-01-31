@@ -42,8 +42,4 @@ defaults
     stats auth {{.StatsUser}}:{{.StatsPass}}
     stats uri /admin?stats
 {{.UserList}}
-frontend services
-    bind *:80
-    bind *:443{{.CertsString}}
-    mode http
-{{.ExtraFrontend}}{{.ContentFrontend}}{{.ContentFrontendTcp}}
+{{.ContentFrontend}}{{.ExtraFrontend}}{{.ContentFrontendTcp}}{{.ContentFrontendSNI}}

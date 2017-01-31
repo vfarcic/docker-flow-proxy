@@ -109,7 +109,7 @@ func (m *Serve) isValidReconf(service *proxy.Service) (bool, string) {
 	hasSrcPort := service.ServiceDest[0].SrcPort > 0
 	hasPort := len(service.ServiceDest[0].Port) > 0
 	if strings.EqualFold(service.ReqMode, "http") {
-		if (!hasPath && len(service.ConsulTemplateFePath) == 0) {
+		if !hasPath && len(service.ConsulTemplateFePath) == 0 {
 			return false, "When using reqMode http, servicePath or (consulTemplateFePath and consulTemplateBePath) are mandatory"
 		}
 	} else if !hasSrcPort || !hasPort {
@@ -202,10 +202,10 @@ func (m *Serve) reconfigure(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	response := server.Response{
-		Mode:       	m.Mode,
-		Status:     	"OK",
-		ServiceName:    sr.ServiceName,
-		Service: 	    sr,
+		Mode:        m.Mode,
+		Status:      "OK",
+		ServiceName: sr.ServiceName,
+		Service:     sr,
 	}
 	ok, msg := m.isValidReconf(&sr)
 	if ok {

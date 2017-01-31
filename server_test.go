@@ -415,7 +415,7 @@ func (s *ServerTestSuite) Test_ServeHTTP_SetsContentTypeToJSON_WhenUrlIsReconfig
 
 func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJSON_WhenUrlIsReconfigure() {
 	expected, _ := json.Marshal(server.Response{
-		Status:           "OK",
+		Status: "OK",
 		Service: proxy.Service{
 			ReqMode:          "http",
 			ServiceColor:     s.ServiceColor,
@@ -425,7 +425,7 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJSON_WhenUrlIsReconfigure() {
 			ServiceDest:      []proxy.ServiceDest{s.sd},
 			ServiceName:      s.ServiceName,
 		},
-		ServiceName:      s.ServiceName,
+		ServiceName: s.ServiceName,
 	})
 
 	srv := Serve{}
@@ -437,22 +437,22 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJSON_WhenUrlIsReconfigure() {
 func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJSONWithAllPortsAndPaths() {
 	sd := []proxy.ServiceDest{
 		proxy.ServiceDest{
-			ServicePath:    []string{"/path/to/my-service"},
-			Port:    "1111",
-			SrcPort: 2222,
+			ServicePath: []string{"/path/to/my-service"},
+			Port:        "1111",
+			SrcPort:     2222,
 		},
 		proxy.ServiceDest{
-			ServicePath:    []string{"/path/to/my-service-1"},
-			Port:    "3333",
-			SrcPort: 4444,
+			ServicePath: []string{"/path/to/my-service-1"},
+			Port:        "3333",
+			SrcPort:     4444,
 		},
 		proxy.ServiceDest{
 			ServicePath: []string{"/path/to/my-service-2"},
-			Port: "4444",
+			Port:        "4444",
 		},
 	}
 	expected, _ := json.Marshal(server.Response{
-		Status:      "OK",
+		Status: "OK",
 		Service: proxy.Service{
 			ReqMode:     "http",
 			PathType:    s.PathType,
@@ -486,9 +486,9 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithPathType_WhenPresent() {
 	pathType := "path_reg"
 	req, _ := http.NewRequest("GET", s.ReconfigureUrl+"&pathType="+pathType, nil)
 	expected, _ := json.Marshal(server.Response{
-		Status:           "OK",
-		ServiceName:      s.ServiceName,
-		Service: 		  proxy.Service{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Service: proxy.Service{
 			ReqMode:          "http",
 			ServiceName:      s.ServiceName,
 			ServiceColor:     s.ServiceColor,
@@ -514,9 +514,9 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithReqRep_WhenPresent() {
 	)
 	req, _ := http.NewRequest("GET", url, nil)
 	expected, _ := json.Marshal(server.Response{
-		Status:           "OK",
-		ServiceName:      s.ServiceName,
-		Service:          proxy.Service{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Service: proxy.Service{
 			ReqMode:          "http",
 			ServiceName:      s.ServiceName,
 			ServiceColor:     s.ServiceColor,
@@ -542,9 +542,9 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithReqPath_WhenPresent() {
 	)
 	req, _ := http.NewRequest("GET", url, nil)
 	expected, _ := json.Marshal(server.Response{
-		Status:           "OK",
-		ServiceName:      s.ServiceName,
-		Service:          proxy.Service{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Service: proxy.Service{
 			ReqMode:          "http",
 			ServiceName:      s.ServiceName,
 			ServiceColor:     s.ServiceColor,
@@ -570,9 +570,9 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithMode_WhenPresent() {
 	)
 	req, _ := http.NewRequest("GET", url, nil)
 	expected, _ := json.Marshal(server.Response{
-		ServiceName:      s.ServiceName,
-		Status:           "OK",
-		Service:          proxy.Service{
+		ServiceName: s.ServiceName,
+		Status:      "OK",
+		Service: proxy.Service{
 			ServiceName:      s.ServiceName,
 			ReqMode:          "tcp",
 			ServiceColor:     s.ServiceColor,
@@ -580,11 +580,11 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithMode_WhenPresent() {
 			OutboundHostname: s.OutboundHostname,
 			ReqPathSearch:    search,
 			ReqPathReplace:   replace,
-			ServiceDest:      []proxy.ServiceDest{
+			ServiceDest: []proxy.ServiceDest{
 				proxy.ServiceDest{
 					ServicePath: []string{"/path/to/my/service/api", "/path/to/my/other/service/api"},
-					SrcPort: 1234,
-					Port: "4321",
+					SrcPort:     1234,
+					Port:        "4321",
 				},
 			},
 		},
@@ -607,9 +607,9 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithTemplatePaths_WhenPresen
 	)
 	req, _ := http.NewRequest("GET", url, nil)
 	expected, _ := json.Marshal(server.Response{
-		ServiceName:      s.ServiceName,
-		Status:           "OK",
-		Service:          proxy.Service{
+		ServiceName: s.ServiceName,
+		Status:      "OK",
+		Service: proxy.Service{
 			ServiceName:      s.ServiceName,
 			ReqMode:          "http",
 			ServiceColor:     s.ServiceColor,
@@ -634,9 +634,9 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithUsers_WhenPresent() {
 	}
 	req, _ := http.NewRequest("GET", s.ReconfigureUrl+"&users=user1:pass1,user2:pass2", nil)
 	expected, _ := json.Marshal(server.Response{
-		Status:           "OK",
-		ServiceName:      s.ServiceName,
-		Service:          proxy.Service{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Service: proxy.Service{
 			ReqMode:          "http",
 			ServiceName:      s.ServiceName,
 			ServiceColor:     s.ServiceColor,
@@ -666,13 +666,13 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithPorts_WhenPresent() {
 	req, _ := http.NewRequest("GET", address, nil)
 	sd := proxy.ServiceDest{
 		ServicePath: s.sd.ServicePath,
-		Port: port,
+		Port:        port,
 	}
 	expected, _ := json.Marshal(server.Response{
-		Status:           "OK",
-		ServiceName:      s.ServiceName,
-		Mode:             mode,
-		Service:          proxy.Service{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Mode:        mode,
+		Service: proxy.Service{
 			ServiceName:      s.ServiceName,
 			ReqMode:          "http",
 			ServiceColor:     s.ServiceColor,
@@ -693,9 +693,9 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithPorts_WhenPresent() {
 func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithSkipCheck_WhenPresent() {
 	req, _ := http.NewRequest("GET", s.ReconfigureUrl+"&skipCheck=true", nil)
 	expected, _ := json.Marshal(server.Response{
-		Status:           "OK",
-		ServiceName:      s.ServiceName,
-		Service:          proxy.Service{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Service: proxy.Service{
 			ServiceName:      s.ServiceName,
 			ReqMode:          "http",
 			ServiceColor:     s.ServiceColor,
@@ -716,9 +716,9 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithSkipCheck_WhenPresent() 
 func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonTimeoutServer_WhenPresent() {
 	req, _ := http.NewRequest("GET", s.ReconfigureUrl+"&timeoutServer=9999", nil)
 	expected, _ := json.Marshal(server.Response{
-		Status:           "OK",
-		ServiceName:      s.ServiceName,
-		Service:          proxy.Service{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Service: proxy.Service{
 			ServiceName:      s.ServiceName,
 			ReqMode:          "http",
 			ServiceColor:     s.ServiceColor,
@@ -738,9 +738,9 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonTimeoutServer_WhenPresent() 
 func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonTimeoutTunnel_WhenPresent() {
 	req, _ := http.NewRequest("GET", s.ReconfigureUrl+"&timeoutTunnel=9999", nil)
 	expected, _ := json.Marshal(server.Response{
-		Status:           "OK",
-		ServiceName:      s.ServiceName,
-		Service:          proxy.Service{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Service: proxy.Service{
 			ServiceName:      s.ServiceName,
 			ReqMode:          "http",
 			ServiceColor:     s.ServiceColor,
@@ -899,9 +899,9 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJson_WhenConsulTemplatePathIsPre
 		ServicePath: []string{},
 	}
 	expected, _ := json.Marshal(server.Response{
-		Status:               "OK",
-		ServiceName:          s.ServiceName,
-		Service:              proxy.Service{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Service: proxy.Service{
 			ReqMode:              "http",
 			ServiceName:          s.ServiceName,
 			ConsulTemplateFePath: pathFe,

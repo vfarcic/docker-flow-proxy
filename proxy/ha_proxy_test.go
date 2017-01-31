@@ -66,9 +66,8 @@ defaults
     stats auth admin:admin
     stats uri /admin?stats
 
-frontend services
+frontend service_80
     bind *:80
-    bind *:443
     mode http
 `
 	s.ServicesContent = `
@@ -315,7 +314,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndTcp(
 frontend my-service-1_1234
     bind *:1234
     mode tcp
-    default_backend my-service-1-be1234%s`,
+    default_backend my-service-1-be4321%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -325,7 +324,7 @@ frontend my-service-1_1234
 	}
 	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath, map[string]bool{})
 	data.Services["my-service-1"] = Service{
-		ReqMode: "tcp",
+		ReqMode:     "tcp",
 		ServiceName: "my-service-1",
 		ServiceDest: []ServiceDest{
 			{SrcPort: 1234, Port: "4321"},
@@ -373,7 +372,9 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl domain_my-service hdr_end(host) -i domain-1%s`,
+    acl url_my-service80
+    acl domain_my-service hdr_end(host) -i domain-1
+    use_backend my-service-be80 if url_my-service80 domain_my-service%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -385,6 +386,9 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	data.Services["my-service"] = Service{
 		ServiceName:   "my-service",
 		ServiceDomain: []string{"*domain-1"},
+		ServiceDest: []ServiceDest{
+			{Port: "80"},
+		},
 	}
 
 	p.CreateConfigFromTemplates()
@@ -461,7 +465,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCert() {
 	var actualData string
 	expectedData := fmt.Sprintf(
 		"%s%s",
-		strings.Replace(s.TemplateContent, "bind *:443", "bind *:443 ssl crt /certs/my-cert.pem", -1),
+		strings.Replace(s.TemplateContent, "bind *:80", "bind *:80 ssl crt /certs/my-cert.pem", -1),
 		s.ServicesContent,
 	)
 	writeFile = func(filename string, data []byte, perm os.FileMode) error {
@@ -508,12 +512,12 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsUserList() {
 		"%s%s",
 		strings.Replace(
 			s.TemplateContent,
-			"frontend services",
+			"frontend service_80",
 			`userlist defaultUsers
     user my-user-1 insecure-password my-password-1
     user my-user-2 insecure-password my-password-2
 
-frontend services`,
+frontend service_80`,
 			-1,
 		),
 		s.ServicesContent,
