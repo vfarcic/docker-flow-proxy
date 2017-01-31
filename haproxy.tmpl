@@ -13,7 +13,7 @@ defaults
     mode    http
     balance roundrobin
 {{.ExtraDefaults}}
-    option  http-server-close
+    option  {{.ConnectionMode}}
     option  forwardfor
     option  redispatch
 

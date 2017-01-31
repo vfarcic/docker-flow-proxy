@@ -539,6 +539,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ReplacesValuesWithEnvVa
 		after  string
 		value  string
 	}{
+		{"CONNECTION_MODE", "option  http-server-close", "option  different-connection-mode", "different-connection-mode"},
 		{"TIMEOUT_CONNECT", "timeout connect 5s", "timeout connect 999s", "999"},
 		{"TIMEOUT_CLIENT", "timeout client  20s", "timeout client  999s", "999"},
 		{"TIMEOUT_SERVER", "timeout server  20s", "timeout server  999s", "999"},

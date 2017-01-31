@@ -22,6 +22,7 @@ var Instance Proxy
 // TODO: Move to data from proxy.go when static (e.g. env. vars.)
 type ConfigData struct {
 	CertsString          string
+	ConnectionMode       string
 	TimeoutConnect       string
 	TimeoutClient        string
 	TimeoutServer        string
@@ -179,6 +180,10 @@ func (m HaProxy) getConfigData() ConfigData {
 		TimeoutHttpKeepAlive: "15",
 		StatsUser:            "admin",
 		StatsPass:            "admin",
+		ConnectionMode:       "http-server-close",
+	}
+	if len(os.Getenv("CONNECTION_MODE")) > 0 {
+		d.ConnectionMode = os.Getenv("CONNECTION_MODE")
 	}
 	if len(os.Getenv("TIMEOUT_CONNECT")) > 0 {
 		d.TimeoutConnect = os.Getenv("TIMEOUT_CONNECT")

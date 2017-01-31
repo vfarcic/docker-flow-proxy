@@ -1,4 +1,0 @@
-- name: Package is present
-  apt:
-    name=openjdk-7-jdk
-    state=present

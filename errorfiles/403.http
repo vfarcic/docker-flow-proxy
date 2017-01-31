@@ -4,9 +4,30 @@ Connection: close
 Content-Type: text/html
 
 <html>
+  <head>
+    <!-- Material Design fonts -->
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <!-- Bootstrap -->
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <!-- Bootstrap Material Design -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.rawgit.com/FezVrasta/bootstrap-material-design/master/dist/css/bootstrap-material-design.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.rawgit.com/FezVrasta/bootstrap-material-design/master/dist/css/ripples.min.css">
+    <style>
+      body {
+        padding-top: 50px
+      }
+    </style>
+  </head>
   <body>
-    <h3>Docker Flow: Proxy</h3>
-    <h1>403 Forbidden</h1>
-    No server is available to handle this request.
-  </body>
+  <div class="container">
+      <div class="panel panel-warning">
+        <div class="panel-heading">
+          <h3 class="panel-title">Docker Flow Proxy: 403 Forbidden</h3>
+        </div>
+      <div class="panel-body">
+        No server is available to handle this request.
+      </div>
+  </div>
+</body>
 </html>

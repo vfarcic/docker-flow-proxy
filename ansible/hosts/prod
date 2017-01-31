@@ -1,3 +1,0 @@
-[swarm]
-10.100.192.200 swarm_master=true docker_extra="--cluster-store=consul://{{ consul_ip }}:8500/swarm --cluster-advertise={{ facter_ipaddress_eth1 }}:2375"
-10.100.192.20[1:2] swarm_master_ip=10.100.192.200 consul_server_ip=10.100.192.200 docker_extra="-H tcp://0.0.0.0:2375 --cluster-store=consul://{{ consul_ip }}:8500/swarm --cluster-advertise={{ facter_ipaddress_eth1 }}:2375"

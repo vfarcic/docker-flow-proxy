@@ -14,7 +14,8 @@ RUN mkdir /consul_templates
 RUN mkdir /templates
 RUN mkdir /certs
 
-ENV CONSUL_ADDRESS="" \
+ENV CONNECTION_MODE="http-server-close" \
+    CONSUL_ADDRESS="" \
     DEBUG="false" \
     LISTENER_ADDRESS="" \
     MODE="default" \
