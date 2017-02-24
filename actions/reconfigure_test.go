@@ -197,6 +197,32 @@ backend myService-be
 	s.Equal(expected, back)
 }
 
+func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersIsPresentAndPasswordsEncrypted() {
+	s.reconfigure.Users = []proxy.User{
+		{Username: "user-1", Password: "pass-1"},
+		{Username: "user-2", Password: "pass-2"},
+	}
+	s.reconfigure.UsersPassEncrypted = true
+	expected := `userlist myServiceUsers
+    user user-1 password pass-1
+    user user-2 password pass-2
+
+
+backend myService-be
+    mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
+    {{range $i, $e := service "myService" "any"}}
+    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
+    {{end}}
+    acl myServiceUsersAcl http_auth(myServiceUsers)
+    http-request auth realm myServiceRealm if !myServiceUsersAcl
+    http-request del-header Authorization`
+
+	_, back, _ := s.reconfigure.GetTemplates(&s.reconfigure.Service)
+
+	s.Equal(expected, back)
+}
+
 func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsFormattedContent_WhenModeIsSwarm() {
 	modes := []string{"service", "sWARm"}
 	for _, mode := range modes {

@@ -691,6 +691,38 @@ frontend services`,
 	s.Equal(expectedData, actualData)
 }
 
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsUserListWithEncryptedPasswordsOn() {
+	var actualData string
+	usersOrig := os.Getenv("USERS")
+	encOrig := os.Getenv("USERS_PASS_ENCRYPTED")
+	defer func() { os.Setenv("USERS", usersOrig); os.Setenv("USERS_PASS_ENCRYPTED", encOrig)}()
+	os.Setenv("USERS", "my-user-1:my-password-1,my-user-2:my-password-2")
+	os.Setenv("USERS_PASS_ENCRYPTED", "true")
+	expectedData := fmt.Sprintf(
+		"%s%s",
+		strings.Replace(
+			s.TemplateContent,
+			"frontend services",
+			`userlist defaultUsers
+    user my-user-1 password my-password-1
+    user my-user-2 password my-password-2
+
+frontend services`,
+			-1,
+		),
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+
+	NewHaProxy(s.TemplatesPath, s.ConfigsPath, map[string]bool{}).CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ReplacesValuesWithEnvVars() {
 	tests := []struct {
 		envKey string

@@ -713,6 +713,54 @@ func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithUsers_WhenPresent() {
 	s.ResponseWriter.AssertCalled(s.T(), "Write", []byte(expected))
 }
 
+func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithUsersFromUsersFile_WhenPresent() {
+	users := []proxy.User{
+		{Username: "user1", Password: "pass1"},
+		{Username: "user2", Password: "pass2"},
+	}
+	req, _ := http.NewRequest("GET", s.ReconfigureUrl+"&usersPath=./test_configs/users.txt", nil)
+	expected, _ := json.Marshal(server.Response{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Service: proxy.Service{
+			ReqMode:          "http",
+			ServiceName:      s.ServiceName,
+			ServiceColor:     s.ServiceColor,
+			ServiceDomain:    s.ServiceDomain,
+			OutboundHostname: s.OutboundHostname,
+			Users:            users,
+			ServiceDest:      []proxy.ServiceDest{s.sd},
+		},
+	})
+
+	srv := Serve{}
+	srv.ServeHTTP(s.ResponseWriter, req)
+
+	s.ResponseWriter.AssertCalled(s.T(), "Write", []byte(expected))
+}
+
+func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithUsersPassEncrypted_WhenPresent() {
+	req, _ := http.NewRequest("GET", s.ReconfigureUrl+"&usersPassEncrypted=true", nil)
+	expected, _ := json.Marshal(server.Response{
+		Status:      "OK",
+		ServiceName: s.ServiceName,
+		Service: proxy.Service{
+			ReqMode:            "http",
+			ServiceName:        s.ServiceName,
+			ServiceColor:       s.ServiceColor,
+			ServiceDomain:      s.ServiceDomain,
+			OutboundHostname:   s.OutboundHostname,
+			UsersPassEncrypted: true,
+			ServiceDest:        []proxy.ServiceDest{s.sd},
+		},
+	})
+
+	srv := Serve{}
+	srv.ServeHTTP(s.ResponseWriter, req)
+
+	s.ResponseWriter.AssertCalled(s.T(), "Write", []byte(expected))
+}
+
 func (s *ServerTestSuite) Test_ServeHTTP_ReturnsJsonWithPorts_WhenPresent() {
 	port := "1234"
 	httpsPort := 4321

@@ -148,6 +148,32 @@ func (s IntegrationSwarmTestSuite) Test_GlobalAuthentication() {
 	s.Equal(200, resp.StatusCode, s.getProxyConf())
 }
 
+func (s IntegrationSwarmTestSuite) Test_GlobalAuthenticationWithEncryption() {
+	defer func() {
+		exec.Command("/bin/sh", "-c", `docker service update --env-rm "USERS" proxy`).Output()
+		s.waitForContainers(1, "proxy")
+	}()
+	_, err := exec.Command("/bin/sh", "-c", `docker service update --env-add "USERS_PASS_ENCRYPTED=true" --env-add "USERS=my-user:\$6\$AcrjVWOkQq1vWp\$t55F7Psm3Ujvp8lpqdAwrc5RxWORYBeDV6ji9KoO029ojooj4Pi.JVGwxdicB0Fuu.NSDyGaZt7skHIo3Nayq/" proxy`).Output()
+	s.NoError(err)
+	s.waitForContainers(1, "proxy")
+
+	s.reconfigureGoDemo("")
+
+	resp, err := s.sendHelloRequest()
+
+	s.NoError(err)
+	s.Equal(401, resp.StatusCode, s.getProxyConf())
+
+	url := fmt.Sprintf("http://%s/demo/hello", s.hostIP)
+	req, err := http.NewRequest("GET", url, nil)
+	req.SetBasicAuth("my-user", "my-pass")
+	client := &http.Client{}
+	resp, err = client.Do(req)
+
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf())
+}
+
 func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
 	defer func() {
 		s.reconfigureGoDemo("")

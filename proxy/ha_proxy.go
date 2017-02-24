@@ -174,26 +174,32 @@ func (m HaProxy) getConfigData() ConfigData {
 	d := ConfigData{
 		CertsString: strings.Join(certs, " "),
 	}
-	d.ConnectionMode = m.getSecretOrEnvVar("CONNECTION_MODE", "http-server-close")
-	d.TimeoutConnect = m.getSecretOrEnvVar("TIMEOUT_CONNECT", "5")
-	d.TimeoutClient = m.getSecretOrEnvVar("TIMEOUT_CLIENT", "20")
-	d.TimeoutServer = m.getSecretOrEnvVar("TIMEOUT_SERVER", "20")
-	d.TimeoutQueue = m.getSecretOrEnvVar("TIMEOUT_QUEUE", "30")
-	d.TimeoutTunnel = m.getSecretOrEnvVar("TIMEOUT_TUNNEL", "3600")
-	d.TimeoutHttpRequest = m.getSecretOrEnvVar("TIMEOUT_HTTP_REQUEST", "5")
-	d.TimeoutHttpKeepAlive = m.getSecretOrEnvVar("TIMEOUT_HTTP_KEEP_ALIVE", "15")
-	d.StatsUser = m.getSecretOrEnvVar("STATS_USER", "admin")
-	d.StatsPass = m.getSecretOrEnvVar("STATS_PASS", "admin")
-	usersString := m.getSecretOrEnvVar("USERS", "")
+	d.ConnectionMode = GetSecretOrEnvVar("CONNECTION_MODE", "http-server-close")
+	d.TimeoutConnect = GetSecretOrEnvVar("TIMEOUT_CONNECT", "5")
+	d.TimeoutClient = GetSecretOrEnvVar("TIMEOUT_CLIENT", "20")
+	d.TimeoutServer = GetSecretOrEnvVar("TIMEOUT_SERVER", "20")
+	d.TimeoutQueue = GetSecretOrEnvVar("TIMEOUT_QUEUE", "30")
+	d.TimeoutTunnel = GetSecretOrEnvVar("TIMEOUT_TUNNEL", "3600")
+	d.TimeoutHttpRequest = GetSecretOrEnvVar("TIMEOUT_HTTP_REQUEST", "5")
+	d.TimeoutHttpKeepAlive = GetSecretOrEnvVar("TIMEOUT_HTTP_KEEP_ALIVE", "15")
+	d.StatsUser = GetSecretOrEnvVar("STATS_USER", "admin")
+	d.StatsPass = GetSecretOrEnvVar("STATS_PASS", "admin")
+	usersString := GetSecretOrEnvVar("USERS", "")
+	encryptedString := GetSecretOrEnvVar("USERS_PASS_ENCRYPTED", "")
 	if len(usersString) > 0 {
 		d.UserList = "\nuserlist defaultUsers\n"
+		passwordType := "insecure-password";
+		if encryptedString == "true" || encryptedString == "1" {
+			passwordType = "password";
+		}
 		users := strings.Split(usersString, ",")
 		for _, user := range users {
-			userPass := strings.Split(user, ":")
-			d.UserList = fmt.Sprintf("%s    user %s insecure-password %s\n", d.UserList, userPass[0], userPass[1])
+			//trimming to allow new lines in file
+			userPass := strings.Split(strings.Trim(user, "\n\t "), ":")
+			d.UserList = fmt.Sprintf("%s    user %s %s %s\n", d.UserList, userPass[0], passwordType, userPass[1])
 		}
 	}
-	if strings.EqualFold(m.getSecretOrEnvVar("DEBUG", ""), "true") {
+	if strings.EqualFold(GetSecretOrEnvVar("DEBUG", ""), "true") {
 		d.ExtraGlobal += `
     debug`
 	} else {
@@ -202,18 +208,18 @@ func (m HaProxy) getConfigData() ConfigData {
     option  dontlog-normal`
 	}
 
-	defaultPortsString := m.getSecretOrEnvVar("DEFAULT_PORTS", "")
+	defaultPortsString := GetSecretOrEnvVar("DEFAULT_PORTS", "")
 	defaultPorts := strings.Split(defaultPortsString, ",")
 	for _, bindPort := range defaultPorts {
 		formattedPort := strings.Replace(bindPort, ":ssl", d.CertsString, -1)
 		d.DefaultBinds += fmt.Sprintf("\n    bind *:%s", formattedPort)
 	}
-	d.ExtraFrontend = m.getSecretOrEnvVar("EXTRA_FRONTEND", "")
-	extraGlobal := m.getSecretOrEnvVar("EXTRA_GLOBAL", "")
+	d.ExtraFrontend = GetSecretOrEnvVar("EXTRA_FRONTEND", "")
+	extraGlobal := GetSecretOrEnvVar("EXTRA_GLOBAL", "")
 	if len(extraGlobal) > 0 {
 		d.ExtraGlobal += fmt.Sprintf("\n    %s", extraGlobal)
 	}
-	bindPortsString := m.getSecretOrEnvVar("BIND_PORTS", "")
+	bindPortsString := GetSecretOrEnvVar("BIND_PORTS", "")
 	if len(bindPortsString) > 0 {
 		bindPorts := strings.Split(bindPortsString, ",")
 		for _, bindPort := range bindPorts {
@@ -257,16 +263,7 @@ func (m HaProxy) getConfigData() ConfigData {
 	return d
 }
 
-func (m *HaProxy) getSecretOrEnvVar(key, defaultValue string) string {
-	path := fmt.Sprintf("/run/secrets/dfp_%s", strings.ToLower(key))
-	if content, err := readSecretsFile(path); err == nil {
-		return strings.TrimRight(string(content[:]), "\n")
-	}
-	if len(os.Getenv(key)) > 0 {
-		return os.Getenv(key)
-	}
-	return defaultValue
-}
+
 
 func (m *HaProxy) getFrontTemplateSNI(s Service, gen_header bool) string {
 	tmplString := ``

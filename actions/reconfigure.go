@@ -9,7 +9,6 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -395,7 +394,7 @@ backend %s{{$.ServiceName}}-be{{.Port}}
     acl {{$.ServiceName}}UsersAcl http_auth({{$.ServiceName}}Users)
     http-request auth realm {{$.ServiceName}}Realm if !{{$.ServiceName}}UsersAcl
     http-request del-header Authorization`
-	} else if len(os.Getenv("USERS")) > 0 {
+	} else if len(proxy.GetSecretOrEnvVar("USERS", "")) > 0 {
 		tmpl += `
     acl defaultUsersAcl http_auth(defaultUsers)
     http-request auth realm defaultRealm if !defaultUsersAcl
@@ -407,8 +406,8 @@ backend %s{{$.ServiceName}}-be{{.Port}}
 
 func (m *Reconfigure) getUsersList(sr *proxy.Service) string {
 	if len(sr.Users) > 0 {
-		return `userlist {{.ServiceName}}Users{{range .Users}}
-    user {{.Username}} insecure-password {{.Password}}{{end}}
+		return `{{$service := .}}userlist {{.ServiceName}}Users{{range .Users}}
+    user {{.Username}} {{if $service.UsersPassEncrypted}}password{{end}}{{if not $service.UsersPassEncrypted}}insecure-password{{end}} {{.Password}}{{end}}
 
 `
 	}

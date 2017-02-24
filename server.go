@@ -10,6 +10,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"io/ioutil"
+	"math/rand"
 )
 
 // TODO: Move to server package
@@ -222,6 +224,14 @@ func (m *Serve) reconfigure(w http.ResponseWriter, req *http.Request) {
 	w.Write(js)
 }
 
+func appendUsersFromString(sr *proxy.Service, commaSeparatedUsers string) {
+	users := strings.Split(commaSeparatedUsers, ",")
+	for _, user := range users {
+		userPass := strings.Split(strings.Trim(user, "\n\t "), ":")
+		sr.Users = append(sr.Users, proxy.User{Username: userPass[0], Password: userPass[1]})
+	}
+}
+
 func (m *Serve) getService(sd []proxy.ServiceDest, req *http.Request) proxy.Service {
 	sr := proxy.Service{
 		ServiceDest:          sd,
@@ -258,11 +268,24 @@ func (m *Serve) getService(sd []proxy.ServiceDest, req *http.Request) proxy.Serv
 	sr.SkipCheck = m.getBoolParam(req, "skipCheck")
 	sr.Distribute = m.getBoolParam(req, "distribute")
 	sr.SslVerifyNone = m.getBoolParam(req, "sslVerifyNone")
+	sr.UsersPassEncrypted = m.getBoolParam(req, "usersPassEncrypted")
+
 	if len(req.URL.Query().Get("users")) > 0 {
-		users := strings.Split(req.URL.Query().Get("users"), ",")
-		for _, user := range users {
-			userPass := strings.Split(user, ":")
-			sr.Users = append(sr.Users, proxy.User{Username: userPass[0], Password: userPass[1]})
+		appendUsersFromString(&sr, req.URL.Query().Get("users"))
+	} else if len(req.URL.Query().Get("usersPath")) > 0 {
+		usersPath := req.URL.Query().Get("usersPath");
+		if content, err := ioutil.ReadFile(usersPath); err == nil {
+			userContents := strings.TrimRight(string(content[:]), "\n")
+			appendUsersFromString(&sr, userContents)
+		}else {
+			logPrintf("For service %s it was impossible to load userFile %s due to error %s",
+				sr.ServiceName, usersPath, err.Error())
+			//shouldn't we add some rondom user? if Users is empty the service will be unprotected,
+			// but obviously someone wanted it to be secured
+			sr.Users = append(sr.Users, proxy.User{
+				Username: "dummyUser",
+				Password: strconv.FormatInt(rand.Int63(), 3)},
+			)
 		}
 	}
 	return sr
