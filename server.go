@@ -1,15 +1,16 @@
 package main
 
 import (
-	"./actions"
 	"./proxy"
 	"./server"
+	"./actions"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // TODO: Move to server package
@@ -84,18 +85,33 @@ func (m *Serve) reconfigure(server server.Server) error {
 		lAddr = fmt.Sprintf("http://%s:8080", m.ListenerAddress)
 	}
 	recon := actions.NewReconfigure(m.BaseReconfigure, proxy.Service{}, m.Mode)
-	if err := recon.ReloadServicesFromListener(
+	if err := recon.ReloadServicesFromRegistry(
 		m.ConsulAddresses,
 		m.InstanceName,
 		m.Mode,
-		lAddr,
 	); err != nil {
 		return err
 	}
+	if len(lAddr)>0 {
+		go func() {
+			interval := time.Second * 10
+			for range time.Tick(interval) {
+				if err := reload.ReloadConfig(m.BaseReconfigure, m.Mode, lAddr); err != nil {
+					logPrintf("Error: Fetching config from swarm listener failed: %s. Will retry in %d seconds", err.Error(), interval/time.Second)
+				} else {
+					break
+				}
+			}
+
+		}()
+	}
+
 	services := server.GetServicesFromEnvVars()
+
 	for _, service := range *services {
 		recon = actions.NewReconfigure(m.BaseReconfigure, service, m.Mode)
-		recon.Execute([]string{})
+		//todo: there could be only one reload after this whole loop
+		recon.Execute(true)
 	}
 	//	if err := action.Execute([]string{}); err != nil {
 	//		m.writeInternalServerError(w, &response, err.Error())

@@ -4,7 +4,13 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"github.com/mitchellh/mapstructure"
+	"fmt"
+	"reflect"
 )
+
+var extractUsersFromString = ExtractUsersFromString
+var usersBasePath string = "/run/secrets/dfp_users_%s"
 
 type ServiceDest struct {
 	// The internal port of a service that should be reconfigured.
@@ -212,4 +218,203 @@ func ExtractUsersFromString(context, usersString string, encrypted, skipEmptyPas
 		}
 	}
 	return collectedUsers
+}
+
+type ServiceParameterProvider interface {
+	Fill(service *Service)
+	GetString(name string) string
+}
+
+type MapParameterProvider struct {
+	theMap *map[string]string
+}
+
+func (p *MapParameterProvider) Fill(service *Service) {
+	//tmpMap := make(map[string]string)
+	//for k, v := range *p.theMap {
+	//	tmpMap[strings.Title(k)] = v
+	//}
+	mapstructure.Decode(p.theMap, service)
+	//above library does not handle bools as strings
+	v := reflect.ValueOf(service).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		if v.Field(i).CanSet() && v.Field(i).Kind() == reflect.Bool {
+			fieldName := v.Type().Field(i).Name
+			value := ""
+			if len(p.GetString(fieldName)) > 0 {
+				value = p.GetString(fieldName)
+			} else if len(p.GetString(LowerFirst(fieldName))) > 0 {
+				value = p.GetString(LowerFirst(fieldName))
+			}
+			value = strings.ToLower(value)
+			if strings.EqualFold(value, "true") {
+				v.Field(i).SetBool(true)
+			} else if strings.EqualFold(value, "false") {
+				v.Field(i).SetBool(false)
+			}
+		}
+	}
+}
+
+func (p *MapParameterProvider) GetString(name string) string {
+	return (*p.theMap)[name]
+}
+
+func GetServiceFromMap(req *map[string]string) *Service {
+	provider := MapParameterProvider{theMap: req}
+	return GetServiceFromProvider(&provider)
+}
+
+func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
+	sr := new(Service)
+	provider.Fill(sr)
+	if len(sr.ReqMode) == 0 {
+		sr.ReqMode = "http"
+	}
+	if len(provider.GetString("httpsPort")) > 0 {
+		sr.HttpsPort, _ = strconv.Atoi(provider.GetString("httpsPort"))
+	}
+	if len(provider.GetString("serviceDomain")) > 0 {
+		sr.ServiceDomain = strings.Split(provider.GetString("serviceDomain"), ",")
+	}
+	if len(provider.GetString("addHeader")) > 0 {
+		sr.AddHeader = strings.Split(provider.GetString("addHeader"), ",")
+	}
+	if len(provider.GetString("setHeader")) > 0 {
+		sr.SetHeader = strings.Split(provider.GetString("setHeader"), ",")
+	}
+	globalUsersString := GetSecretOrEnvVar("USERS", "")
+	globalUsersEncrypted := strings.EqualFold(GetSecretOrEnvVar("USERS_PASS_ENCRYPTED", ""), "true")
+	sr.Users = mergeUsers(
+		sr.ServiceName,
+		provider.GetString("users"),
+		provider.GetString("usersSecret"),
+		getBoolParam(provider, "usersPassEncrypted"),
+		globalUsersString,
+		globalUsersEncrypted,
+	)
+	path := []string{}
+	if len(provider.GetString("servicePath")) > 0 {
+		path = strings.Split(provider.GetString("servicePath"), ",")
+	}
+	port := provider.GetString("port")
+	srcPort, _ := strconv.Atoi(provider.GetString("srcPort"))
+	sd := []ServiceDest{}
+	if len(path) > 0 || len(port) > 0 || (len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0) {
+		sd = append(
+			sd,
+			ServiceDest{Port: port, SrcPort: srcPort, ServicePath: path},
+		)
+	}
+	for i := 1; i <= 10; i++ {
+		port := provider.GetString(fmt.Sprintf("port.%d", i))
+		path := provider.GetString(fmt.Sprintf("servicePath.%d", i))
+		srcPort, _ := strconv.Atoi(provider.GetString(fmt.Sprintf("srcPort.%d", i)))
+		if len(path) > 0 && len(port) > 0 {
+			sd = append(
+				sd,
+				ServiceDest{Port: port, SrcPort: srcPort, ServicePath: strings.Split(path, ",")},
+			)
+		} else {
+			break
+		}
+	}
+	sr.ServiceDest = sd
+	return sr
+}
+
+func getBoolParam(req ServiceParameterProvider, param string) bool {
+	value := false
+	if len(req.GetString(param)) > 0 {
+		value, _ = strconv.ParseBool(req.GetString(param))
+	}
+	return value
+}
+
+func mergeUsers(
+	serviceName,
+	usersParam,
+	usersSecret string,
+	usersPassEncrypted bool,
+	globalUsersString string,
+	globalUsersEncrypted bool,
+) []User {
+	var collectedUsers []*User
+	paramUsers := extractUsersFromString(serviceName, usersParam, usersPassEncrypted, false)
+	fileUsers, _ := getUsersFromFile(serviceName, usersSecret, usersPassEncrypted)
+	if len(paramUsers) > 0 {
+		if !allUsersHavePasswords(paramUsers) {
+			if len(usersSecret) == 0 {
+				fileUsers = ExtractUsersFromString(serviceName, globalUsersString, globalUsersEncrypted, true)
+			}
+			for _, u := range paramUsers {
+				if !u.HasPassword() {
+					if userByName := findUserByName(fileUsers, u.Username); userByName != nil {
+						u.Password = "sdasdsad"
+						u.Password = userByName.Password
+						u.PassEncrypted = userByName.PassEncrypted
+					} else {
+						// TODO: Return an error
+						// TODO: Test
+						logPrintf("For service %s it was impossible to find password for user %s.",
+							serviceName, u.Username)
+					}
+				}
+			}
+		}
+		collectedUsers = paramUsers
+	} else {
+		collectedUsers = fileUsers
+	}
+	ret := []User{}
+	for _, u := range collectedUsers {
+		if u.HasPassword() {
+			ret = append(ret, *u)
+		}
+	}
+	if len(ret) == 0 && (len(usersParam) != 0 || len(usersSecret) != 0) {
+		//we haven't found any users but they were requested so generating dummy one
+		ret = append(ret, *RandomUser())
+	}
+	if len(ret) == 0 {
+		return nil
+	}
+	return ret
+}
+
+func getUsersFromFile(serviceName, fileName string, passEncrypted bool) ([]*User, error) {
+	if len(fileName) > 0 {
+		usersFile := fmt.Sprintf(usersBasePath, fileName)
+		if content, err := readFile(usersFile); err == nil {
+			userContents := strings.TrimRight(string(content[:]), "\n")
+			return ExtractUsersFromString(serviceName, userContents, passEncrypted, true), nil
+		} else { // TODO: Test
+			logPrintf(
+				"For service %s it was impossible to load userFile %s due to error %s",
+				serviceName,
+				usersFile,
+				err.Error(),
+			)
+			return []*User{}, err
+		}
+	}
+	return []*User{}, nil
+}
+
+func allUsersHavePasswords(users []*User) bool {
+	for _, u := range users {
+		if !u.HasPassword() {
+			return false
+		}
+	}
+	return true
+}
+
+func findUserByName(users []*User, name string) *User {
+	for _, u := range users {
+		if strings.EqualFold(name, u.Username) {
+			return u
+		}
+	}
+	return nil
 }

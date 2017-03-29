@@ -21,9 +21,9 @@ const ServiceTemplateBeFilename = "service-formatted-be.ctmpl"
 var mu = &sync.Mutex{}
 
 type Reconfigurable interface {
-	Executable
+	Execute(reloadAfter bool) error
 	GetData() (BaseReconfigure, proxy.Service)
-	ReloadServicesFromListener(addresses []string, instanceName, mode, listenerAddress string) error
+	ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error
 	GetTemplates(sr *proxy.Service) (front, back string, err error)
 }
 
@@ -52,8 +52,7 @@ var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, m
 	}
 }
 
-// TODO: Remove args
-func (m *Reconfigure) Execute(args []string) error {
+func (m *Reconfigure) Execute(reloadAfter bool) error {
 	mu.Lock()
 	defer mu.Unlock()
 	if isSwarm(m.Mode) && !m.skipAddressValidation {
@@ -75,9 +74,11 @@ func (m *Reconfigure) Execute(args []string) error {
 	if err := proxy.Instance.CreateConfigFromTemplates(); err != nil {
 		return err
 	}
-	reload := Reload{}
-	if err := reload.Execute(false, ""); err != nil {
-		return err
+	if reloadAfter {
+		reload := Reload{}
+		if err := reload.Execute(false); err != nil {
+			return err
+		}
 	}
 	if len(m.ConsulAddresses) > 0 || !isSwarm(m.Mode) {
 		if err := m.putToConsul(m.ConsulAddresses, m.Service, m.InstanceName); err != nil {
@@ -91,17 +92,8 @@ func (m *Reconfigure) GetData() (BaseReconfigure, proxy.Service) {
 	return m.BaseReconfigure, m.Service
 }
 
-func (m *Reconfigure) ReloadServicesFromListener(addresses []string, instanceName, mode, listenerAddress string) error {
-	if len(listenerAddress) > 0 {
-		fullAddress := fmt.Sprintf("%s/v1/docker-flow-swarm-listener/notify-services", listenerAddress)
-		resp, err := httpGet(fullAddress)
-		if err != nil {
-			return err
-		} else if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("Swarm Listener responded with the status code %d", resp.StatusCode)
-		}
-		logPrintf("A request was sent to the Swarm listener running on %s. The proxy will be reconfigured soon.", listenerAddress)
-	} else if len(addresses) > 0 {
+func (m *Reconfigure) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
+	if len(addresses) > 0 {
 		return m.reloadFromRegistry(addresses, instanceName, mode)
 	}
 	return nil
@@ -149,7 +141,7 @@ func (m *Reconfigure) reloadFromRegistry(addresses []string, instanceName, mode 
 		return err
 	}
 	reload := Reload{}
-	return reload.Execute(false, "")
+	return reload.Execute(false)
 }
 
 func (m *Reconfigure) getService(addresses []string, serviceName, instanceName string, c chan proxy.Service) {

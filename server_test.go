@@ -158,12 +158,12 @@ func (s *ServerTestSuite) Test_Execute_InvokesReloadAllServices() {
 	defer func() { actions.NewReconfigure = newReconfigureOrig }()
 	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
 		return ReconfigureMock{
-			ReloadServicesFromListenerMock: func(addresses []string, instanceName, mode, listenerAddress string) error {
+			ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
 				actualAddresses = addresses
 				actualInstanceName = instanceName
 				return nil
 			},
-			ExecuteMock: func(args []string) error {
+			ExecuteMock: func(reloadAfter bool) error {
 				return nil
 			},
 		}
@@ -198,10 +198,10 @@ func (s *ServerTestSuite) Test_Execute_InvokesReconfigureExecuteForEachServiceDe
 	}
 	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
 		return ReconfigureMock{
-			ReloadServicesFromListenerMock: func(addresses []string, instanceName, mode, listenerAddress string) error {
+			ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
 				return nil
 			},
-			ExecuteMock: func(args []string) error {
+			ExecuteMock: func(reloadAfter bool) error {
 				called++
 				return nil
 			},
@@ -215,17 +215,24 @@ func (s *ServerTestSuite) Test_Execute_InvokesReconfigureExecuteForEachServiceDe
 
 func (s *ServerTestSuite) Test_Execute_InvokesReloadAllServicesWithListenerAddress() {
 	expectedListenerAddress := "swarm-listener"
-	actualListenerAddress := ""
+	reloadFromRegistryCalled := false
+	actualListenerAddressChan := make(chan string)
 	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
 		return ReconfigureMock{
-			ReloadServicesFromListenerMock: func(addresses []string, instanceName, mode, listenerAddress string) error {
-				actualListenerAddress = listenerAddress
+			ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
+				reloadFromRegistryCalled = true
 				return nil
 			},
-			ExecuteMock: func(args []string) error {
+			ExecuteMock: func(reloadAfter bool) error {
 				return nil
 			},
 		}
+	}
+	reload = ReloadMock{
+		ReloadConfigMock: func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
+			actualListenerAddressChan <- listenerAddr
+			return nil
+		},
 	}
 	consulAddressesOrig := []string{s.ConsulAddress}
 	defer func() {
@@ -238,13 +245,58 @@ func (s *ServerTestSuite) Test_Execute_InvokesReloadAllServicesWithListenerAddre
 
 	serverImpl.Execute([]string{})
 
+	actualListenerAddress, _ := <-actualListenerAddressChan
+	close(actualListenerAddressChan)
 	s.Equal(fmt.Sprintf("http://%s:8080", expectedListenerAddress), actualListenerAddress)
+}
+
+func (s *ServerTestSuite) Test_Execute_RetriesContactingSwarmListenerAddress() {
+	expectedListenerAddress := "swarm-listener"
+	actualListenerAddressChan := make(chan string)
+	callNum := 0
+	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
+		return ReconfigureMock{
+			ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error { return nil },
+		}
+	}
+	reload = ReloadMock{
+		ReloadConfigMock: func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
+			callNum = callNum + 1
+			actualListenerAddressChan <- fmt.Sprintf("%s-%d", listenerAddr, callNum)
+			if callNum == 2 {
+				close(actualListenerAddressChan)
+				return nil
+			} else {
+				return fmt.Errorf("On iteration %d", callNum)
+			}
+		},
+	}
+	consulAddressesOrig := []string{s.ConsulAddress}
+	defer func() {
+		os.Unsetenv("CONSUL_ADDRESS")
+		os.Unsetenv("LISTENER_ADDRESS")
+		serverImpl.ConsulAddresses = consulAddressesOrig
+	}()
+	os.Setenv("CONSUL_ADDRESS", s.ConsulAddress)
+	serverImpl.ListenerAddress = expectedListenerAddress
+
+	serverImpl.Execute([]string{})
+
+	actualListenerAddress1, chok1 := <-actualListenerAddressChan
+	s.True(chok1)
+	actualListenerAddress2, _ := <-actualListenerAddressChan
+	_, chok2 := <-actualListenerAddressChan
+
+	s.False(chok2)
+
+	s.Equal(fmt.Sprintf("http://%s:8080-1", expectedListenerAddress), actualListenerAddress1)
+	s.Equal(fmt.Sprintf("http://%s:8080-2", expectedListenerAddress), actualListenerAddress2)
 }
 
 func (s *ServerTestSuite) Test_Execute_ReturnsError_WhenReloadAllServicesFails() {
 	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
 		return ReconfigureMock{
-			ReloadServicesFromListenerMock: func(addresses []string, instanceName, mode, listenerAddress string) error {
+			ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
 				return fmt.Errorf("This is an error")
 			},
 		}
@@ -536,23 +588,23 @@ func getRunMock(skipMethod string) *RunMock {
 }
 
 type ReconfigureMock struct {
-	ExecuteMock                    func(args []string) error
+	ExecuteMock                    func(reloadAfter bool) error
 	GetDataMock                    func() (actions.BaseReconfigure, proxy.Service)
-	ReloadServicesFromListenerMock func(addresses []string, instanceName, mode, listenerAddress string) error
+	ReloadServicesFromRegistryMock func(addresses []string, instanceName, mode string) error
 	GetTemplatesMock               func(sr *proxy.Service) (front, back string, err error)
 	GetServicesFromEnvVarsMock     func() []proxy.Service
 }
 
-func (m ReconfigureMock) Execute(args []string) error {
-	return m.ExecuteMock(args)
+func (m ReconfigureMock) Execute(reloadAfter bool) error {
+	return m.ExecuteMock(reloadAfter)
 }
 
 func (m ReconfigureMock) GetData() (actions.BaseReconfigure, proxy.Service) {
 	return m.GetDataMock()
 }
 
-func (m ReconfigureMock) ReloadServicesFromListener(addresses []string, instanceName, mode, listenerAddress string) error {
-	return m.ReloadServicesFromListenerMock(addresses, instanceName, mode, listenerAddress)
+func (m ReconfigureMock) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
+	return m.ReloadServicesFromRegistryMock(addresses, instanceName, mode)
 }
 
 func (m ReconfigureMock) GetTemplates(sr *proxy.Service) (front, back string, err error) {
@@ -561,4 +613,20 @@ func (m ReconfigureMock) GetTemplates(sr *proxy.Service) (front, back string, er
 
 func (m ReconfigureMock) GetServicesFromEnvVars() []proxy.Service {
 	return m.GetServicesFromEnvVarsMock()
+}
+
+type ReloadMock struct {
+	ExecuteMock             func(recreate bool) error
+	ReloadClusterConfigMock func(listenerAddr string) error
+	ReloadConfigMock        func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error
+}
+
+func (m ReloadMock) ReloadClusterConfig(listenerAddr string) error {
+	return m.ReloadClusterConfigMock(listenerAddr)
+}
+func (m ReloadMock) ReloadConfig(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
+	return m.ReloadConfigMock(baseData, mode, listenerAddr)
+}
+func (m ReloadMock) Execute(recreate bool) error {
+	return m.ExecuteMock(recreate)
 }

@@ -48,7 +48,7 @@ func (m *Remove) Execute(args []string) error {
 		return err
 	}
 	reload := Reload{}
-	if err := reload.Execute(false, ""); err != nil {
+	if err := reload.Execute(false); err != nil {
 		logPrintf(err.Error())
 		return err
 	}

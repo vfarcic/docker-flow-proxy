@@ -12,8 +12,6 @@ import (
 	"strings"
 )
 
-var usersBasePath string = "/run/secrets/dfp_users_%s"
-var extractUsersFromString = proxy.ExtractUsersFromString
 var reload actions.Reloader = actions.NewReload()
 
 type Server interface {
@@ -61,63 +59,27 @@ type Response struct {
 	proxy.Service
 }
 
+type ServiceParameterProvider interface {
+	Fill(service *proxy.Service)
+	GetString(name string) string
+}
+
+type HttpRequestParameterProvider struct {
+	*http.Request
+}
+
+func (p *HttpRequestParameterProvider) Fill(service *proxy.Service) {
+	p.ParseForm()
+	decoder.Decode(service, p.Form)
+}
+
+func (p *HttpRequestParameterProvider) GetString(name string) string {
+	return p.URL.Query().Get(name)
+}
+
 func (m *Serve) GetServiceFromUrl(req *http.Request) *proxy.Service {
-	req.ParseForm()
-	sr := new(proxy.Service)
-	decoder.Decode(sr, req.Form)
-	if len(sr.ReqMode) == 0 {
-		sr.ReqMode = "http"
-	}
-	if len(req.URL.Query().Get("httpsPort")) > 0 {
-		sr.HttpsPort, _ = strconv.Atoi(req.URL.Query().Get("httpsPort"))
-	}
-	if len(req.URL.Query().Get("serviceDomain")) > 0 {
-		sr.ServiceDomain = strings.Split(req.URL.Query().Get("serviceDomain"), ",")
-	}
-	if len(req.URL.Query().Get("addHeader")) > 0 {
-		sr.AddHeader = strings.Split(req.URL.Query().Get("addHeader"), ",")
-	}
-	if len(req.URL.Query().Get("setHeader")) > 0 {
-		sr.SetHeader = strings.Split(req.URL.Query().Get("setHeader"), ",")
-	}
-	globalUsersString := proxy.GetSecretOrEnvVar("USERS", "")
-	globalUsersEncrypted := strings.EqualFold(proxy.GetSecretOrEnvVar("USERS_PASS_ENCRYPTED", ""), "true")
-	sr.Users = mergeUsers(
-		sr.ServiceName,
-		req.URL.Query().Get("users"),
-		req.URL.Query().Get("usersSecret"),
-		m.getBoolParam(req, "usersPassEncrypted"),
-		globalUsersString,
-		globalUsersEncrypted,
-	)
-	path := []string{}
-	if len(req.URL.Query().Get("servicePath")) > 0 {
-		path = strings.Split(req.URL.Query().Get("servicePath"), ",")
-	}
-	port := req.URL.Query().Get("port")
-	srcPort, _ := strconv.Atoi(req.URL.Query().Get("srcPort"))
-	sd := []proxy.ServiceDest{}
-	if len(path) > 0 || len(port) > 0 || (len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0) {
-		sd = append(
-			sd,
-			proxy.ServiceDest{Port: port, SrcPort: srcPort, ServicePath: path},
-		)
-	}
-	for i := 1; i <= 10; i++ {
-		port := req.URL.Query().Get(fmt.Sprintf("port.%d", i))
-		path := req.URL.Query().Get(fmt.Sprintf("servicePath.%d", i))
-		srcPort, _ := strconv.Atoi(req.URL.Query().Get(fmt.Sprintf("srcPort.%d", i)))
-		if len(path) > 0 && len(port) > 0 {
-			sd = append(
-				sd,
-				proxy.ServiceDest{Port: port, SrcPort: srcPort, ServicePath: strings.Split(path, ",")},
-			)
-		} else {
-			break
-		}
-	}
-	sr.ServiceDest = sd
-	return sr
+	provider := HttpRequestParameterProvider{Request: req}
+	return proxy.GetServiceFromProvider(&provider)
 }
 
 func (m *Serve) TestHandler(w http.ResponseWriter, req *http.Request) {
@@ -163,7 +125,7 @@ func (m *Serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 				TemplatesPath:   m.TemplatesPath,
 			}
 			action := actions.NewReconfigure(br, *sr, m.Mode)
-			if err := action.Execute([]string{}); err != nil {
+			if err := action.Execute(true); err != nil {
 				m.writeInternalServerError(w, &response, err.Error())
 			} else {
 				w.WriteHeader(http.StatusOK)
@@ -182,15 +144,29 @@ func (m *Serve) ReloadHandler(w http.ResponseWriter, req *http.Request) {
 	params := new(ReloadParams)
 	decoder.Decode(params, req.Form)
 	listenerAddr := ""
-	if params.FromListener {
-		listenerAddr = m.ListenerAddress
-	}
-	reload.Execute(params.Recreate, listenerAddr)
-	w.WriteHeader(http.StatusOK)
-	httpWriterSetContentType(w, "application/json")
 	response := Response{
 		Status: "OK",
 	}
+	if params.FromListener {
+		listenerAddr = m.ListenerAddress
+	}
+	if len(listenerAddr) > 0 {
+		if err := reload.ReloadClusterConfig(listenerAddr); err != nil {
+			logPrintf("Error: ReloadClusterConfig failed: %s", err.Error())
+			m.writeInternalServerError(w, &Response{}, err.Error())
+
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+	} else {
+		if err := reload.Execute(params.Recreate); err != nil {
+			logPrintf("Error: ReloadExecute failed: %s", err.Error())
+			m.writeInternalServerError(w, &Response{}, err.Error())
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+	}
+	httpWriterSetContentType(w, "application/json")
 	js, _ := json.Marshal(response)
 	w.Write(js)
 }
@@ -328,100 +304,4 @@ func (m *Serve) isValidReconf(service *proxy.Service) (bool, string) {
 		return false, "When NOT using reqMode http (e.g. tcp), srcPort and port parameters are mandatory."
 	}
 	return true, ""
-}
-
-func (m *Serve) getBoolParam(req *http.Request, param string) bool {
-	value := false
-	if len(req.URL.Query().Get(param)) > 0 {
-		value, _ = strconv.ParseBool(req.URL.Query().Get(param))
-	}
-	return value
-}
-
-func mergeUsers(
-	serviceName,
-	usersParam,
-	usersSecret string,
-	usersPassEncrypted bool,
-	globalUsersString string,
-	globalUsersEncrypted bool,
-) []proxy.User {
-	var collectedUsers []*proxy.User
-	paramUsers := extractUsersFromString(serviceName, usersParam, usersPassEncrypted, false)
-	fileUsers, _ := getUsersFromFile(serviceName, usersSecret, usersPassEncrypted)
-	if len(paramUsers) > 0 {
-		if !allUsersHavePasswords(paramUsers) {
-			if len(usersSecret) == 0 {
-				fileUsers = proxy.ExtractUsersFromString(serviceName, globalUsersString, globalUsersEncrypted, true)
-			}
-			for _, u := range paramUsers {
-				if !u.HasPassword() {
-					if userByName := findUserByName(fileUsers, u.Username); userByName != nil {
-						u.Password = "sdasdsad"
-						u.Password = userByName.Password
-						u.PassEncrypted = userByName.PassEncrypted
-					} else {
-						// TODO: Return an error
-						// TODO: Test
-						logPrintf("For service %s it was impossible to find password for user %s.",
-							serviceName, u.Username)
-					}
-				}
-			}
-		}
-		collectedUsers = paramUsers
-	} else {
-		collectedUsers = fileUsers
-	}
-	ret := []proxy.User{}
-	for _, u := range collectedUsers {
-		if u.HasPassword() {
-			ret = append(ret, *u)
-		}
-	}
-	if len(ret) == 0 && (len(usersParam) != 0 || len(usersSecret) != 0) {
-		//we haven't found any users but they were requested so generating dummy one
-		ret = append(ret, *proxy.RandomUser())
-	}
-	if len(ret) == 0 {
-		return nil
-	}
-	return ret
-}
-
-func getUsersFromFile(serviceName, fileName string, passEncrypted bool) ([]*proxy.User, error) {
-	if len(fileName) > 0 {
-		usersFile := fmt.Sprintf(usersBasePath, fileName)
-		if content, err := readFile(usersFile); err == nil {
-			userContents := strings.TrimRight(string(content[:]), "\n")
-			return proxy.ExtractUsersFromString(serviceName, userContents, passEncrypted, true), nil
-		} else { // TODO: Test
-			logPrintf(
-				"For service %s it was impossible to load userFile %s due to error %s",
-				serviceName,
-				usersFile,
-				err.Error(),
-			)
-			return []*proxy.User{}, err
-		}
-	}
-	return []*proxy.User{}, nil
-}
-
-func allUsersHavePasswords(users []*proxy.User) bool {
-	for _, u := range users {
-		if !u.HasPassword() {
-			return false
-		}
-	}
-	return true
-}
-
-func findUserByName(users []*proxy.User, name string) *proxy.User {
-	for _, u := range users {
-		if strings.EqualFold(name, u.Username) {
-			return u
-		}
-	}
-	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"unicode"
 )
 
 var cmdRunHa = func(cmd *exec.Cmd) error {
@@ -17,6 +18,7 @@ var readSecretsFile = ioutil.ReadFile
 var writeFile = ioutil.WriteFile
 var ReadFile = ioutil.ReadFile
 var ReadDir = ioutil.ReadDir
+var readFile = ioutil.ReadFile
 var logPrintf = log.Printf
 var readPidFile = ioutil.ReadFile
 var readConfigsDir = ioutil.ReadDir
@@ -29,4 +31,10 @@ var GetSecretOrEnvVar = func(key, defaultValue string) string {
 		return os.Getenv(key)
 	}
 	return defaultValue
+}
+var LowerFirst = func(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	return string(append([]rune{unicode.ToLower([]rune(s)[0])}, []rune(s)[1:] ...))
 }

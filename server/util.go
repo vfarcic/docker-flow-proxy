@@ -15,7 +15,7 @@ var httpWriterSetContentType = func(w http.ResponseWriter, value string) {
 }
 var logPrintf = log.Printf
 var lookupHost = net.LookupHost
-var readFile = ioutil.ReadFile
+
 var decoder = schema.NewDecoder()
 
 var SendDistributeRequests = func(req *http.Request, port, proxyServiceName string) (status int, err error) {

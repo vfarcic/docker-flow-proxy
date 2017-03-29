@@ -159,7 +159,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus200_WhenReqModeIs
 	defer func() { actions.NewReconfigure = newReconfigureOrig }()
 	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
 		return ReconfigureMock{
-			ExecuteMock: func(args []string) error {
+			ExecuteMock: func(reloadAfter bool) error {
 				return nil
 			},
 		}
@@ -234,7 +234,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesReconfigureExecute() {
 	defer func() { actions.NewReconfigure = newReconfigureOrig }()
 	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
 		return ReconfigureMock{
-			ExecuteMock: func(args []string) error {
+			ExecuteMock: func(reloadAfter bool) error {
 				invoked = true
 				return nil
 			},
@@ -255,7 +255,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_DoesNotInvokeReconfigureExecut
 	defer func() { actions.NewReconfigure = newReconfigureOrig }()
 	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
 		return ReconfigureMock{
-			ExecuteMock: func(args []string) error {
+			ExecuteMock: func(reloadAfter bool) error {
 				invoked = true
 				return nil
 			},
@@ -273,7 +273,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus500_WhenReconfigu
 	defer func() { actions.NewReconfigure = newReconfigureOrig }()
 	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
 		return ReconfigureMock{
-			ExecuteMock: func(args []string) error {
+			ExecuteMock: func(reloadAfter bool) error {
 				return fmt.Errorf("This is an error")
 			},
 		}
@@ -361,7 +361,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesReconfigureExecute_When
 		actualBase = baseData
 		actualService = serviceData
 		return ReconfigureMock{
-			ExecuteMock: func(args []string) error {
+			ExecuteMock: func(reloadAfter bool) error {
 				invoked = true
 				return nil
 			},
@@ -388,7 +388,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesReconfigureExecute_When
 
 func (s *ServerTestSuite) Test_ReloadHandler_ReturnsStatus200() {
 	reload = ReloadMock{
-		ExecuteMock: func(recreate bool, listenerAddr string) error {
+		ExecuteMock: func(recreate bool) error {
 			return nil
 		},
 	}
@@ -408,7 +408,7 @@ func (s *ServerTestSuite) Test_ReloadHandler_InvokesReload() {
 	reloadOrig := reload
 	defer func() { reload = reloadOrig }()
 	reload = ReloadMock{
-		ExecuteMock: func(recreate bool, listenerAddr string) error {
+		ExecuteMock: func(recreate bool) error {
 			invoked = true
 			return nil
 		},
@@ -423,13 +423,16 @@ func (s *ServerTestSuite) Test_ReloadHandler_InvokesReload() {
 
 func (s *ServerTestSuite) Test_ReloadHandler_InvokesReloadWithRecreateParam() {
 	actualRecreate := false
-	actualListenerAddr := ""
+	clusterConfigCalled := false
 	reloadOrig := reload
 	defer func() { reload = reloadOrig }()
 	reload = ReloadMock{
-		ExecuteMock: func(recreate bool, listenerAddr string) error {
+		ExecuteMock: func(recreate bool) error {
 			actualRecreate = recreate
-			actualListenerAddr = listenerAddr
+			return nil
+		},
+		ReloadClusterConfigMock: func(listenerAddr string) error {
+			clusterConfigCalled = true
 			return nil
 		},
 	}
@@ -440,7 +443,7 @@ func (s *ServerTestSuite) Test_ReloadHandler_InvokesReloadWithRecreateParam() {
 	srv.ReloadHandler(getResponseWriterMock(), req)
 
 	s.True(actualRecreate)
-	s.Empty(actualListenerAddr)
+	s.False(clusterConfigCalled)
 }
 
 func (s *ServerTestSuite) Test_ReloadHandler_InvokesReloadWithFromListenerParam() {
@@ -448,7 +451,10 @@ func (s *ServerTestSuite) Test_ReloadHandler_InvokesReloadWithFromListenerParam(
 	reloadOrig := reload
 	defer func() { reload = reloadOrig }()
 	reload = ReloadMock{
-		ExecuteMock: func(recreate bool, listenerAddr string) error {
+		ExecuteMock: func(recreate bool) error {
+			return nil
+		},
+		ReloadClusterConfigMock: func(listenerAddr string) error {
 			actualListenerAddr = listenerAddr
 			return nil
 		},
@@ -469,7 +475,7 @@ func (s *ServerTestSuite) Test_ReloadHandler_SetsContentTypeToJSON() {
 	}
 	req, _ := http.NewRequest("GET", "/v1/docker-flow-proxy/reload", nil)
 	reload = ReloadMock{
-		ExecuteMock: func(recreate bool, listenerAddr string) error {
+		ExecuteMock: func(recreate bool) error {
 			return nil
 		},
 	}
@@ -486,7 +492,7 @@ func (s *ServerTestSuite) Test_ReloadHandler_ReturnsJSON() {
 	})
 	req, _ := http.NewRequest("GET", "/v1/docker-flow-proxy/reload", nil)
 	reload = ReloadMock{
-		ExecuteMock: func(recreate bool, listenerAddr string) error {
+		ExecuteMock: func(recreate bool) error {
 			return nil
 		},
 	}
@@ -621,11 +627,15 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		TimeoutServer:         "timeoutServer",
 		TimeoutTunnel:         "timeoutTunnel",
 		XForwardedProto:       true,
+		Users: []proxy.User{{Username: "user1", Password: "pass1", PassEncrypted: true, },
+				    {Username: "user2", Password: "pass2", PassEncrypted: true, }},
 	}
 	addr := fmt.Sprintf(
-		"%s?serviceName=%s&aclName=%s&serviceColor=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&skipCheck=%t&distribute=%t&sslVerifyNone=%t&serviceDomainMatchAll=%t&addHeader=%s&setHeader=%s",
+		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceColor=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&skipCheck=%t&distribute=%t&sslVerifyNone=%t&serviceDomainMatchAll=%t&addHeader=%s&setHeader=%s",
 		s.BaseUrl,
 		expected.ServiceName,
+		"user1:pass1,user2:pass2",
+		true,
 		expected.AclName,
 		expected.ServiceColor,
 		expected.ServiceCert,
@@ -667,130 +677,6 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_DefaultsReqModeToHttp() {
 	actual := srv.GetServiceFromUrl(req)
 
 	s.Equal("http", actual.ReqMode)
-}
-
-func (s *ServerTestSuite) Test_GetServiceFromUrl_GetsUsersFromProxyExtractUsersFromString() {
-	user1 := proxy.User{
-		Username:      "user1",
-		Password:      "pass1",
-		PassEncrypted: false,
-	}
-	user2 := proxy.User{
-		Username:      "user2",
-		Password:      "pass2",
-		PassEncrypted: true,
-	}
-	extractUsersFromStringOrig := extractUsersFromString
-	defer func() { extractUsersFromString = extractUsersFromStringOrig }()
-	actualServiceName := ""
-	expectedServiceName := "my-service"
-	actualUsers := ""
-	expectedUsers := "user1,user2"
-	actualUsersPassEncrypted := false
-	expectedUsersPassEncrypted := true
-	actualSkipEmptyPassword := true
-	expectedSkipEmptyPassword := false
-	extractUsersFromString = func(serviceName, usersString string, usersPassEncrypted, skipEmptyPassword bool) []*proxy.User {
-		actualServiceName = serviceName
-		actualUsers = usersString
-		actualUsersPassEncrypted = usersPassEncrypted
-		actualSkipEmptyPassword = skipEmptyPassword
-		return []*proxy.User{&user1, &user2}
-	}
-	addr := fmt.Sprintf(
-		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t",
-		s.BaseUrl,
-		expectedServiceName,
-		expectedUsers,
-		expectedUsersPassEncrypted,
-	)
-	req, _ := http.NewRequest("GET", addr, nil)
-	srv := Serve{}
-
-	actual := srv.GetServiceFromUrl(req)
-
-	s.Contains(actual.Users, user1)
-	s.Contains(actual.Users, user2)
-	s.Equal(expectedServiceName, actualServiceName)
-	s.Equal(expectedUsers, actualUsers)
-	s.Equal(expectedUsersPassEncrypted, actualUsersPassEncrypted)
-	s.Equal(expectedSkipEmptyPassword, actualSkipEmptyPassword)
-}
-
-// mergeUsers
-
-func (s *ServerTestSuite) Test_UsersMerge_AllCases() {
-	usersBasePathOrig := usersBasePath
-	defer func() { usersBasePath = usersBasePathOrig }()
-	usersBasePath = "../test_configs/%s.txt"
-	users := mergeUsers("someService", "user1:pass1,user2:pass2", "", false, "", false)
-	s.Equal(users, []proxy.User{
-		{PassEncrypted: false, Password: "pass1", Username: "user1"},
-		{PassEncrypted: false, Password: "pass2", Username: "user2"},
-	})
-	users = mergeUsers("someService", "user1:pass1,user2", "", false, "", false)
-	//user without password will not be included
-	s.Equal(users, []proxy.User{
-		{PassEncrypted: false, Password: "pass1", Username: "user1"},
-	})
-	users = mergeUsers("someService", "user1:passWoRd,user2", "users", false, "", false)
-	//user2 password will come from users file
-	s.Equal(users, []proxy.User{
-		{PassEncrypted: false, Password: "passWoRd", Username: "user1"},
-		{PassEncrypted: false, Password: "pass2", Username: "user2"},
-	})
-
-	users = mergeUsers("someService", "user1:passWoRd,user2", "users", true, "", false)
-	//user2 password will come from users file, all encrypted
-	s.Equal(users, []proxy.User{
-		{PassEncrypted: true, Password: "passWoRd", Username: "user1"},
-		{PassEncrypted: true, Password: "pass2", Username: "user2"},
-	})
-
-	users = mergeUsers("someService", "user1:passWoRd,user2", "users", false, "user1:pass1,user2:pass2", false)
-	//user2 password will come from users file, but not from global one
-	s.Equal(users, []proxy.User{
-		{PassEncrypted: false, Password: "passWoRd", Username: "user1"},
-		{PassEncrypted: false, Password: "pass2", Username: "user2"},
-	})
-
-	users = mergeUsers("someService", "user1:passWoRd,user2", "", false, "user1:pass1,user2:pass2", false)
-	//user2 password will come from global file
-	s.Equal(users, []proxy.User{
-		{PassEncrypted: false, Password: "passWoRd", Username: "user1"},
-		{PassEncrypted: false, Password: "pass2", Username: "user2"},
-	})
-
-	users = mergeUsers("someService", "user1:passWoRd,user2", "", false, "user1:pass1,user2:pass2", true)
-	//user2 password will come from global file, globals encrypted only
-	s.Equal(users, []proxy.User{
-		{PassEncrypted: false, Password: "passWoRd", Username: "user1"},
-		{PassEncrypted: true, Password: "pass2", Username: "user2"},
-	})
-
-	users = mergeUsers("someService", "user1:passWoRd,user2", "", true, "user1:pass1,user2:pass2", true)
-	//user2 password will come from global file, all encrypted
-	s.Equal(users, []proxy.User{
-		{PassEncrypted: true, Password: "passWoRd", Username: "user1"},
-		{PassEncrypted: true, Password: "pass2", Username: "user2"},
-	})
-
-	users = mergeUsers("someService", "user1,user2", "", false, "", false)
-	//no users found dummy one generated
-	s.Equal(len(users), 1)
-	s.Equal(users[0].Username, "dummyUser")
-
-	users = mergeUsers("someService", "", "users", false, "", false)
-	//Users from file only
-	s.Equal(users, []proxy.User{
-		{PassEncrypted: false, Password: "pass1", Username: "user1"},
-		{PassEncrypted: false, Password: "pass2", Username: "user2"},
-	})
-
-	users = mergeUsers("someService", "", "", false, "user1:pass1,user2:pass2", false)
-	//No users when only globals present
-	s.Equal(len(users), 0)
-
 }
 
 // GetServicesFromEnvVars
@@ -996,11 +882,19 @@ func getServerMock(skipMethod string) *ServerMock {
 }
 
 type ReloadMock struct {
-	ExecuteMock func(recreate bool, listenerAddr string) error
+	ExecuteMock             func(recreate bool) error
+	ReloadClusterConfigMock func(listenerAddr string) error
+	ReloadConfigMock        func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error
 }
 
-func (m ReloadMock) Execute(recreate bool, listenerAddr string) error {
-	return m.ExecuteMock(recreate, listenerAddr)
+func (m ReloadMock) ReloadClusterConfig(listenerAddr string) error {
+	return m.ReloadClusterConfigMock(listenerAddr)
+}
+func (m ReloadMock) ReloadConfig(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
+	return m.ReloadConfigMock(baseData, mode, listenerAddr)
+}
+func (m ReloadMock) Execute(recreate bool) error {
+	return m.ExecuteMock(recreate)
 }
 
 type RemoveMock struct {
@@ -1021,23 +915,23 @@ func getRemoveMock(skipMethod string) *RemoveMock {
 }
 
 type ReconfigureMock struct {
-	ExecuteMock                    func(args []string) error
+	ExecuteMock                    func(reloadAfter bool) error
 	GetDataMock                    func() (actions.BaseReconfigure, proxy.Service)
-	ReloadServicesFromListenerMock func(addresses []string, instanceName, mode, listenerAddress string) error
+	ReloadServicesFromRegistryMock func(addresses []string, instanceName, mode string) error
 	GetTemplatesMock               func(sr *proxy.Service) (front, back string, err error)
 	GetServicesFromEnvVarsMock     func() []proxy.Service
 }
 
-func (m ReconfigureMock) Execute(args []string) error {
-	return m.ExecuteMock(args)
+func (m ReconfigureMock) Execute(reloadAfter bool) error {
+	return m.ExecuteMock(reloadAfter)
 }
 
 func (m ReconfigureMock) GetData() (actions.BaseReconfigure, proxy.Service) {
 	return m.GetDataMock()
 }
 
-func (m ReconfigureMock) ReloadServicesFromListener(addresses []string, instanceName, mode, listenerAddress string) error {
-	return m.ReloadServicesFromListenerMock(addresses, instanceName, mode, listenerAddress)
+func (m ReconfigureMock) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
+	return m.ReloadServicesFromRegistryMock(addresses, instanceName, mode)
 }
 
 func (m ReconfigureMock) GetTemplates(sr *proxy.Service) (front, back string, err error) {
