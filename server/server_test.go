@@ -387,11 +387,11 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesReconfigureExecute_When
 // ReloadHandler
 
 func (s *ServerTestSuite) Test_ReloadHandler_ReturnsStatus200() {
-	reload = ReloadMock{
+	defer MockReload(ReloadMock{
 		ExecuteMock: func(recreate bool) error {
 			return nil
 		},
-	}
+	})()
 	for ver := 1; ver <= 2; ver++ {
 		rw := getResponseWriterMock()
 		req, _ := http.NewRequest("GET", "/v1/docker-flow-proxy/reload", nil)
@@ -405,14 +405,12 @@ func (s *ServerTestSuite) Test_ReloadHandler_ReturnsStatus200() {
 
 func (s *ServerTestSuite) Test_ReloadHandler_InvokesReload() {
 	invoked := false
-	reloadOrig := reload
-	defer func() { reload = reloadOrig }()
-	reload = ReloadMock{
+	defer MockReload(ReloadMock{
 		ExecuteMock: func(recreate bool) error {
 			invoked = true
 			return nil
 		},
-	}
+	})()
 	req, _ := http.NewRequest("GET", "/v1/docker-flow-proxy/reload", nil)
 
 	srv := Serve{}
@@ -424,18 +422,19 @@ func (s *ServerTestSuite) Test_ReloadHandler_InvokesReload() {
 func (s *ServerTestSuite) Test_ReloadHandler_InvokesReloadWithRecreateParam() {
 	actualRecreate := false
 	clusterConfigCalled := false
-	reloadOrig := reload
-	defer func() { reload = reloadOrig }()
-	reload = ReloadMock{
+	defer MockReload(ReloadMock{
 		ExecuteMock: func(recreate bool) error {
 			actualRecreate = recreate
 			return nil
 		},
+	})()
+	defer MockFetch(FetchMock{
 		ReloadClusterConfigMock: func(listenerAddr string) error {
 			clusterConfigCalled = true
 			return nil
 		},
-	}
+	})()
+
 	req, _ := http.NewRequest("GET", "/v1/docker-flow-proxy/reload?recreate=true", nil)
 
 	srv := Serve{}
@@ -448,17 +447,18 @@ func (s *ServerTestSuite) Test_ReloadHandler_InvokesReloadWithRecreateParam() {
 
 func (s *ServerTestSuite) Test_ReloadHandler_InvokesReloadWithFromListenerParam() {
 	actualListenerAddr := ""
-	reloadOrig := reload
-	defer func() { reload = reloadOrig }()
-	reload = ReloadMock{
+	defer MockReload(ReloadMock{
 		ExecuteMock: func(recreate bool) error {
 			return nil
 		},
+
+	})()
+	defer MockFetch(FetchMock{
 		ReloadClusterConfigMock: func(listenerAddr string) error {
 			actualListenerAddr = listenerAddr
 			return nil
 		},
-	}
+	})()
 	req, _ := http.NewRequest("GET", "/v1/docker-flow-proxy/reload?fromListener=true", nil)
 
 	srv := Serve{}
@@ -474,11 +474,11 @@ func (s *ServerTestSuite) Test_ReloadHandler_SetsContentTypeToJSON() {
 		actual = value
 	}
 	req, _ := http.NewRequest("GET", "/v1/docker-flow-proxy/reload", nil)
-	reload = ReloadMock{
+	defer MockReload(ReloadMock{
 		ExecuteMock: func(recreate bool) error {
 			return nil
 		},
-	}
+	})()
 
 	srv := Serve{}
 	srv.ReloadHandler(getResponseWriterMock(), req)
@@ -491,11 +491,11 @@ func (s *ServerTestSuite) Test_ReloadHandler_ReturnsJSON() {
 		Status: "OK",
 	})
 	req, _ := http.NewRequest("GET", "/v1/docker-flow-proxy/reload", nil)
-	reload = ReloadMock{
+	defer MockReload(ReloadMock{
 		ExecuteMock: func(recreate bool) error {
 			return nil
 		},
-	}
+	})()
 	respWriterMock := getResponseWriterMock()
 
 	srv := Serve{}
@@ -882,17 +882,17 @@ func getServerMock(skipMethod string) *ServerMock {
 }
 
 type ReloadMock struct {
-	ExecuteMock             func(recreate bool) error
-	ReloadClusterConfigMock func(listenerAddr string) error
-	ReloadConfigMock        func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error
+	ExecuteMock func(recreate bool) error
 }
 
-func (m ReloadMock) ReloadClusterConfig(listenerAddr string) error {
-	return m.ReloadClusterConfigMock(listenerAddr)
+func MockReload(mock ReloadMock) func() {
+	original := actions.NewReload
+	actions.NewReload = func() actions.Reloader {
+		return &mock
+	}
+	return func() { actions.NewReload = original }
 }
-func (m ReloadMock) ReloadConfig(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
-	return m.ReloadConfigMock(baseData, mode, listenerAddr)
-}
+
 func (m ReloadMock) Execute(recreate bool) error {
 	return m.ExecuteMock(recreate)
 }
@@ -915,11 +915,9 @@ func getRemoveMock(skipMethod string) *RemoveMock {
 }
 
 type ReconfigureMock struct {
-	ExecuteMock                    func(reloadAfter bool) error
-	GetDataMock                    func() (actions.BaseReconfigure, proxy.Service)
-	ReloadServicesFromRegistryMock func(addresses []string, instanceName, mode string) error
-	GetTemplatesMock               func(sr *proxy.Service) (front, back string, err error)
-	GetServicesFromEnvVarsMock     func() []proxy.Service
+	ExecuteMock      func(reloadAfter bool) error
+	GetDataMock      func() (actions.BaseReconfigure, proxy.Service)
+	GetTemplatesMock func() (front, back string, err error)
 }
 
 func (m ReconfigureMock) Execute(reloadAfter bool) error {
@@ -930,16 +928,33 @@ func (m ReconfigureMock) GetData() (actions.BaseReconfigure, proxy.Service) {
 	return m.GetDataMock()
 }
 
-func (m ReconfigureMock) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
+func (m ReconfigureMock) GetTemplates() (front, back string, err error) {
+	return m.GetTemplatesMock()
+}
+
+type FetchMock struct {
+	ReloadServicesFromRegistryMock func(addresses []string, instanceName, mode string) error
+	ReloadClusterConfigMock        func(listenerAddr string) error
+	ReloadConfigMock               func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error
+}
+
+func (m *FetchMock) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
 	return m.ReloadServicesFromRegistryMock(addresses, instanceName, mode)
 }
-
-func (m ReconfigureMock) GetTemplates(sr *proxy.Service) (front, back string, err error) {
-	return m.GetTemplatesMock(sr)
+func (m FetchMock) ReloadClusterConfig(listenerAddr string) error {
+	return m.ReloadClusterConfigMock(listenerAddr)
 }
-
-func (m ReconfigureMock) GetServicesFromEnvVars() []proxy.Service {
-	return m.GetServicesFromEnvVarsMock()
+func (m FetchMock) ReloadConfig(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
+	return m.ReloadConfigMock(baseData, mode, listenerAddr)
+}
+func MockFetch(mock FetchMock) func() {
+	newFetchOrig := actions.NewFetch
+	actions.NewFetch = func(baseData actions.BaseReconfigure, mode string) actions.Fetchable {
+		return &mock
+	}
+	return func() {
+		actions.NewFetch = newFetchOrig
+	}
 }
 
 type CertMock struct {

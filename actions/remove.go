@@ -43,12 +43,8 @@ func (m *Remove) Execute(args []string) error {
 		return err
 	}
 	proxy.Instance.RemoveService(m.ServiceName)
-	if err := proxy.Instance.CreateConfigFromTemplates(); err != nil {
-		logPrintf(err.Error())
-		return err
-	}
 	reload := Reload{}
-	if err := reload.Execute(false); err != nil {
+	if err := reload.Execute(true); err != nil {
 		logPrintf(err.Error())
 		return err
 	}

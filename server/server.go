@@ -12,8 +12,6 @@ import (
 	"strings"
 )
 
-var reload actions.Reloader = actions.NewReload()
-
 type Server interface {
 	GetServiceFromUrl(req *http.Request) *proxy.Service
 	TestHandler(w http.ResponseWriter, req *http.Request)
@@ -118,13 +116,7 @@ func (m *Serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 					m.Cert.PutCert(sr.ServiceName, []byte(sr.ServiceCert))
 				}
 			}
-			br := actions.BaseReconfigure{
-				ConsulAddresses: m.ConsulAddresses,
-				ConfigsPath:     m.ConfigsPath,
-				InstanceName:    os.Getenv("PROXY_INSTANCE_NAME"),
-				TemplatesPath:   m.TemplatesPath,
-			}
-			action := actions.NewReconfigure(br, *sr, m.Mode)
+			action := actions.NewReconfigure(m.getBaseReconfigure(), *sr, m.Mode)
 			if err := action.Execute(true); err != nil {
 				m.writeInternalServerError(w, &response, err.Error())
 			} else {
@@ -139,6 +131,16 @@ func (m *Serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 	w.Write(js)
 }
 
+func (m *Serve) getBaseReconfigure() actions.BaseReconfigure {
+	//MW: What about skipAddressValidation???
+	return actions.BaseReconfigure{
+		ConsulAddresses: m.ConsulAddresses,
+		ConfigsPath:     m.ConfigsPath,
+		InstanceName:    os.Getenv("PROXY_INSTANCE_NAME"),
+		TemplatesPath:   m.TemplatesPath,
+	}
+}
+
 func (m *Serve) ReloadHandler(w http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
 	params := new(ReloadParams)
@@ -150,8 +152,13 @@ func (m *Serve) ReloadHandler(w http.ResponseWriter, req *http.Request) {
 	if params.FromListener {
 		listenerAddr = m.ListenerAddress
 	}
+	//MW: I've reconstructed original behavior. BUT.
+	//shouldn't reload call ReloadServicesFromRegistry not just
+	//reload in else, if so ReloadClusterConfig & ReloadServicesFromRegistry
+	//could be enclosed in one method
 	if len(listenerAddr) > 0 {
-		if err := reload.ReloadClusterConfig(listenerAddr); err != nil {
+		fetch := actions.NewFetch(m.getBaseReconfigure(), m.Mode)
+		if err := fetch.ReloadClusterConfig(listenerAddr); err != nil {
 			logPrintf("Error: ReloadClusterConfig failed: %s", err.Error())
 			m.writeInternalServerError(w, &Response{}, err.Error())
 
@@ -159,6 +166,7 @@ func (m *Serve) ReloadHandler(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		}
 	} else {
+		reload := actions.NewReload()
 		if err := reload.Execute(params.Recreate); err != nil {
 			logPrintf("Error: ReloadExecute failed: %s", err.Error())
 			m.writeInternalServerError(w, &Response{}, err.Error())

@@ -36,10 +36,7 @@ type Serve struct {
 
 var serverImpl = Serve{}
 var cert server.Certer = server.NewCert("/certs")
-var reload actions.Reloader = actions.NewReload()
 
-// Exposed as global so can be changed in tests
-var usersBasePath string = "/run/secrets/dfp_users_%s"
 
 func (m *Serve) Execute(args []string) error {
 	if proxy.Instance == nil {
@@ -84,8 +81,8 @@ func (m *Serve) reconfigure(server server.Server) error {
 	if len(m.ListenerAddress) > 0 {
 		lAddr = fmt.Sprintf("http://%s:8080", m.ListenerAddress)
 	}
-	recon := actions.NewReconfigure(m.BaseReconfigure, proxy.Service{}, m.Mode)
-	if err := recon.ReloadServicesFromRegistry(
+	fetch := actions.NewFetch(m.BaseReconfigure, m.Mode)
+	if err := fetch.ReloadServicesFromRegistry(
 		m.ConsulAddresses,
 		m.InstanceName,
 		m.Mode,
@@ -96,7 +93,7 @@ func (m *Serve) reconfigure(server server.Server) error {
 		go func() {
 			interval := time.Second * 10
 			for range time.Tick(interval) {
-				if err := reload.ReloadConfig(m.BaseReconfigure, m.Mode, lAddr); err != nil {
+				if err := fetch.ReloadConfig(m.BaseReconfigure, m.Mode, lAddr); err != nil {
 					logPrintf("Error: Fetching config from swarm listener failed: %s. Will retry in %d seconds", err.Error(), interval/time.Second)
 				} else {
 					break
@@ -109,15 +106,10 @@ func (m *Serve) reconfigure(server server.Server) error {
 	services := server.GetServicesFromEnvVars()
 
 	for _, service := range *services {
-		recon = actions.NewReconfigure(m.BaseReconfigure, service, m.Mode)
+		recon := actions.NewReconfigure(m.BaseReconfigure, service, m.Mode)
 		//todo: there could be only one reload after this whole loop
 		recon.Execute(true)
 	}
-	//	if err := action.Execute([]string{}); err != nil {
-	//		m.writeInternalServerError(w, &response, err.Error())
-	//	} else {
-	//		w.WriteHeader(http.StatusOK)
-	//	}
 	return nil
 }
 
