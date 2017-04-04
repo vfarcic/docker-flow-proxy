@@ -23,7 +23,7 @@ The following query parameters can be used to send a *reconfigure* request to *D
 |reqPathSearch  |A regular expression to search the content to be replaced. If specified, `reqPathReplace` needs to be set as well.<br>Example: `/something/`|No| |
 |serviceDomain  |The domain of the service. If set, the proxy will allow access only to requests coming to that domain. Multiple domains should be separated with comma (`,`).<br>Example: ecme.com|No| |
 |serviceDomainMatchAll|Whether to include subdomains and FDQN domains in the match. If set to false, and, for example, `serviceDomain` is set to `acme.com`, `something.acme.com` would not be considered a match unless this parameter is set to `true`. If this option is used, it is recommended to put any subdomains higher in the list using `aclName`.<br>Example: `true`|No|false|
-|serviceName    |The name of the service. It must match the name of the Swarm service or the one stored in Consul.<br>Example: `go-demo`|Yes| |
+|serviceName    |The name of the service. It must match the name of the Swarm service.<br>Example: `go-demo`|Yes| |
 |setHeader      |Additional headers that will be set to the request before forwarding it to the service. If a specified header exists, it will be replaced with the new one. Multiple headers should be separated with comma (`,`). Please consult [Set a header to the request](https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#set-a-header-in-the-request) for more info.<br>Example: `X-Forwarded-Port %[dst_port],X-Forwarded-Ssl on if { ssl_fc }`|No| |
 |srcPort        |The source (entry) port of a service. Useful only when specifying multiple destinations of a single service. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `srcPort.1`, `srcPort.2`, and so on).<br>Example: `80`|No| |
 |timeoutServer  |The server timeout in seconds.<br>Example: `60`                                              |No      |20     |
@@ -38,8 +38,6 @@ The following query parameters can be used only when `reqMode` is set to `http` 
 
 |Query        |Description                                                                     |Required|Default|
 |-------------|--------------------------------------------------------------------------------|--------|-------|
-|consulTemplateBePath|The path to the Consul Template representing a snippet of the backend configuration. If set, proxy template will be loaded from the specified file.<br>Example: `/tmpl/be.tmpl`| | |
-|consulTemplateFePath|The path to the Consul Template representing a snippet of the frontend configuration. If set, proxy template will be loaded from the specified file.<br>Example: `/tmpl/fe.tmpl`| | |
 |distribute   |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.<br>Example: `true`|No|false|
 |httpsOnly    |If set to true, HTTP requests to the service will be redirected to HTTPS.<br>Example: `true`|No      |false  |
 |outboundHostname|The hostname where the service is running, for instance on a separate swarm. If specified, the proxy will dispatch requests to that domain.<br>Example: `ecme.com`|No| |
@@ -98,8 +96,6 @@ The map between the HTTP query parameters and environment variables is as follow
 |---------------------|------------------------|
 |aclName              |ACL_NAME                |
 |addHeader            |ADD_HEADER              |
-|consulTemplateBePath |CONSUL_TEMPLATE_BE_PATH |
-|consulTemplateFePath |CONSUL_TEMPLATE_FE_PATH |
 |distribute           |DISTRIBUTE              |
 |httpsOnly            |HTTPS_ONLY              |
 |httpsPort            |HTTPS_PORT              |
@@ -139,7 +135,7 @@ The following query arguments can be used to send a *remove* request to *Docker 
 |Query      |Description                                                                 |Required|Default|Example|
 |-----------|----------------------------------------------------------------------------|--------|-------|-------|
 |aclName    |Mandatory if ACL name was specified in reconfigure request                  |No      |       |05-go-demo-acl|
-|serviceName|The name of the service. It must match the name stored in Consul            |Yes     |       |go-demo|
+|serviceName|The name of the service. It must match the name of the service              |Yes     |       |go-demo|
 |distribute |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.|No|false|true|
 
 ## Certificates

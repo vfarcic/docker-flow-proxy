@@ -311,6 +311,32 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsLogging_WhenDebug()
 	s.Equal(expectedData, actualData)
 }
 
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsHttpLogFormat_WhenSpecified() {
+	debugOrig := os.Getenv("DEBUG")
+	debugHttpFormatOrig := os.Getenv("DEBUG_HTTP_FORMAT")
+	defer func() {
+		os.Setenv("DEBUG", debugOrig)
+		os.Setenv("DEBUG_HTTP_FORMAT", debugHttpFormatOrig)
+	}()
+	os.Setenv("DEBUG", "true")
+	os.Setenv("DEBUG_HTTP_FORMAT", "something")
+	var actualData string
+	expectedData := fmt.Sprintf(
+		`%s
+    log-format something%s`,
+		s.getTemplateWithLogs(),
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+
+	NewHaProxy(s.TemplatesPath, s.ConfigsPath).CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsDoNotLogNormal_WhenDebugErrorsOnlyIsSet() {
 	debugOrig := os.Getenv("DEBUG")
 	debugErrorsOnlyOrig := os.Getenv("DEBUG")
@@ -655,6 +681,47 @@ frontend tcpFE_1234
     mode tcp
     option tcplog
     log global
+    default_backend my-service-1-be1234%s`,
+		s.getTemplateWithLogs(),
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	data.Services["my-service-1"] = Service{
+		ReqMode:     "tcp",
+		ServiceName: "my-service-1",
+		ServiceDest: []ServiceDest{
+			{SrcPort: 1234, Port: "4321"},
+		},
+	}
+
+	p.CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsTcpLoggingFormat() {
+	debugOrig := os.Getenv("DEBUG")
+	debugTcpFormatOrig := os.Getenv("DEBUG_TCP_FORMAT")
+	defer func() {
+		os.Setenv("DEBUG", debugOrig)
+		os.Setenv("DEBUG_TCP_FORMAT", debugTcpFormatOrig)
+	}()
+	os.Setenv("DEBUG", "true")
+	os.Setenv("DEBUG_TCP_FORMAT", "something-tcp-related")
+	var actualData string
+	expectedData := fmt.Sprintf(
+		`%s
+
+frontend tcpFE_1234
+    bind *:1234
+    mode tcp
+    option tcplog
+    log global
+    log-format something-tcp-related
     default_backend my-service-1-be1234%s`,
 		s.getTemplateWithLogs(),
 		s.ServicesContent,

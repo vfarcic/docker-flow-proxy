@@ -5,7 +5,6 @@ pages:
     - Swarm Mode With Docker Service: swarm-mode-auto.md
     - Swarm Mode With Docker Stack: swarm-mode-stack.md
     - Swarm Mode With Manual Updates: swarm-mode-manual.md
-    - Standard Mode: standard-mode.md
     - Managing SSL Certificates: certs.md
     - Debugging: debugging.md
     - Configuring Non-Swarm Services: non-swarm.md

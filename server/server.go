@@ -95,8 +95,8 @@ func (m *Serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 		ServiceName: sr.ServiceName,
 		Service:     *sr,
 	}
-	ok, msg := m.isValidReconf(sr)
-	if ok {
+	statusCode, msg := m.isValidReconf(sr)
+	if statusCode == http.StatusOK {
 		if m.isSwarm(m.Mode) && !m.hasPort(sr.ServiceDest) {
 			m.writeBadRequest(w, &response, `When MODE is set to "service" or "swarm", the port query is mandatory`)
 		} else if sr.Distribute {
@@ -123,6 +123,8 @@ func (m *Serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}
 		}
+	} else if statusCode == http.StatusConflict {
+		m.writeConflictRequest(w, &response, msg)
 	} else {
 		m.writeBadRequest(w, &response, msg)
 	}
@@ -281,6 +283,12 @@ func (m *Serve) writeBadRequest(w http.ResponseWriter, resp *Response, msg strin
 	w.WriteHeader(http.StatusBadRequest)
 }
 
+func (m *Serve) writeConflictRequest(w http.ResponseWriter, resp *Response, msg string) {
+	resp.Status = "NOK"
+	resp.Message = msg
+	w.WriteHeader(http.StatusConflict)
+}
+
 func (m *Serve) writeInternalServerError(w http.ResponseWriter, resp *Response, msg string) {
 	resp.Status = "NOK"
 	resp.Message = msg
@@ -295,21 +303,25 @@ func (m *Serve) hasPort(sd []proxy.ServiceDest) bool {
 	return len(sd) > 0 && len(sd[0].Port) > 0
 }
 
-func (m *Serve) isValidReconf(service *proxy.Service) (bool, string) {
+func (m *Serve) isValidReconf(service *proxy.Service) (statusCode int, msg string) {
 	if len(service.ServiceName) == 0 {
-		return false, "serviceName parameter is mandatory"
+		return http.StatusBadRequest, "serviceName parameter is mandatory."
 	} else if len(service.ServiceDest) == 0 {
-		return false, "There must be at least one destination"
+		if strings.EqualFold(service.ReqMode, "http") {
+			return http.StatusConflict, "There must be at least one destination."
+		} else {
+			return http.StatusBadRequest, "There must be at least one destination."
+		}
 	}
 	hasPath := len(service.ServiceDest[0].ServicePath) > 0
 	hasSrcPort := service.ServiceDest[0].SrcPort > 0
 	hasPort := len(service.ServiceDest[0].Port) > 0
 	if strings.EqualFold(service.ReqMode, "http") {
 		if !hasPath && len(service.ConsulTemplateFePath) == 0 {
-			return false, "When using reqMode http, servicePath or (consulTemplateFePath and consulTemplateBePath) are mandatory"
+			return http.StatusBadRequest, "When using reqMode http, servicePath or (consulTemplateFePath and consulTemplateBePath) are mandatory"
 		}
 	} else if !hasSrcPort || !hasPort {
-		return false, "When NOT using reqMode http (e.g. tcp), srcPort and port parameters are mandatory."
+		return http.StatusBadRequest, "When NOT using reqMode http (e.g. tcp), srcPort and port parameters are mandatory."
 	}
-	return true, ""
+	return http.StatusOK, ""
 }

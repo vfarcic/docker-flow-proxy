@@ -11,23 +11,26 @@ import (
 	"sync"
 )
 
-const ServiceTemplateFeFilename = "service-formatted-fe.ctmpl"
-const ServiceTemplateBeFilename = "service-formatted-be.ctmpl"
+const serviceTemplateFeFilename = "service-formatted-fe.ctmpl"
+const serviceTemplateBeFilename = "service-formatted-be.ctmpl"
 
 var mu = &sync.Mutex{}
 
+// Methods that should be created for reconfigure actions
 type Reconfigurable interface {
 	Execute(reloadAfter bool) error
 	GetData() (BaseReconfigure, proxy.Service)
 	GetTemplates() (front, back string, err error)
 }
 
+// Data structure that holds reconfigure data
 type Reconfigure struct {
 	BaseReconfigure
 	proxy.Service
 	Mode string `short:"m" long:"mode" env:"MODE" description:"If set to 'swarm', proxy will operate assuming that Docker service from v1.12+ is used."`
 }
 
+// Base structure
 type BaseReconfigure struct {
 	ConsulAddresses       []string
 	ConfigsPath           string `short:"c" long:"configs-path" default:"/cfg" description:"The path to the configurations directory"`
@@ -37,6 +40,13 @@ type BaseReconfigure struct {
 }
 
 // TODO: Change proxy.Service to *proxy.Service
+// Singleton instance
+var ReconfigureInstance Reconfigure
+
+/*
+Creates new instance of the Reconfigurable interface
+TODO: Change proxy.Service to *proxy.Service
+*/
 var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, mode string) Reconfigurable {
 	return &Reconfigure{
 		BaseReconfigure: baseData,
@@ -109,9 +119,9 @@ func (m *Reconfigure) createConfigs() error {
 		args := registry.CreateConfigsArgs{
 			Addresses:     m.ConsulAddresses,
 			TemplatesPath: templatesPath,
-			FeFile:        ServiceTemplateFeFilename,
+			FeFile:        serviceTemplateFeFilename,
 			FeTemplate:    feTemplate,
-			BeFile:        ServiceTemplateBeFilename,
+			BeFile:        serviceTemplateBeFilename,
 			BeTemplate:    beTemplate,
 			ServiceName:   sr.ServiceName,
 		}

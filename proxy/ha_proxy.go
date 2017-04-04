@@ -218,6 +218,13 @@ func (m HaProxy) getConfigData() ConfigData {
 		d.ExtraFrontend += `
     option httplog
     log global`
+		format := GetSecretOrEnvVar("DEBUG_HTTP_FORMAT", "")
+		if len(format) > 0 {
+			d.ExtraFrontend += fmt.Sprintf(`
+    log-format %s`,
+				format,
+			)
+		}
 		if strings.EqualFold(GetSecretOrEnvVar("DEBUG_ERRORS_ONLY", ""), "true") {
 			d.ExtraDefaults += `
     option  dontlog-normal`
@@ -345,6 +352,13 @@ frontend tcpFE_%d
 		tmpl += `
     option tcplog
     log global`
+		format := GetSecretOrEnvVar("DEBUG_TCP_FORMAT", "")
+		if len(format) > 0 {
+			tmpl += fmt.Sprintf(`
+    log-format %s`,
+				format,
+			)
+		}
 	}
 	for _, s := range services {
 		var backend string

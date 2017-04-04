@@ -511,9 +511,9 @@ func (s ReconfigureTestSuite) Test_Execute_InvokesRegistrarableCreateConfigs() {
 	expectedArgs := registry.CreateConfigsArgs{
 		Addresses:     []string{s.ConsulAddress},
 		TemplatesPath: s.TemplatesPath,
-		FeFile:        ServiceTemplateFeFilename,
+		FeFile:        serviceTemplateFeFilename,
 		FeTemplate:    "",
-		BeFile:        ServiceTemplateBeFilename,
+		BeFile:        serviceTemplateBeFilename,
 		BeTemplate:    s.ConsulTemplateBe,
 		ServiceName:   s.ServiceName,
 	}

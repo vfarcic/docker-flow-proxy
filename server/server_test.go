@@ -193,7 +193,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus400_WhenReqModeIs
 	rw.AssertCalled(s.T(), "WriteHeader", 400)
 }
 
-func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus400_WhenServicePathQueryIsNotPresent() {
+func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus409_WhenServicePathQueryIsNotPresent() {
 	url := "/v1/docker-flow-proxy/reconfigure?serviceName=my-service"
 	req, _ := http.NewRequest("GET", url, nil)
 	rw := getResponseWriterMock()
@@ -201,7 +201,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus400_WhenServicePa
 	srv := Serve{}
 	srv.ReconfigureHandler(rw, req)
 
-	rw.AssertCalled(s.T(), "WriteHeader", 400)
+	rw.AssertCalled(s.T(), "WriteHeader", http.StatusConflict)
 }
 
 func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus400_WhenModeIsServiceAndPortIsNotPresent() {
