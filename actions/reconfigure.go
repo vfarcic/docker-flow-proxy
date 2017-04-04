@@ -54,7 +54,6 @@ var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, m
 		Mode:            mode,
 	}
 }
-var ReconfigureInstance Reconfigure
 
 func (m *Reconfigure) Execute(reloadAfter bool) error {
 	mu.Lock()
