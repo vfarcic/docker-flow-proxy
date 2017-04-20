@@ -602,7 +602,8 @@ func (s *ServerTestSuite) Test_RemoveHandler_WritesErrorHeader_WhenRemoveDistrib
 func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 	expected := proxy.Service{
 		AclName:               "aclName",
-		AddHeader:             []string{"add-header-1", "add-header-2"},
+		AddReqHeader:          []string{"add-header-1", "add-header-2"},
+  		AddResHeader:          []string{"add-header-1", "add-header-2"},
 		ConsulTemplateFePath:  "consulTemplateFePath",
 		ConsulTemplateBePath:  "consulTemplateBePath",
 		Distribute:            true,
@@ -620,7 +621,8 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		ServiceDomain:         []string{"domain1", "domain2"},
 		ServiceDomainMatchAll: true,
 		ServiceName:           "serviceName",
-		SetHeader:             []string{"set-header-1", "set-header-2"},
+		SetReqHeader:          []string{"set-header-1", "set-header-2"},
+		SetResHeader:          []string{"set-header-1", "set-header-2"},
 		SkipCheck:             true,
 		SslVerifyNone:         true,
 		TemplateBePath:        "templateBePath",
@@ -632,7 +634,7 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 				    {Username: "user2", Password: "pass2", PassEncrypted: true, }},
 	}
 	addr := fmt.Sprintf(
-		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceColor=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&skipCheck=%t&distribute=%t&sslVerifyNone=%t&serviceDomainMatchAll=%t&addHeader=%s&setHeader=%s&servicePath=/&port=1234",
+		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceColor=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&skipCheck=%t&distribute=%t&sslVerifyNone=%t&serviceDomainMatchAll=%t&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&servicePath=/&port=1234",
 		s.BaseUrl,
 		expected.ServiceName,
 		"user1:pass1,user2:pass2",
@@ -660,8 +662,10 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		expected.Distribute,
 		expected.SslVerifyNone,
 		expected.ServiceDomainMatchAll,
-		strings.Join(expected.AddHeader, ","),
-		strings.Join(expected.SetHeader, ","),
+		strings.Join(expected.AddReqHeader, ","),
+		strings.Join(expected.AddResHeader, ","),
+		strings.Join(expected.SetReqHeader, ","),
+		strings.Join(expected.SetResHeader, ","),
 	)
 	req, _ := http.NewRequest("GET", addr, nil)
 	srv := Serve{}
@@ -709,7 +713,8 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_SetsServicePathToSlash_WhenDoma
 func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 	service := proxy.Service{
 		AclName:               "my-AclName",
-		AddHeader:             []string{"add-header-1", "add-header-2"},
+		AddReqHeader:          []string{"add-header-1", "add-header-2"},
+		AddResHeader:          []string{"add-header-1", "add-header-2"},
 		ConsulTemplateBePath:  "my-ConsulTemplateBePath",
 		ConsulTemplateFePath:  "my-ConsulTemplateFePath",
 		Distribute:            true,
@@ -725,7 +730,8 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		ServiceDomain:         []string{"my-domain-1.com", "my-domain-2.com"},
 		ServiceDomainMatchAll: true,
 		ServiceName:           "my-ServiceName",
-		SetHeader:             []string{"set-header-1", "set-header-2"},
+		SetReqHeader:          []string{"set-header-1", "set-header-2"},
+		SetResHeader:          []string{"set-header-1", "set-header-2"},
 		SkipCheck:             true,
 		SslVerifyNone:         true,
 		TemplateBePath:        "my-TemplateBePath",
@@ -738,7 +744,8 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		},
 	}
 	os.Setenv("DFP_SERVICE_ACL_NAME", service.AclName)
-	os.Setenv("DFP_SERVICE_ADD_HEADER", strings.Join(service.AddHeader, ","))
+	os.Setenv("DFP_SERVICE_ADD_REQ_HEADER", strings.Join(service.AddReqHeader, ","))
+	os.Setenv("DFP_SERVICE_ADD_RES_HEADER", strings.Join(service.AddResHeader, ","))
 	os.Setenv("DFP_SERVICE_CONSUL_TEMPLATE_FE_PATH", service.ConsulTemplateFePath)
 	os.Setenv("DFP_SERVICE_CONSUL_TEMPLATE_BE_PATH", service.ConsulTemplateBePath)
 	os.Setenv("DFP_SERVICE_DISTRIBUTE", strconv.FormatBool(service.Distribute))
@@ -763,12 +770,14 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 	os.Setenv("DFP_SERVICE_X_FORWARDED_PROTO", strconv.FormatBool(service.XForwardedProto))
 	os.Setenv("DFP_SERVICE_PORT", service.ServiceDest[0].Port)
 	os.Setenv("DFP_SERVICE_SERVICE_PATH", strings.Join(service.ServiceDest[0].ServicePath, ","))
-	os.Setenv("DFP_SERVICE_SET_HEADER", strings.Join(service.SetHeader, ","))
+	os.Setenv("DFP_SERVICE_SET_REQ_HEADER", strings.Join(service.SetReqHeader, ","))
+	os.Setenv("DFP_SERVICE_SET_RES_HEADER", strings.Join(service.SetResHeader, ","))
 	os.Setenv("DFP_SERVICE_SRC_PORT", strconv.Itoa(service.ServiceDest[0].SrcPort))
 
 	defer func() {
 		os.Unsetenv("DFP_SERVICE_ACL_NAME")
-		os.Unsetenv("DFP_SERVICE_ADD_HEADER")
+		os.Unsetenv("DFP_SERVICE_ADD_REQ_HEADER")
+		os.Unsetenv("DFP_SERVICE_ADD_RES_HEADER")
 		os.Unsetenv("DFP_SERVICE_CONSUL_TEMPLATE_BE_PATH")
 		os.Unsetenv("DFP_SERVICE_CONSUL_TEMPLATE_FE_PATH")
 		os.Unsetenv("DFP_SERVICE_DISTRIBUTE")
@@ -786,7 +795,8 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		os.Unsetenv("DFP_SERVICE_SERVICE_DOMAIN_MATCH_ALL")
 		os.Unsetenv("DFP_SERVICE_SERVICE_NAME")
 		os.Unsetenv("DFP_SERVICE_SERVICE_PATH")
-		os.Unsetenv("DFP_SERVICE_SET_HEADER")
+		os.Unsetenv("DFP_SERVICE_SET_REQ_HEADER")
+		os.Unsetenv("DFP_SERVICE_SET_RES_HEADER")
 		os.Unsetenv("DFP_SERVICE_SKIP_CHECK")
 		os.Unsetenv("DFP_SERVICE_SRC_PORT")
 		os.Unsetenv("DFP_SERVICE_SSL_VERIFY_NONE")

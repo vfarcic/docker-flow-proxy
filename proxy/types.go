@@ -27,7 +27,9 @@ type ServiceDest struct {
 
 type Service struct {
 	// Additional headers that will be added to the request before forwarding it to the service. Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#add-a-header-to-the-request for more info.
-	AddHeader []string `split_words:"true"`
+	AddReqHeader []string `split_words:"true"`
+	// Additional headers that will be added to the response before forwarding it to the client.
+	AddResHeader []string `split_words:"true"`
 	// ACLs are ordered alphabetically by their names.
 	// If not specified, serviceName is used instead.
 	AclName string `split_words:"true"`
@@ -78,7 +80,9 @@ type Service struct {
 	// It must match the name of the Swarm service or the one stored in Consul.
 	ServiceName string `split_words:"true"`
 	// Additional headers that will be set to the request before forwarding it to the service. If a specified header exists, it will be replaced with the new one.
-	SetHeader []string `split_words:"true"`
+	SetReqHeader []string `split_words:"true"`
+	// Additional headers that will be set to the response before forwarding it to the client. If a specified header exists, it will be replaced with the new one.
+	SetResHeader []string `split_words:"true"`
 	// Whether to skip adding proxy checks.
 	// This option is used only in the default mode.
 	SkipCheck bool `split_words:"true"`
@@ -277,11 +281,17 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	if len(provider.GetString("serviceDomain")) > 0 {
 		sr.ServiceDomain = strings.Split(provider.GetString("serviceDomain"), ",")
 	}
-	if len(provider.GetString("addHeader")) > 0 {
-		sr.AddHeader = strings.Split(provider.GetString("addHeader"), ",")
+	if len(provider.GetString("addReqHeader")) > 0 {
+		sr.AddReqHeader = strings.Split(provider.GetString("addReqHeader"), ",")
 	}
-	if len(provider.GetString("setHeader")) > 0 {
-		sr.SetHeader = strings.Split(provider.GetString("setHeader"), ",")
+	if len(provider.GetString("setReqHeader")) > 0 {
+		sr.SetReqHeader = strings.Split(provider.GetString("setReqHeader"), ",")
+	}
+	if len(provider.GetString("addResHeader")) > 0 {
+		sr.AddResHeader = strings.Split(provider.GetString("addResHeader"), ",")
+	}
+	if len(provider.GetString("setResHeader")) > 0 {
+		sr.SetResHeader = strings.Split(provider.GetString("setResHeader"), ",")
 	}
 	globalUsersString := GetSecretOrEnvVar("USERS", "")
 	globalUsersEncrypted := strings.EqualFold(GetSecretOrEnvVar("USERS_PASS_ENCRYPTED", ""), "true")

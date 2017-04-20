@@ -95,7 +95,8 @@ The map between the HTTP query parameters and environment variables is as follow
 |Query                |Environment variable    |
 |---------------------|------------------------|
 |aclName              |ACL_NAME                |
-|addHeader            |ADD_HEADER              |
+|addReqHeader         |ADD_REQ_HEADER          |
+|addResHeader         |ADD_RES_HEADER          |
 |distribute           |DISTRIBUTE              |
 |httpsOnly            |HTTPS_ONLY              |
 |httpsPort            |HTTPS_PORT              |
@@ -111,7 +112,8 @@ The map between the HTTP query parameters and environment variables is as follow
 |serviceDomainMatchAll|SERVICE_DOMAIN_MATCH_ALL|
 |serviceName          |SERVICE_NAME            |
 |servicePath          |SERVICE_PATH            |
-|setHeader            |SET_HEADER              |
+|setReqHeader         |SET_REQ_HEADER          |
+|setResHeader         |SET_RES_HEADER          |
 |skipCheck            |SKIP_CHECK              |
 |srcPort              |SRC_PORT                |
 |sslVerifyNone        |SSL_VERIFY_NONE         |

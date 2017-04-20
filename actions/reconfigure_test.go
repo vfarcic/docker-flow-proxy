@@ -613,9 +613,9 @@ backend %s-be%s
 	s.Equal(expectedData, actualData)
 }
 
-func (s ReconfigureTestSuite) Test_Execute_AddsHeader_WhenAddHeaderIsSet() {
+func (s ReconfigureTestSuite) Test_Execute_AddsHeader_WhenAddReqHeaderIsSet() {
 	s.reconfigure.Mode = "swarm"
-	s.reconfigure.AddHeader = []string{"header-1", "header-2"}
+	s.reconfigure.AddReqHeader = []string{"header-1", "header-2"}
 	var actualFilename, actualData string
 	expectedFilename := fmt.Sprintf("%s/%s-be.cfg", s.TemplatesPath, s.ServiceName)
 	expectedData := fmt.Sprintf(
@@ -645,9 +645,9 @@ backend %s-be%s
 	s.Equal(expectedData, actualData)
 }
 
-func (s ReconfigureTestSuite) Test_Execute_AddsHeader_WhenSetHeaderIsSet() {
+func (s ReconfigureTestSuite) Test_Execute_AddsHeader_WhenSetReqHeaderIsSet() {
 	s.reconfigure.Mode = "swarm"
-	s.reconfigure.SetHeader = []string{"header-1", "header-2"}
+	s.reconfigure.SetReqHeader = []string{"header-1", "header-2"}
 	var actualFilename, actualData string
 	expectedFilename := fmt.Sprintf("%s/%s-be.cfg", s.TemplatesPath, s.ServiceName)
 	expectedData := fmt.Sprintf(

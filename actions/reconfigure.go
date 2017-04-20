@@ -302,15 +302,27 @@ func (m *Reconfigure) getHeaders(sr *proxy.Service) string {
 		tmpl += `
     http-request add-header X-Forwarded-Proto https if { ssl_fc }`
 	}
-	for _, header := range sr.AddHeader {
+	for _, header := range sr.AddReqHeader {
 		tmpl += fmt.Sprintf(`
     http-request add-header %s`,
 			header,
 		)
 	}
-	for _, header := range sr.SetHeader {
+	for _, header := range sr.SetReqHeader {
 		tmpl += fmt.Sprintf(`
     http-request set-header %s`,
+			header,
+		)
+	}
+	for _, header := range sr.AddResHeader {
+		tmpl += fmt.Sprintf(`
+    http-response add-header %s`,
+			header,
+		)
+	}
+	for _, header := range sr.SetResHeader {
+		tmpl += fmt.Sprintf(`
+    http-response set-header %s`,
 			header,
 		)
 	}

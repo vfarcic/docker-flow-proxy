@@ -168,7 +168,8 @@ x:X`, false, false)
 func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 	expected := Service{
 		AclName:               "aclName",
-		AddHeader:             []string{"add-header-1", "add-header-2"},
+		AddReqHeader:          []string{"add-header-1", "add-header-2"},
+		AddResHeader:          []string{"add-header-1", "add-header-2"},
 		ConsulTemplateFePath:  "consulTemplateFePath",
 		ConsulTemplateBePath:  "consulTemplateBePath",
 		Distribute:            true,
@@ -186,7 +187,8 @@ func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 		ServiceDomain:         []string{"domain1", "domain2"},
 		ServiceDomainMatchAll: true,
 		ServiceName:           "serviceName",
-		SetHeader:             []string{"set-header-1", "set-header-2"},
+		SetReqHeader:          []string{"set-header-1", "set-header-2"},
+		SetResHeader:             []string{"set-header-1", "set-header-2"},
 		SkipCheck:             true,
 		SslVerifyNone:         true,
 		TemplateBePath:        "templateBePath",
@@ -224,8 +226,10 @@ func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 		"distribute":            strconv.FormatBool(expected.Distribute),
 		"sslVerifyNone":         strconv.FormatBool(expected.SslVerifyNone),
 		"serviceDomainMatchAll": strconv.FormatBool(expected.ServiceDomainMatchAll),
-		"addHeader":             strings.Join(expected.AddHeader, ","),
-		"setHeader":             strings.Join(expected.SetHeader, ","),
+		"addReqHeader":          strings.Join(expected.AddReqHeader, ","),
+		"addResHeader":          strings.Join(expected.AddResHeader, ","),
+		"setReqHeader":          strings.Join(expected.SetReqHeader, ","),
+		"setResHeader":          strings.Join(expected.SetResHeader, ","),
 		"port":                  expected.ServiceDest[0].Port,
 		"servicePath":           strings.Join(expected.ServiceDest[0].ServicePath, ","),
 	}
