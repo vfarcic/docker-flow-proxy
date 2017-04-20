@@ -613,7 +613,7 @@ backend %s-be%s
 	s.Equal(expectedData, actualData)
 }
 
-func (s ReconfigureTestSuite) Test_Execute_AddsHeader_WhenAddReqHeaderIsSet() {
+func (s ReconfigureTestSuite) Test_Execute_AddsReqHeader_WhenAddReqHeaderIsSet() {
 	s.reconfigure.Mode = "swarm"
 	s.reconfigure.AddReqHeader = []string{"header-1", "header-2"}
 	var actualFilename, actualData string
@@ -645,7 +645,39 @@ backend %s-be%s
 	s.Equal(expectedData, actualData)
 }
 
-func (s ReconfigureTestSuite) Test_Execute_AddsHeader_WhenSetReqHeaderIsSet() {
+func (s ReconfigureTestSuite) Test_Execute_AddsResHeader_WhenAddResHeaderIsSet() {
+	s.reconfigure.Mode = "swarm"
+	s.reconfigure.AddResHeader = []string{"header-1", "header-2"}
+	var actualFilename, actualData string
+	expectedFilename := fmt.Sprintf("%s/%s-be.cfg", s.TemplatesPath, s.ServiceName)
+	expectedData := fmt.Sprintf(
+		`
+backend %s-be%s
+    mode http
+    http-response add-header header-1
+    http-response add-header header-2
+    server %s %s:%s`,
+		s.ServiceName,
+		s.reconfigure.ServiceDest[0].Port,
+		s.ServiceName,
+		s.ServiceName,
+		s.reconfigure.ServiceDest[0].Port,
+	)
+	writeBeTemplateOrig := writeBeTemplate
+	defer func() { writeBeTemplate = writeBeTemplateOrig }()
+	writeBeTemplate = func(filename string, data []byte, perm os.FileMode) error {
+		actualFilename = filename
+		actualData = string(data)
+		return nil
+	}
+
+	s.reconfigure.Execute(true)
+
+	s.Equal(expectedFilename, actualFilename)
+	s.Equal(expectedData, actualData)
+}
+
+func (s ReconfigureTestSuite) Test_Execute_AddsReqHeader_WhenSetReqHeaderIsSet() {
 	s.reconfigure.Mode = "swarm"
 	s.reconfigure.SetReqHeader = []string{"header-1", "header-2"}
 	var actualFilename, actualData string
@@ -656,6 +688,38 @@ backend %s-be%s
     mode http
     http-request set-header header-1
     http-request set-header header-2
+    server %s %s:%s`,
+		s.ServiceName,
+		s.reconfigure.ServiceDest[0].Port,
+		s.ServiceName,
+		s.ServiceName,
+		s.reconfigure.ServiceDest[0].Port,
+	)
+	writeBeTemplateOrig := writeBeTemplate
+	defer func() { writeBeTemplate = writeBeTemplateOrig }()
+	writeBeTemplate = func(filename string, data []byte, perm os.FileMode) error {
+		actualFilename = filename
+		actualData = string(data)
+		return nil
+	}
+
+	s.reconfigure.Execute(true)
+
+	s.Equal(expectedFilename, actualFilename)
+	s.Equal(expectedData, actualData)
+}
+
+func (s ReconfigureTestSuite) Test_Execute_AddsResHeader_WhenSetResHeaderIsSet() {
+	s.reconfigure.Mode = "swarm"
+	s.reconfigure.SetResHeader = []string{"header-1", "header-2"}
+	var actualFilename, actualData string
+	expectedFilename := fmt.Sprintf("%s/%s-be.cfg", s.TemplatesPath, s.ServiceName)
+	expectedData := fmt.Sprintf(
+		`
+backend %s-be%s
+    mode http
+    http-response set-header header-1
+    http-response set-header header-2
     server %s %s:%s`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
