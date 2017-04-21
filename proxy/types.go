@@ -268,7 +268,7 @@ func GetServiceFromMap(req *map[string]string) *Service {
 	provider := MapParameterProvider{theMap: req}
 	return GetServiceFromProvider(&provider)
 }
-
+// TODO: deprecated "addHeader" & "setHeader". Kept for maintaining compatibility
 func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	sr := new(Service)
 	provider.Fill(sr)
@@ -283,9 +283,13 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	}
 	if len(provider.GetString("addReqHeader")) > 0 {
 		sr.AddReqHeader = strings.Split(provider.GetString("addReqHeader"), ",")
+	} else if len(provider.GetString("addHeader")) > 0 {
+		sr.AddReqHeader = strings.Split(provider.GetString("addHeader"), ",")
 	}
 	if len(provider.GetString("setReqHeader")) > 0 {
 		sr.SetReqHeader = strings.Split(provider.GetString("setReqHeader"), ",")
+	} else if len(provider.GetString("setHeader")) > 0 {
+		sr.SetReqHeader = strings.Split(provider.GetString("setHeader"), ",")
 	}
 	if len(provider.GetString("addResHeader")) > 0 {
 		sr.AddResHeader = strings.Split(provider.GetString("addResHeader"), ",")
