@@ -11,7 +11,8 @@ global
 
 defaults
     mode    http
-    balance roundrobin
+    balance {{.BalanceAlgorithm}}
+    
 {{.ExtraDefaults}}
     option  {{.ConnectionMode}}
     option  forwardfor
