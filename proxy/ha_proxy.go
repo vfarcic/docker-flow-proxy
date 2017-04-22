@@ -199,15 +199,17 @@ func (m HaProxy) getConfigData() ConfigData {
 	d.TimeoutHttpKeepAlive = GetSecretOrEnvVar("TIMEOUT_HTTP_KEEP_ALIVE", "15")
 	statsUser := GetSecretOrEnvVar(os.Getenv("STATS_USER_ENV"), "admin")
 	statsPass := GetSecretOrEnvVar(os.Getenv("STATS_PASS_ENV"), "admin")
+	statsUri := GetSecretOrEnvVar(os.Getenv("STATS_URI_ENV"), "/admin?stats")
 	if len(statsUser) > 0 && len(statsPass) > 0 {
 		d.Stats = fmt.Sprintf(`
     stats enable
     stats refresh 30s
     stats realm Strictly\ Private
     stats auth %s:%s
-    stats uri /admin?stats`,
+    stats uri %s`,
 			statsUser,
 			statsPass,
+			statsUri,
 		)
 	}
 	m.getUserList(&d)

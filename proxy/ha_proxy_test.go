@@ -90,6 +90,7 @@ config1 be content
 config2 be content`
 	os.Setenv("STATS_USER_ENV", "STATS_USER")
 	os.Setenv("STATS_PASS_ENV", "STATS_PASS")
+	os.Setenv("STATS_URI_ENV", "STATS_URI")
 	suite.Run(t, s)
 }
 
@@ -1174,6 +1175,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ReplacesValuesWithEnvVa
 		{"TIMEOUT_TUNNEL", "timeout tunnel  3600s", "timeout tunnel  999s", "999"},
 		{"STATS_USER", "stats auth admin:admin", "stats auth my-user:admin", "my-user"},
 		{"STATS_PASS", "stats auth admin:admin", "stats auth admin:my-pass", "my-pass"},
+		{"STATS_URI", "stats uri /admin?stats", "stats uri /proxyStats", "/proxyStats"},
 	}
 	for _, t := range tests {
 		envOrig := os.Getenv(t.envKey)
@@ -1197,7 +1199,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ReplacesValuesWithEnvVa
 	}
 }
 
-func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_UsersStatsUserEnvAndStatsPassEnv() {
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_UsersStatsEnv() {
 	tests := []struct {
 		envKey     string
 		before     string
@@ -1207,6 +1209,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_UsersStatsUserEnvAndSta
 	}{
 		{"MY_USER", "stats auth admin:admin", "stats auth my-user:admin", "my-user", "STATS_USER_ENV"},
 		{"MY_PASS", "stats auth admin:admin", "stats auth admin:my-pass", "my-pass", "STATS_PASS_ENV"},
+		{"MY_STATS_URI", "stats uri /admin?stats", "stats uri /proxyStats", "/proxyStats", "STATS_URI_ENV"},
 	}
 	for _, t := range tests {
 		os.Setenv(t.envKeyName, t.envKey)
@@ -1250,6 +1253,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ReplacesValuesWithSecre
 		{"dfp_timeout_tunnel", "timeout tunnel  3600s", "timeout tunnel  999s", "999"},
 		{"dfp_stats_user", "stats auth admin:admin", "stats auth my-user:admin", "my-user"},
 		{"dfp_stats_pass", "stats auth admin:admin", "stats auth admin:my-pass", "my-pass"},
+		{"dfp_stats_uri", "stats uri /admin?stats", "stats uri /proxyStats", "/proxyStats"},
 	}
 	for _, t := range tests {
 		timeoutOrig := os.Getenv(t.secretFile)
