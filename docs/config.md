@@ -30,6 +30,8 @@ PROXY_INSTANCE_NAME|The name of the proxy instance. Useful if multiple proxies a
 |STATS_USER_ENV     |The name of the environment variable that holds the username for the statistics page<br>Example: MY_USER|No|STATS_USER|
 |STATS_PASS         |Password for the statistics page. If not set, stats will not be available.<br>Example: my-pass|No      |admin  |
 |STATS_PASS_ENV     |The name of the environment variable that holds the password for the statistics page.<br>Example: MY_PASS|No|STATS_PASS|
+|STATS_URI          |URI for the statistics page.<br>Example: proxyStats       |No      |/admin?proxy|
+|STATS_URI_ENV      |The name of the environment variable that holds the URI for the statistics page.<br>Example: MY_URI|No|STATS_URI|
 |TIMEOUT_CLIENT     |The client timeout in seconds.<br>Example: 5              |No      |20     |5      |
 |TIMEOUT_CONNECT    |The connect timeout in seconds.<br>Example: 3             |No      |5      |3      |
 |TIMEOUT_QUEUE      |The queue timeout in seconds.<br>Example: 10              |No      |30     |10     |
