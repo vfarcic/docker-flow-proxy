@@ -606,6 +606,8 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
   		AddResHeader:          []string{"add-header-1", "add-header-2"},
 		ConsulTemplateFePath:  "consulTemplateFePath",
 		ConsulTemplateBePath:  "consulTemplateBePath",
+		DelReqHeader:          []string{"add-header-1", "add-header-2"},
+		DelResHeader:          []string{"add-header-1", "add-header-2"},
 		Distribute:            true,
 		HttpsOnly:             true,
 		HttpsPort:             1234,
@@ -634,7 +636,7 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 				    {Username: "user2", Password: "pass2", PassEncrypted: true, }},
 	}
 	addr := fmt.Sprintf(
-		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceColor=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&skipCheck=%t&distribute=%t&sslVerifyNone=%t&serviceDomainMatchAll=%t&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&servicePath=/&port=1234",
+		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceColor=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&skipCheck=%t&distribute=%t&sslVerifyNone=%t&serviceDomainMatchAll=%t&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&delReqHeader=%s&delResHeader=%s&servicePath=/&port=1234",
 		s.BaseUrl,
 		expected.ServiceName,
 		"user1:pass1,user2:pass2",
@@ -666,6 +668,9 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		strings.Join(expected.AddResHeader, ","),
 		strings.Join(expected.SetReqHeader, ","),
 		strings.Join(expected.SetResHeader, ","),
+		strings.Join(expected.DelReqHeader, ","),
+		strings.Join(expected.DelResHeader, ","),
+
 	)
 	req, _ := http.NewRequest("GET", addr, nil)
 	srv := Serve{}
@@ -717,6 +722,8 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		AddResHeader:          []string{"add-header-1", "add-header-2"},
 		ConsulTemplateBePath:  "my-ConsulTemplateBePath",
 		ConsulTemplateFePath:  "my-ConsulTemplateFePath",
+		DelReqHeader:          []string{"del-header-1", "del-header-2"},
+		DelResHeader:          []string{"del-header-1", "del-header-2"},
 		Distribute:            true,
 		HttpsOnly:             true,
 		HttpsPort:             1234,
@@ -748,6 +755,8 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 	os.Setenv("DFP_SERVICE_ADD_RES_HEADER", strings.Join(service.AddResHeader, ","))
 	os.Setenv("DFP_SERVICE_CONSUL_TEMPLATE_FE_PATH", service.ConsulTemplateFePath)
 	os.Setenv("DFP_SERVICE_CONSUL_TEMPLATE_BE_PATH", service.ConsulTemplateBePath)
+	os.Setenv("DFP_SERVICE_DEL_REQ_HEADER", strings.Join(service.DelReqHeader, ","))
+	os.Setenv("DFP_SERVICE_DEL_RES_HEADER", strings.Join(service.DelResHeader, ","))
 	os.Setenv("DFP_SERVICE_DISTRIBUTE", strconv.FormatBool(service.Distribute))
 	os.Setenv("DFP_SERVICE_HTTPS_ONLY", strconv.FormatBool(service.HttpsOnly))
 	os.Setenv("DFP_SERVICE_HTTPS_PORT", strconv.Itoa(service.HttpsPort))
@@ -780,6 +789,8 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		os.Unsetenv("DFP_SERVICE_ADD_RES_HEADER")
 		os.Unsetenv("DFP_SERVICE_CONSUL_TEMPLATE_BE_PATH")
 		os.Unsetenv("DFP_SERVICE_CONSUL_TEMPLATE_FE_PATH")
+		os.Unsetenv("DFP_SERVICE_DEL_REQ_HEADER")
+		os.Unsetenv("DFP_SERVICE_DEL_RES_HEADER")
 		os.Unsetenv("DFP_SERVICE_DISTRIBUTE")
 		os.Unsetenv("DFP_SERVICE_HTTPS_ONLY")
 		os.Unsetenv("DFP_SERVICE_HTTPS_PORT")

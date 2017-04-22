@@ -39,6 +39,10 @@ type Service struct {
 	// The path to the Consul Template representing a snippet of the frontend configuration.
 	// If specified, proxy template will be loaded from the specified file.
 	ConsulTemplateFePath string `split_words:"true"`
+	// Additional headers that will be deleted in the request before forwarding it to the service. Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-request for more info.
+	DelReqHeader []string `split_words:"true"`
+	// Additional headers that will be deleted in the response before forwarding it to the client. Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-response for more info.
+	DelResHeader []string `split_words:"true"`
 	// Whether to distribute a request to all the instances of the proxy.
 	// Used only in the swarm mode.
 	Distribute bool `split_words:"true"`
@@ -291,11 +295,17 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	} else if len(provider.GetString("setHeader")) > 0 {
 		sr.SetReqHeader = strings.Split(provider.GetString("setHeader"), ",")
 	}
+	if len(provider.GetString("delReqHeader")) > 0 {
+		sr.DelReqHeader = strings.Split(provider.GetString("delReqHeader"), ",")
+	}
 	if len(provider.GetString("addResHeader")) > 0 {
 		sr.AddResHeader = strings.Split(provider.GetString("addResHeader"), ",")
 	}
 	if len(provider.GetString("setResHeader")) > 0 {
 		sr.SetResHeader = strings.Split(provider.GetString("setResHeader"), ",")
+	}
+	if len(provider.GetString("delResHeader")) > 0 {
+		sr.DelResHeader = strings.Split(provider.GetString("delResHeader"), ",")
 	}
 	globalUsersString := GetSecretOrEnvVar("USERS", "")
 	globalUsersEncrypted := strings.EqualFold(GetSecretOrEnvVar("USERS_PASS_ENCRYPTED", ""), "true")

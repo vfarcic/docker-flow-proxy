@@ -326,6 +326,18 @@ func (m *Reconfigure) getHeaders(sr *proxy.Service) string {
 			header,
 		)
 	}
+	for _, header := range sr.DelReqHeader {
+		tmpl += fmt.Sprintf(`
+    http-request del-header %s`,
+			header,
+		)
+	}
+	for _, header := range sr.DelResHeader {
+		tmpl += fmt.Sprintf(`
+    http-response del-header %s`,
+			header,
+		)
+	}
 	return tmpl
 }
 
