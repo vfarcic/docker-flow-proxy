@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -363,12 +364,16 @@ frontend tcpFE_%d
 		}
 	}
 	for _, s := range services {
+		backendPort := port
+		if len(s.ServiceDest) > 0 {
+			backendPort, _ = strconv.Atoi(s.ServiceDest[0].Port)
+		}
 		var backend string
 		if len(s.ServiceDomain) > 0 {
 			backend = fmt.Sprintf(`
     use_backend %s-be%d if domain_%s`,
 				s.ServiceName,
-				port,
+				backendPort,
 				s.ServiceName,
 			)
 		} else {
@@ -376,7 +381,7 @@ frontend tcpFE_%d
 				`
     default_backend %s-be%d`,
 				s.ServiceName,
-				port,
+				backendPort,
 			)
 		}
 		aclDomain := m.templateToString(m.getAclDomain(&s), s)

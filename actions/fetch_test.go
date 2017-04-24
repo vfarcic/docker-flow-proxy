@@ -2,15 +2,15 @@ package actions
 
 import (
 	"../proxy"
+	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
-	"encoding/json"
-	"net/http"
 )
 
 type FetchTestSuite struct {
@@ -128,9 +128,6 @@ func (s *FetchTestSuite) Test_ReloadAllServices_InvokesProxyReload() {
 
 	s.fetch.ReloadServicesFromRegistry([]string{s.ConsulAddress}, s.InstanceName, "")
 
-
-
-
 	proxyMock.AssertCalled(s.T(), "Reload")
 	proxyMock.AssertCalled(s.T(), "CreateConfigFromTemplates")
 }
@@ -163,7 +160,6 @@ func (s *FetchTestSuite) Test_ReloadClusterConfig_SendsARequestToSwarmListener_W
 		actual = r.URL.Path
 	}))
 	defer func() { srv.Close() }()
-
 
 	s.fetch.ReloadClusterConfig(srv.URL)
 
@@ -223,7 +219,6 @@ func (s *FetchTestSuite) Test_ReloadConfig_SendsARequestToSwarmListener_WhenList
 	defer func() { proxy.Instance = proxyOrig }()
 	proxyMock := getProxyMock("")
 	proxy.Instance = proxyMock
-
 
 	err := s.fetch.ReloadConfig(BaseReconfigure{}, "swarm", srv.URL)
 

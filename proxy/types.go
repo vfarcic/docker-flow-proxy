@@ -1,17 +1,17 @@
 package proxy
 
 import (
-	"math/rand"
+	"fmt"
+	"github.com/mitchellh/mapstructure"
+	"reflect"
 	"strconv"
 	"strings"
-	"github.com/mitchellh/mapstructure"
-	"fmt"
-	"reflect"
 )
 
 var extractUsersFromString = ExtractUsersFromString
 var usersBasePath string = "/run/secrets/dfp_users_%s"
 
+// Data used to generate proxy configuration. It is extracted as a separate struct since a single service can have multiple combinations.
 type ServiceDest struct {
 	// The internal port of a service that should be reconfigured.
 	// The port is used only in the *swarm* mode.
@@ -25,6 +25,7 @@ type ServiceDest struct {
 	SrcPortAclName string
 }
 
+// Description of a service that should be added to the proxy configuration.
 type Service struct {
 	// Additional headers that will be added to the request before forwarding it to the service. Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#add-a-header-to-the-request for more info.
 	AddReqHeader []string `split_words:"true"`
@@ -33,6 +34,16 @@ type Service struct {
 	// ACLs are ordered alphabetically by their names.
 	// If not specified, serviceName is used instead.
 	AclName string `split_words:"true"`
+	// One of the five connection modes supported by the HAProxy.
+	// `http-keep-alive`: all requests and responses are processed.
+	// `http-tunnel`: only the first request and response are processed, everything else is forwarded with no analysis.
+	// `httpclose`: tunnel with "Connection: close" added in both directions.
+	// `http-server-close`: the server-facing connection is closed after the response.
+	// `forceclose`: the connection is actively closed after end of response.
+	// In general, it is preferred to use http-server-close with application servers, and some static servers might benefit from http-keep-alive.
+	// Connection mode is restricted to HTTP mode only.
+	// If specified, connection mode will be applied to the backend section.
+	ConnectionMode string `split_words:"true"`
 	// The path to the Consul Template representing a snippet of the backend configuration.
 	// If set, proxy template will be loaded from the specified file.
 	ConsulTemplateBePath string `split_words:"true"`
@@ -120,6 +131,7 @@ type Service struct {
 	ServiceDest         []ServiceDest
 }
 
+// The list of services used inside the proxy
 type Services []Service
 
 func (slice Services) Len() int {
@@ -168,23 +180,6 @@ func hasWellKnown(service Service) bool {
 
 func (slice Services) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
-}
-
-type User struct {
-	Username      string
-	Password      string
-	PassEncrypted bool
-}
-
-func (user *User) HasPassword() bool {
-	return len(user.Password) > 0
-}
-
-func RandomUser() *User {
-	return &User{
-		Username:      "dummyUser",
-		PassEncrypted: true,
-		Password:      strconv.FormatInt(rand.Int63(), 3)}
 }
 
 func ExtractUsersFromString(context, usersString string, encrypted, skipEmptyPassword bool) []*User {
@@ -272,7 +267,7 @@ func GetServiceFromMap(req *map[string]string) *Service {
 	provider := MapParameterProvider{theMap: req}
 	return GetServiceFromProvider(&provider)
 }
-// TODO: deprecated "addHeader" & "setHeader". Kept for maintaining compatibility
+
 func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	sr := new(Service)
 	provider.Fill(sr)
@@ -287,12 +282,12 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	}
 	if len(provider.GetString("addReqHeader")) > 0 {
 		sr.AddReqHeader = strings.Split(provider.GetString("addReqHeader"), ",")
-	} else if len(provider.GetString("addHeader")) > 0 {
+	} else if len(provider.GetString("addHeader")) > 0 { // TODO: Deprecated since Apr. 2017.
 		sr.AddReqHeader = strings.Split(provider.GetString("addHeader"), ",")
 	}
 	if len(provider.GetString("setReqHeader")) > 0 {
 		sr.SetReqHeader = strings.Split(provider.GetString("setReqHeader"), ",")
-	} else if len(provider.GetString("setHeader")) > 0 {
+	} else if len(provider.GetString("setHeader")) > 0 { // TODO: Deprecated since Apr. 2017.
 		sr.SetReqHeader = strings.Split(provider.GetString("setHeader"), ",")
 	}
 	if len(provider.GetString("delReqHeader")) > 0 {
@@ -317,6 +312,12 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 		globalUsersString,
 		globalUsersEncrypted,
 	)
+
+	sr.ServiceDest = getServiceDest(sr, provider)
+	return sr
+}
+
+func getServiceDest(sr *Service, provider ServiceParameterProvider) []ServiceDest {
 	path := []string{}
 	if len(provider.GetString("servicePath")) > 0 {
 		path = strings.Split(provider.GetString("servicePath"), ",")
@@ -344,14 +345,13 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 		}
 	}
 	if len(sr.ServiceDomain) > 0 {
-		for i, _ := range sd {
+		for i := range sd {
 			if len(sd[i].ServicePath) == 0 {
 				sd[i].ServicePath = []string{"/"}
 			}
 		}
 	}
-	sr.ServiceDest = sd
-	return sr
+	return sd
 }
 
 func getBoolParam(req ServiceParameterProvider, param string) bool {

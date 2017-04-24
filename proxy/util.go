@@ -36,5 +36,5 @@ var LowerFirst = func(s string) string {
 	if len(s) == 0 {
 		return s
 	}
-	return string(append([]rune{unicode.ToLower([]rune(s)[0])}, []rune(s)[1:] ...))
+	return string(append([]rune{unicode.ToLower([]rune(s)[0])}, []rune(s)[1:]...))
 }

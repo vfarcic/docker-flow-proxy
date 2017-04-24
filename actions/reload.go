@@ -2,7 +2,6 @@ package actions
 
 import (
 	"../proxy"
-
 )
 
 type Reloader interface {
@@ -10,8 +9,6 @@ type Reloader interface {
 }
 
 type Reload struct{}
-
-
 
 func (m *Reload) Execute(recreate bool) error {
 	if recreate {
@@ -30,4 +27,3 @@ func (m *Reload) Execute(recreate bool) error {
 var NewReload = func() Reloader {
 	return &Reload{}
 }
-

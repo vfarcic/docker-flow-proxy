@@ -604,7 +604,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndTcp(
 frontend tcpFE_1234
     bind *:1234
     mode tcp
-    default_backend my-service-1-be1234%s`,
+    default_backend my-service-1-be4321%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -636,9 +636,9 @@ frontend tcpFE_1234
     bind *:1234
     mode tcp
     acl domain_my-service-1 hdr(host) -i my-domain.com
-    use_backend my-service-1-be1234 if domain_my-service-1
+    use_backend my-service-1-be4321 if domain_my-service-1
     acl domain_my-service-2 hdr(host) -i my-domain-1.com my-domain-2.com
-    use_backend my-service-2-be1234 if domain_my-service-2%s`,
+    use_backend my-service-2-be4321 if domain_my-service-2%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -682,7 +682,7 @@ frontend tcpFE_1234
     mode tcp
     option tcplog
     log global
-    default_backend my-service-1-be1234%s`,
+    default_backend my-service-1-be4321%s`,
 		s.getTemplateWithLogs(),
 		s.ServicesContent,
 	)
@@ -723,7 +723,7 @@ frontend tcpFE_1234
     option tcplog
     log global
     log-format something-tcp-related
-    default_backend my-service-1-be1234%s`,
+    default_backend my-service-1-be4321%s`,
 		s.getTemplateWithLogs(),
 		s.ServicesContent,
 	)

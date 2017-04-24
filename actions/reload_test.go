@@ -70,8 +70,6 @@ func (s *ReloadTestSuite) Test_Execute_ReturnsError_WhenCreateConfigFromTemplate
 	s.Error(err)
 }
 
-
-
 // NewReload
 
 func (s *ReloadTestSuite) Test_NewReload_ReturnsNewInstance() {

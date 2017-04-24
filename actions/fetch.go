@@ -3,12 +3,12 @@ package actions
 import (
 	"../proxy"
 	"../registry"
-	"fmt"
-	"strings"
 	"encoding/json"
-	"net/http"
+	"fmt"
 	"io/ioutil"
+	"net/http"
 	"strconv"
+	"strings"
 )
 
 type Fetchable interface {

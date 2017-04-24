@@ -299,6 +299,21 @@ backend https-myService-be1234
 	s.Equal(expectedBack, actualBack)
 }
 
+func (s ReconfigureTestSuite) Test_GetTemplates_AddsConnectionMode_WhenPresent() {
+	expectedBack := `
+backend myService-be1234
+    mode http
+    option my-connection-mode
+    server myService myService:1234`
+	s.reconfigure.ServiceDest[0].Port = "1234"
+	s.reconfigure.Mode = "service"
+	s.reconfigure.ConnectionMode = "my-connection-mode"
+	actualFront, actualBack, _ := s.reconfigure.GetTemplates()
+
+	s.Equal("", actualFront)
+	s.Equal(expectedBack, actualBack)
+}
+
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsTimeoutServer_WhenPresent() {
 	expectedBack := `
 backend myService-be1234
@@ -421,7 +436,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsFileContent_WhenConsulTem
 	s.reconfigure.Service.ConsulTemplateFePath = "/path/to/my/consul/fe/template"
 	s.reconfigure.Service.ConsulTemplateBePath = "/path/to/my/consul/be/template"
 
-	_, actual, _ := s.reconfigure.GetTemplates()//tu było s.Service
+	_, actual, _ := s.reconfigure.GetTemplates() //tu było s.Service
 
 	s.Equal(expected, actual)
 }
@@ -444,7 +459,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ProcessesTemplateFromTemplatePat
 	s.reconfigure.Service.TemplateFePath = expectedFeFile
 	s.reconfigure.Service.TemplateBePath = expectedBeFile
 
-	actualFe, actualBe, _ := s.reconfigure.GetTemplates()//tu było s.Service
+	actualFe, actualBe, _ := s.reconfigure.GetTemplates() //tu było s.Service
 
 	s.Equal(expectedFe, actualFe)
 	s.Equal(expectedBe, actualBe)
@@ -463,7 +478,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsError_WhenTemplateFePathI
 	s.reconfigure.Service.TemplateFePath = testFilename
 	s.reconfigure.Service.TemplateBePath = "not/under/test"
 
-	_, _, err := s.reconfigure.GetTemplates()//tu było s.Service
+	_, _, err := s.reconfigure.GetTemplates() //tu było s.Service
 
 	s.Error(err)
 }
@@ -482,7 +497,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsError_WhenTemplateBePathI
 	s.reconfigure.Service.TemplateFePath = "not/under/test"
 	s.reconfigure.Service.TemplateBePath = testFilename
 
-	_, _, err := s.reconfigure.GetTemplates()//tu było s.Service
+	_, _, err := s.reconfigure.GetTemplates() //tu było s.Service
 
 	s.Error(err)
 }
@@ -496,7 +511,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsError_WhenConsulTemplateF
 	s.reconfigure.Service.ConsulTemplateFePath = "/path/to/my/consul/fe/template"
 	s.reconfigure.Service.ConsulTemplateBePath = "/path/to/my/consul/be/template"
 
-	_, _, actual := s.reconfigure.GetTemplates()//tu było s.Service
+	_, _, actual := s.reconfigure.GetTemplates() //tu było s.Service
 
 	s.Error(actual)
 }
@@ -1057,10 +1072,6 @@ func (s *ReconfigureTestSuite) Test_NewReconfigure_CreatesNewStruct() {
 	s.NotEqual(actualSr1, actualSr2)
 }
 
-
-
-
-
 // Mock
 
 type ReconfigureMock struct {
@@ -1077,12 +1088,10 @@ func (m *ReconfigureMock) GetData() (BaseReconfigure, proxy.Service) {
 	return BaseReconfigure{}, proxy.Service{}
 }
 
-
 func (m *ReconfigureMock) GetTemplates() (front, back string, err error) {
 	params := m.Called()
 	return params.String(0), params.String(1), params.Error(2)
 }
-
 
 func getReconfigureMock(skipMethod string) *ReconfigureMock {
 	mockObj := new(ReconfigureMock)

@@ -3,17 +3,17 @@
 package main
 
 import (
+	"./actions"
+	"./proxy"
+	"./server"
 	"fmt"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
-	"./actions"
-	"./proxy"
-	"./server"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 	"time"
 )
 
@@ -230,6 +230,9 @@ func (s *ServerTestSuite) Test_Execute_InvokesReloadAllServicesWithListenerAddre
 func (s *ServerTestSuite) Test_Execute_RetriesContactingSwarmListenerAddress() {
 	expectedListenerAddress := "swarm-listener"
 	actualListenerAddressChan := make(chan string)
+	retryIntervalOrig := retryInterval
+	defer func() { retryInterval = retryIntervalOrig }()
+	retryInterval = 1
 	callNum := 0
 	defer MockFetch(FetchMock{
 		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
@@ -241,9 +244,8 @@ func (s *ServerTestSuite) Test_Execute_RetriesContactingSwarmListenerAddress() {
 			if callNum == 2 {
 				close(actualListenerAddressChan)
 				return nil
-			} else {
-				return fmt.Errorf("On iteration %d", callNum)
 			}
+			return fmt.Errorf("On iteration %d", callNum)
 		},
 	})()
 	consulAddressesOrig := []string{s.ConsulAddress}

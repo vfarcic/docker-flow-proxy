@@ -2,9 +2,9 @@ package proxy
 
 import (
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"strings"
 	"strconv"
+	"strings"
+	"testing"
 )
 
 type TypesTestSuite struct {
@@ -198,8 +198,8 @@ func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 		TimeoutServer:         "timeoutServer",
 		TimeoutTunnel:         "timeoutTunnel",
 		XForwardedProto:       true,
-		Users: []User{{Username: "user1", Password: "pass1", PassEncrypted: true, },
-			      {Username: "user2", Password: "pass2", PassEncrypted: true, }},
+		Users: []User{{Username: "user1", Password: "pass1", PassEncrypted: true},
+			{Username: "user2", Password: "pass2", PassEncrypted: true}},
 	}
 	serviceMap := map[string]string{
 		"serviceName":           expected.ServiceName,
@@ -241,10 +241,8 @@ func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 	s.Equal(expected, *actual)
 }
 
-
 // Suite
 
 func TestRunUnitTestSuite(t *testing.T) {
 	suite.Run(t, new(TypesTestSuite))
 }
-
