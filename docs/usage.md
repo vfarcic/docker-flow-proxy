@@ -25,6 +25,7 @@ The following query parameters can be used to send a *reconfigure* request to *D
 |reqMode        |The request mode. The proxy should be able to work with any mode supported by HAProxy. However, actively supported and tested modes are `http`, `tcp`, and `sni`. The `sni` mode implies TCP with an SNI-based routing.<br>Example: `tcp`|No|http|
 |reqPathReplace |A regular expression to apply the modification. If specified, `reqPathSearch` needs to be set as well.<br>Example: `/demo/`|No| |
 |reqPathSearch  |A regular expression to search the content to be replaced. If specified, `reqPathReplace` needs to be set as well.<br>Example: `/something/`|No| |
+|ServiceDefaultBackend  | If true, the service will be set to the default_backend rule, meaning it will catch all requests not matching any other rules.<br>Example: `true`|No| |
 |serviceDomain  |The domain of the service. If set, the proxy will allow access only to requests coming to that domain. Multiple domains should be separated with comma (`,`).**This parameter cannot be used with TCP.**<br>Example: ecme.com|No| |
 |serviceDomainMatchAll|Whether to include subdomains and FDQN domains in the match. If set to false, and, for example, `serviceDomain` is set to `acme.com`, `something.acme.com` would not be considered a match unless this parameter is set to `true`. If this option is used, it is recommended to put any subdomains higher in the list using `aclName`.<br>Example: `true`|No|false|
 |serviceName    |The name of the service. It must match the name of the Swarm service.<br>Example: `go-demo`|Yes| |

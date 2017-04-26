@@ -87,7 +87,7 @@ type Service struct {
 	ReqPathSearch string `split_words:"true"`
 	// Content of the PEM-encoded certificate to be used by the proxy when serving traffic over SSL.
 	ServiceCert string `split_words:"true"`
-
+	// If set to true, it will be the default_backend service.
 	ServiceDefaultBackend bool `envconfig:"default_backend" split_words:"true"`
 	// The domain of the service.
 	// If set, the proxy will allow access only to requests coming to that domain.
