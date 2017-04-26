@@ -432,6 +432,11 @@ func (m *HaProxy) getFrontTemplate(s Service) string {
 	} else {
 		tmplString += `use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}`
 	}
+	if s.ServiceDefaultBackend {
+		tmplString += fmt.Sprintf(
+			`
+    default_backend {{$.ServiceName}}-be{{.Port}}`)
+	}
 	tmplString += "{{end}}"
 	return m.templateToString(tmplString, s)
 }
