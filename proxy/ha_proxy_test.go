@@ -878,7 +878,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 }
 
 
-func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWithDefaultBackend_WhenServiceDefaultBackendIsTrue() {
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWithDefaultBackend_WhenIsDefaultBackendIsTrue() {
 	var actualData string
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
@@ -896,7 +896,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
 	data.Services["my-service"] = Service{
 		ServiceName:           "my-service",
-		ServiceDefaultBackend: true,
+		IsDefaultBackend:      true,
 		AclName:               "my-service",
 		PathType:              "path_beg",
 		ServiceDest: []ServiceDest{
