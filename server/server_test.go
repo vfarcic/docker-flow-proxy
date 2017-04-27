@@ -152,6 +152,17 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus400_WhenServiceNa
 	rw.AssertCalled(s.T(), "WriteHeader", 400)
 }
 
+func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus409_WhenModeIsHttpAndServicePathAndServiceDomainAreEmpty() {
+	addr := "/v1/docker-flow-proxy/reconfigure?serviceName=my-service"
+	req, _ := http.NewRequest("GET", addr, nil)
+	rw := getResponseWriterMock()
+
+	srv := Serve{}
+	srv.ReconfigureHandler(rw, req)
+
+	rw.AssertCalled(s.T(), "WriteHeader", 409)
+}
+
 func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus200_WhenReqModeIsTcp() {
 	addr := "/v1/docker-flow-proxy/reconfigure?serviceName=redis&port=6379&srcPort=6379&reqMode=tcp"
 	req, _ := http.NewRequest("GET", addr, nil)

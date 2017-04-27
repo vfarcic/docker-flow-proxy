@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"unicode"
+	"net/http"
 )
 
 var cmdRunHa = func(cmd *exec.Cmd) error {
@@ -45,3 +46,24 @@ var LowerFirst = func(s string) string {
 	}
 	return string(append([]rune{unicode.ToLower([]rune(s)[0])}, []rune(s)[1:]...))
 }
+func IsValidReconf(service *Service) (statusCode int, msg string) {
+	reqMode := "http"
+	if len(service.ServiceName) == 0 {
+		return http.StatusBadRequest, "serviceName parameter is mandatory."
+	} else if len(service.ServiceDest[0].ReqMode) > 0 {
+		reqMode = service.ServiceDest[0].ReqMode
+	}
+	hasPath := len(service.ServiceDest[0].ServicePath) > 0
+	hasSrcPort := service.ServiceDest[0].SrcPort > 0
+	hasPort := len(service.ServiceDest[0].Port) > 0
+	hasDomain := len(service.ServiceDomain) > 0
+	if strings.EqualFold(reqMode, "http") {
+		if !hasPath && !hasDomain && len(service.ConsulTemplateFePath) == 0 {
+			return http.StatusConflict, "When using reqMode http, servicePath or serviceDomain or (consulTemplateFePath and consulTemplateBePath) are mandatory"
+		}
+	} else if !hasSrcPort || !hasPort {
+		return http.StatusBadRequest, "When NOT using reqMode http (e.g. tcp), srcPort and port parameters are mandatory."
+	}
+	return http.StatusOK, ""
+}
+

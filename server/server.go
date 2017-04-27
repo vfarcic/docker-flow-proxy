@@ -95,7 +95,7 @@ func (m *Serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 		ServiceName: sr.ServiceName,
 		Service:     *sr,
 	}
-	statusCode, msg := m.isValidReconf(sr)
+	statusCode, msg := proxy.IsValidReconf(sr)
 	if statusCode == http.StatusOK {
 		if m.isSwarm(m.Mode) && !m.hasPort(sr.ServiceDest) {
 			m.writeBadRequest(w, &response, `When MODE is set to "service" or "swarm", the port query is mandatory`)
@@ -311,22 +311,3 @@ func (m *Serve) hasPort(sd []proxy.ServiceDest) bool {
 	return len(sd) > 0 && len(sd[0].Port) > 0
 }
 
-func (m *Serve) isValidReconf(service *proxy.Service) (statusCode int, msg string) {
-	reqMode := "http"
-	if len(service.ServiceName) == 0 {
-		return http.StatusBadRequest, "serviceName parameter is mandatory."
-	} else if len(service.ServiceDest[0].ReqMode) > 0 {
-		reqMode = service.ServiceDest[0].ReqMode
-	}
-	hasPath := len(service.ServiceDest[0].ServicePath) > 0
-	hasSrcPort := service.ServiceDest[0].SrcPort > 0
-	hasPort := len(service.ServiceDest[0].Port) > 0
-	if strings.EqualFold(reqMode, "http") {
-		if !hasPath && len(service.ConsulTemplateFePath) == 0 {
-			return http.StatusBadRequest, "When using reqMode http, servicePath or (consulTemplateFePath and consulTemplateBePath) are mandatory"
-		}
-	} else if !hasSrcPort || !hasPort {
-		return http.StatusBadRequest, "When NOT using reqMode http (e.g. tcp), srcPort and port parameters are mandatory."
-	}
-	return http.StatusOK, ""
-}

@@ -59,9 +59,11 @@ func (m *Fetch) ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr
 			needsReload := false
 			for _, s := range services {
 				proxyService := proxy.GetServiceFromMap(&s)
-				reconfigure := NewReconfigure(baseData, *proxyService, mode)
-				reconfigure.Execute(false)
-				needsReload = true
+				if statusCode, _ := proxy.IsValidReconf(proxyService); statusCode == http.StatusOK {
+					reconfigure := NewReconfigure(baseData, *proxyService, mode)
+					reconfigure.Execute(false)
+					needsReload = true
+				}
 			}
 			if needsReload {
 				reload := m.getReload()
