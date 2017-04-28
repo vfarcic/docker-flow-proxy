@@ -304,6 +304,16 @@ func (s IntegrationSwarmTestSuite) Test_ReconfigureFromEnvVars() {
 //	}
 //}
 
+func (s IntegrationSwarmTestSuite) Test_ReconfigureWithDefaultBackend() {
+	params := "serviceName=go-demo&servicePath=/xxx&port=8080"
+	s.reconfigureService(params)
+
+	resp, err := s.sendHelloRequest()
+
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf())
+}
+
 // Util
 
 func (s *IntegrationSwarmTestSuite) areContainersRunning(expected int, name string) bool {
@@ -355,16 +365,6 @@ func (s *IntegrationSwarmTestSuite) createGoDemoService() {
 func (s *IntegrationSwarmTestSuite) sendHelloRequest() (*http.Response, error) {
 	url := fmt.Sprintf("http://%s/demo/hello", s.hostIP)
 	return http.Get(url)
-}
-
-func (s IntegrationSwarmTestSuite) Test_ReconfigureWithDefaultBackend() {
-	params := "serviceName=go-demo&servicePath=/xxx&port=8080"
-	s.reconfigureService(params)
-
-	resp, err := s.sendHelloRequest()
-
-	s.NoError(err)
-	s.Equal(200, resp.StatusCode, s.getProxyConf())
 }
 
 func (s *IntegrationSwarmTestSuite) reconfigureGoDemo(extraParams string) {
