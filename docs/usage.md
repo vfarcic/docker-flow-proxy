@@ -106,6 +106,7 @@ The map between the HTTP query parameters and environment variables is as follow
 |distribute           |DISTRIBUTE              |
 |httpsOnly            |HTTPS_ONLY              |
 |httpsPort            |HTTPS_PORT              |
+|isDefaultBackend     |IS_DEFAULT_BACKEND      |
 |outboundHostname     |OUTBOUND_HOSTNAME       |
 |pathType             |PATH_TYPE               |
 |port                 |PORT                    |

@@ -635,7 +635,7 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 			{Username: "user2", Password: "pass2", PassEncrypted: true}},
 	}
 	addr := fmt.Sprintf(
-		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceColor=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&skipCheck=%t&distribute=%t&sslVerifyNone=%t&serviceDomainMatchAll=%t&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&delReqHeader=%s&delResHeader=%s&servicePath=/&port=1234&connectionMode=%s",
+		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceColor=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&isDefaultBackend=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&skipCheck=%t&distribute=%t&sslVerifyNone=%t&serviceDomainMatchAll=%t&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&delReqHeader=%s&delResHeader=%s&servicePath=/&port=1234&connectionMode=%s",
 		s.BaseUrl,
 		expected.ServiceName,
 		"user1:pass1,user2:pass2",
@@ -655,6 +655,7 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		expected.TimeoutTunnel,
 		expected.ServiceDest[0].ReqMode,
 		expected.HttpsOnly,
+		expected.IsDefaultBackend,
 		expected.XForwardedProto,
 		expected.RedirectWhenHttpProto,
 		expected.HttpsPort,
@@ -760,7 +761,7 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 	os.Setenv("DFP_SERVICE_DISTRIBUTE", strconv.FormatBool(service.Distribute))
 	os.Setenv("DFP_SERVICE_HTTPS_ONLY", strconv.FormatBool(service.HttpsOnly))
 	os.Setenv("DFP_SERVICE_HTTPS_PORT", strconv.Itoa(service.HttpsPort))
-	os.Setenv("DFP_SERVICE_DEFAULT_BACKEND", strconv.FormatBool(service.IsDefaultBackend))
+	os.Setenv("DFP_SERVICE_IS_DEFAULT_BACKEND", strconv.FormatBool(service.IsDefaultBackend))
 	os.Setenv("DFP_SERVICE_OUTBOUND_HOSTNAME", service.OutboundHostname)
 	os.Setenv("DFP_SERVICE_PATH_TYPE", service.PathType)
 	os.Setenv("DFP_SERVICE_REDIRECT_WHEN_HTTP_PROTO", strconv.FormatBool(service.RedirectWhenHttpProto))
@@ -791,12 +792,12 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		os.Unsetenv("DFP_SERVICE_CONNECTION_MODE")
 		os.Unsetenv("DFP_SERVICE_CONSUL_TEMPLATE_BE_PATH")
 		os.Unsetenv("DFP_SERVICE_CONSUL_TEMPLATE_FE_PATH")
-		os.Unsetenv("DFP_SERVICE_DEFAULT_BACKEND")
 		os.Unsetenv("DFP_SERVICE_DEL_REQ_HEADER")
 		os.Unsetenv("DFP_SERVICE_DEL_RES_HEADER")
 		os.Unsetenv("DFP_SERVICE_DISTRIBUTE")
 		os.Unsetenv("DFP_SERVICE_HTTPS_ONLY")
 		os.Unsetenv("DFP_SERVICE_HTTPS_PORT")
+		os.Unsetenv("DFP_SERVICE_IS_DEFAULT_BACKEND")
 		os.Unsetenv("DFP_SERVICE_OUTBOUND_HOSTNAME")
 		os.Unsetenv("DFP_SERVICE_PATH_TYPE")
 		os.Unsetenv("DFP_SERVICE_PORT")

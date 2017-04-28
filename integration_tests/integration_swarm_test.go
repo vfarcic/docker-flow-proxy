@@ -357,6 +357,16 @@ func (s *IntegrationSwarmTestSuite) sendHelloRequest() (*http.Response, error) {
 	return http.Get(url)
 }
 
+func (s IntegrationSwarmTestSuite) Test_ReconfigureWithDefaultBackend() {
+	params := "serviceName=go-demo&servicePath=/xxx&port=8080"
+	s.reconfigureService(params)
+
+	resp, err := s.sendHelloRequest()
+
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf())
+}
+
 func (s *IntegrationSwarmTestSuite) reconfigureGoDemo(extraParams string) {
 	params := fmt.Sprintf("serviceName=go-demo&servicePath=/demo&port=8080%s", extraParams)
 	s.reconfigureService(params)
