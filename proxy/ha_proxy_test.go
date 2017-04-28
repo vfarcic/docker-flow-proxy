@@ -1236,6 +1236,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ReplacesValuesWithEnvVa
 		after  string
 		value  string
 	}{
+		{"BALANCE_ALGORITHM", "balance roundrobin", "balance leastconn", "leastconn"},
 		{"CONNECTION_MODE", "option  http-server-close", "option  different-connection-mode", "different-connection-mode"},
 		{"TIMEOUT_CONNECT", "timeout connect 5s", "timeout connect 999s", "999"},
 		{"TIMEOUT_CLIENT", "timeout client  20s", "timeout client  999s", "999"},
@@ -1314,6 +1315,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ReplacesValuesWithSecre
 		after      string
 		value      string
 	}{
+		{"dfp_balance_algorithm", "balance roundrobin", "balance leastconn", "leastconn"},
 		{"dfp_connection_mode", "option  http-server-close", "option  different-connection-mode", "different-connection-mode"},
 		{"dfp_timeout_connect", "timeout connect 5s", "timeout connect 999s", "999"},
 		{"dfp_timeout_client", "timeout client  20s", "timeout client  999s", "999"},

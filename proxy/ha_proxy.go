@@ -23,6 +23,7 @@ var Instance Proxy
 // TODO: Move to data from proxy.go when static (e.g. env. vars.)
 type ConfigData struct {
 	CertsString          string
+	BalanceAlgorithm     string
 	ConnectionMode       string
 	TimeoutConnect       string
 	TimeoutClient        string
@@ -191,6 +192,7 @@ func (m HaProxy) getConfigData() ConfigData {
 	d := ConfigData{
 		CertsString: strings.Join(certsString, " "),
 	}
+	d.BalanceAlgorithm = GetSecretOrEnvVar("BALANCE_ALGORITHM", "roundrobin")
 	d.ConnectionMode = GetSecretOrEnvVar("CONNECTION_MODE", "http-server-close")
 	d.SslBindCiphers = GetSecretOrEnvVar("SSL_BIND_CIPHERS", "ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS")
 	d.SslBindOptions = GetSecretOrEnvVar("SSL_BIND_OPTIONS", "no-sslv3")
