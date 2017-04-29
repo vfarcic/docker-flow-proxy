@@ -201,8 +201,8 @@ func (m HaProxy) getConfigData() ConfigData {
 	d.TimeoutTunnel = GetSecretOrEnvVar("TIMEOUT_TUNNEL", "3600")
 	d.TimeoutHttpRequest = GetSecretOrEnvVar("TIMEOUT_HTTP_REQUEST", "5")
 	d.TimeoutHttpKeepAlive = GetSecretOrEnvVar("TIMEOUT_HTTP_KEEP_ALIVE", "15")
-	statsUser := GetSecretOrEnvVar(os.Getenv("STATS_USER_ENV"), "admin")
-	statsPass := GetSecretOrEnvVar(os.Getenv("STATS_PASS_ENV"), "admin")
+	statsUser := GetSecretOrEnvVar(os.Getenv("STATS_USER_ENV"), "")
+	statsPass := GetSecretOrEnvVar(os.Getenv("STATS_PASS_ENV"), "")
 	statsUri := GetSecretOrEnvVar(os.Getenv("STATS_URI_ENV"), "/admin?stats")
 	if len(statsUser) > 0 && len(statsPass) > 0 {
 		d.Stats = fmt.Sprintf(`
@@ -271,6 +271,11 @@ func (m HaProxy) getConfigData() ConfigData {
 			s.AclName = s.ServiceName
 		}
 		services = append(services, s)
+		for i, _ := range s.ServiceDest {
+			if len(s.ServiceDest[i].ReqMode) == 0 {
+				s.ServiceDest[i].ReqMode = "http"
+			}
+		}
 	}
 	m.getSni(&services, &d)
 	return d
@@ -302,21 +307,23 @@ func (m *HaProxy) getSni(services *Services, config *ConfigData) {
 	snimap := make(map[int]string)
 	tcpFEs := make(map[int]Services)
 	for _, s := range *services {
-		reqMode := "http"
-		if len(s.ServiceDest) > 0 && len(s.ServiceDest[0].ReqMode) > 0 {
-			reqMode = s.ServiceDest[0].ReqMode
+		if len(s.ServiceDest) == 0 {
+			s.ServiceDest = []ServiceDest{ServiceDest{ReqMode: "http"}}
 		}
-
-		if strings.EqualFold(reqMode, "http") {
-			config.ContentFrontend += m.getFrontTemplate(s)
-		} else if strings.EqualFold(reqMode, "sni") {
-			for _, sd := range s.ServiceDest {
-				_, header_exists := snimap[sd.SrcPort]
-				snimap[sd.SrcPort] += m.getFrontTemplateSNI(s, !header_exists)
-			}
-		} else {
-			for _, sd := range s.ServiceDest {
-				tcpFEs[sd.SrcPort] = append(tcpFEs[sd.SrcPort], s)
+		httpDone := false
+		for _, sd := range s.ServiceDest {
+			if strings.EqualFold(sd.ReqMode, "http") {
+				if !httpDone {
+					config.ContentFrontend += m.getFrontTemplate(s)
+				}
+				httpDone = true
+			} else if strings.EqualFold(sd.ReqMode, "sni") {
+				_, headerExists := snimap[sd.SrcPort]
+				snimap[sd.SrcPort] += m.getFrontTemplateSNI(s, !headerExists)
+			} else  {
+				tcpService := s
+				tcpService.ServiceDest = []ServiceDest{sd}
+				tcpFEs[sd.SrcPort] = append(tcpFEs[sd.SrcPort], tcpService)
 			}
 		}
 	}
@@ -407,8 +414,8 @@ func (m *HaProxy) getFrontTemplate(s Service) string {
 		s.PathType = "path_beg"
 	}
 	tmplString := fmt.Sprintf(
-		`{{range .ServiceDest}}
-    acl url_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{$.PathType}} {{.}}{{end}}{{.SrcPortAcl}}{{end}}%s`,
+		`{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
+    acl url_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{$.PathType}} {{.}}{{end}}{{.SrcPortAcl}}{{end}}{{end}}{{end}}%s`,
 		m.getAclDomain(&s),
 	)
 	if s.HttpsPort > 0 {
@@ -417,14 +424,14 @@ func (m *HaProxy) getFrontTemplate(s Service) string {
     acl https_{{.ServiceName}} src_port 443`
 	}
 	if s.RedirectWhenHttpProto {
-		tmplString += `{{range .ServiceDest}}
+		tmplString += `{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
     acl is_{{$.AclName}}_http hdr(X-Forwarded-Proto) http
-    redirect scheme https if is_{{$.AclName}}_http url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}{{end}}`
+    redirect scheme https if is_{{$.AclName}}_http url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}{{end}}{{end}}{{end}}`
 	} else if s.HttpsOnly {
-		tmplString += `{{range .ServiceDest}}
-    redirect scheme https if !{ ssl_fc } url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}{{end}}`
+		tmplString += `{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
+    redirect scheme https if !{ ssl_fc } url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}{{end}}{{end}}{{end}}`
 	}
-	tmplString += `{{range .ServiceDest}}
+	tmplString += `{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
     `
 	if s.HttpsPort > 0 {
 		tmplString += `use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}} http_{{$.ServiceName}}
@@ -437,7 +444,7 @@ func (m *HaProxy) getFrontTemplate(s Service) string {
 			`
     default_backend {{$.ServiceName}}-be{{.Port}}`)
 	}
-	tmplString += "{{end}}"
+	tmplString += "{{end}}{{end}}{{end}}"
 	return m.templateToString(tmplString, s)
 }
 

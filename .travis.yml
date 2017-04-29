@@ -16,9 +16,6 @@ script:
   - set -e
   - docker run --rm -v $PWD:/usr/src/myapp -w /usr/src/myapp -v go:/go golang:1.6 bash -c "go get -d -v -t && go test --cover ./... --run UnitTest && go build -v -o docker-flow-proxy"
   - docker build -t vfarcic/docker-flow-proxy .
-  - docker-compose -f docker-compose-test.yml up -d staging-dep
-  - docker-compose -f docker-compose-test.yml run --rm staging
-  - docker-compose -f docker-compose-test.yml down
   - docker tag vfarcic/docker-flow-proxy vfarcic/docker-flow-proxy:beta
   - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD; fi'
   - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then docker push vfarcic/docker-flow-proxy:beta; fi'

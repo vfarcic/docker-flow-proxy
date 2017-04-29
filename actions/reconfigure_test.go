@@ -190,22 +190,6 @@ backend myService-be1234
 	}
 }
 
-func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsMultipleBackends_WhenXXX() {
-	modes := []string{"service", "sWARm"}
-	for _, mode := range modes {
-		s.reconfigure.Mode = mode
-		s.reconfigure.Service.ServiceDest[0].Port = "1234"
-		expected := `
-backend myService-be1234
-    mode http
-    server myService myService:1234`
-
-		_, actual, _ := s.reconfigure.GetTemplates()
-
-		s.Equal(expected, actual)
-	}
-}
-
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsLoggin_WhenDebug() {
 	debugOrig := os.Getenv("DEBUG")
 	defer func() { os.Setenv("DEBUG", debugOrig) }()
@@ -362,16 +346,16 @@ backend myService-be1234
 
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsMultipleDestinations() {
 	sd := []proxy.ServiceDest{
-		{Port: "1111", ServicePath: []string{"path-1"}, SrcPort: 2222},
-		{Port: "3333", ServicePath: []string{"path-2"}, SrcPort: 4444},
-		{Port: "5555", ServicePath: []string{"path-3"}},
+		{Port: "1111"},
+		{Port: "3333", ReqMode: "tcp"},
+		{Port: "5555"},
 	}
 	expectedBack := `
 backend myService-be1111
     mode http
     server myService myService:1111
 backend myService-be3333
-    mode http
+    mode tcp
     server myService myService:3333
 backend myService-be5555
     mode http

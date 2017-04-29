@@ -68,11 +68,6 @@ defaults
     timeout http-request 5s
     timeout http-keep-alive 15s
 
-    stats enable
-    stats refresh 30s
-    stats realm Strictly\ Private
-    stats uri /admin?stats
-    stats auth admin:admin
 
 frontend services
     bind *:80
@@ -312,21 +307,69 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsLogging_WhenDebug()
 	s.Equal(expectedData, actualData)
 }
 
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsStats_WhenStatsUserAndPassArePresent() {
+	var actualData string
+	statUserOrig := os.Getenv("STATS_USER")
+	statPassOrig := os.Getenv("STATS_PASS")
+	statUserEnvOrig := os.Getenv("STATS_USER_ENV")
+	statPassEnvOrig := os.Getenv("STATS_PASS_ENV")
+	defer func() {
+		os.Setenv("STATS_USER", statUserOrig)
+		os.Setenv("STATS_PASS", statPassOrig)
+		os.Setenv("STATS_USER_ENV", statUserEnvOrig)
+		os.Setenv("STATS_PASS_ENV", statPassEnvOrig)
+	}()
+	os.Setenv("STATS_USER", "my-user")
+	os.Setenv("STATS_PASS", "my-pass")
+	os.Setenv("STATS_USER_ENV", "STATS_USER")
+	os.Setenv("STATS_PASS_ENV", "STATS_PASS")
+	statsAuth := `    stats enable
+    stats refresh 30s
+    stats realm Strictly\ Private
+    stats uri /admin?stats
+    stats auth my-user:my-pass
+
+frontend services`
+	expectedData := fmt.Sprintf(
+		"%s%s",
+		strings.Replace(s.TemplateContent, "\nfrontend services", statsAuth, -1),
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+
+	NewHaProxy(s.TemplatesPath, s.ConfigsPath).CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_RemovesStatsAuth_WhenUserIsNone() {
 	var actualData string
 	statUserOrig := os.Getenv("STATS_USER")
 	statPassOrig := os.Getenv("STATS_PASS")
+	statUserEnvOrig := os.Getenv("STATS_USER_ENV")
+	statPassEnvOrig := os.Getenv("STATS_PASS_ENV")
 	defer func() {
 		os.Setenv("STATS_USER", statUserOrig)
 		os.Setenv("STATS_PASS", statPassOrig)
+		os.Setenv("STATS_USER_ENV", statUserEnvOrig)
+		os.Setenv("STATS_PASS_ENV", statPassEnvOrig)
 	}()
 	os.Setenv("STATS_USER", "none")
 	os.Setenv("STATS_PASS", "none")
-	statsAuth := `
-    stats auth admin:admin`
+	os.Setenv("STATS_USER_ENV", "STATS_USER")
+	os.Setenv("STATS_PASS_ENV", "STATS_PASS")
+	statsAuth := `    stats enable
+    stats refresh 30s
+    stats realm Strictly\ Private
+    stats uri /admin?stats
+
+frontend services`
 	expectedData := fmt.Sprintf(
 		"%s%s",
-		strings.Replace(s.TemplateContent, statsAuth, "", -1),
+		strings.Replace(s.TemplateContent, "\nfrontend services", statsAuth, -1),
 		s.ServicesContent,
 	)
 	writeFile = func(filename string, data []byte, perm os.FileMode) error {
@@ -446,7 +489,9 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEnd() {
     acl url_my-acl1111 path_beg /path-1 path_beg /path-2 port1111Acl
     acl url_my-acl2222 path_beg /path-3 port2222Acl
     use_backend my-service-1-be1111 if url_my-acl1111 my-src-port
-    use_backend my-service-1-be2222 if url_my-acl2222%s`,
+    use_backend my-service-1-be2222 if url_my-acl2222
+    acl url_my-acl3333 path_beg /path-4 port3333Acl
+    use_backend my-service-2-be3333 if url_my-acl3333%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -455,13 +500,21 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEnd() {
 		return nil
 	}
 	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
-	data.Services["my-service"] = Service{
+	data.Services["my-service-1"] = Service{
 		ServiceName: "my-service-1",
 		PathType:    "path_beg",
 		AclName:     "my-acl",
 		ServiceDest: []ServiceDest{
 			{Port: "1111", ServicePath: []string{"/path-1", "/path-2"}, SrcPortAcl: " port1111Acl", SrcPortAclName: " my-src-port"},
 			{Port: "2222", ServicePath: []string{"/path-3"}, SrcPortAcl: " port2222Acl"},
+		},
+	}
+	data.Services["my-service-2"] = Service{
+		ServiceName: "my-service-2",
+		PathType:    "path_beg",
+		AclName:     "my-acl",
+		ServiceDest: []ServiceDest{
+			{Port: "3333", ServicePath: []string{"/path-4"}, SrcPortAcl: " port3333Acl"},
 		},
 	}
 
@@ -650,6 +703,39 @@ frontend tcpFE_1234
 		ServiceName: "my-service-1",
 		ServiceDest: []ServiceDest{
 			{SrcPort: 1234, Port: "4321", ReqMode: "tcp"},
+		},
+	}
+
+	p.CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsMultipleFrontends() {
+	var actualData string
+	tmpl := s.TemplateContent
+	expectedData := fmt.Sprintf(
+		`%s
+    acl url_my-service-12222 path_beg /path
+    use_backend my-service-1-be2222 if url_my-service-12222
+
+frontend tcpFE_3333
+    bind *:3333
+    mode tcp
+    default_backend my-service-1-be4444%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	data.Services["my-service-1"] = Service{
+		ServiceName: "my-service-1",
+		ServiceDest: []ServiceDest{
+			{SrcPort: 1111, Port: "2222", ReqMode: "http", ServicePath: []string{"/path"}},
+			{SrcPort: 3333, Port: "4444", ReqMode: "tcp"},
 		},
 	}
 

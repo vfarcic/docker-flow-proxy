@@ -292,17 +292,15 @@ func (s IntegrationSwarmTestSuite) Test_ReconfigureFromEnvVars() {
 	}
 }
 
-//func (s IntegrationSwarmTestSuite) Test_HttpsOnly() {
-//	s.reconfigureGoDemo("&httpsOnly=true")
-//
-//	resp, err := s.sendHelloRequest()
-//
-//	if err != nil {
-//		s.Fail("Failed to block HTTPS requests", "ERROR: %s\n\nConfig: %s", err.Error(), s.getProxyConf())
-//	} else {
-//		s.Equal(200, resp.StatusCode, s.getProxyConf())
-//	}
-//}
+func (s IntegrationSwarmTestSuite) Test_ReconfigureWithDefaultBackend() {
+	params := "serviceName=go-demo&servicePath=/xxx&port=8080"
+	s.reconfigureService(params)
+
+	resp, err := s.sendHelloRequest()
+
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf())
+}
 
 func (s IntegrationSwarmTestSuite) Test_ReconfigureWithDefaultBackend() {
 	params := "serviceName=go-demo&servicePath=/xxx&port=8080"

@@ -68,7 +68,7 @@ type Service struct {
 	// If not specified, the `port` parameter will be used instead.
 	HttpsPort int `split_words:"true"`
 	// If set to true, it will be the default_backend service.
-	IsDefaultBackend bool `envconfig:"default_backend" split_words:"true"`
+	IsDefaultBackend bool `split_words:"true"`
 	// The hostname where the service is running, for instance on a separate swarm.
 	// If specified, the proxy will dispatch requests to that domain.
 	OutboundHostname string `split_words:"true"`

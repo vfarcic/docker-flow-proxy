@@ -69,12 +69,6 @@ docker image build -t $DOCKER_HUB_USER/docker-flow-proxy .
 #### Staging (Integration) Tests
 
 ```bash
-docker-compose -f docker-compose-test.yml up -d staging-dep
-
-docker-compose -f docker-compose-test.yml run --rm staging
-
-docker-compose -f docker-compose-test.yml down
-
 docker image tag $DOCKER_HUB_USER/docker-flow-proxy $DOCKER_HUB_USER/docker-flow-proxy:beta
 
 docker image push $DOCKER_HUB_USER/docker-flow-proxy:beta
