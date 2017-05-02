@@ -176,7 +176,7 @@ func (m HaProxy) getConfigs() (string, error) {
     use_backend dummy-be if url_dummy
 
 backend dummy-be
-    server dummy 1.1.1.1:1111 check`)
+    server dummy 1.1.1.1:1111 check resolvers docker`)
 	}
 	tmpl, _ := template.New("contentTemplate").Parse(
 		strings.Join(contentArr, "\n\n"),

@@ -49,7 +49,7 @@ func (s *ReconfigureTestSuite) SetupTest() {
 backend myService-be
     mode http
     {{range $i, $e := service "myService" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
+    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check resolvers docker
     {{end}}`
 	s.ConsulAddress = s.Server.URL
 	s.reconfigure = Reconfigure{
@@ -115,7 +115,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersEnvIsPrese
 backend myService-be
     mode http
     {{range $i, $e := service "myService" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
+    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check resolvers docker
     {{end}}
     acl defaultUsersAcl http_auth(defaultUsers)
     http-request auth realm defaultRealm if !defaultUsersAcl
@@ -139,7 +139,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersIsPresent(
 backend myService-be
     mode http
     {{range $i, $e := service "myService" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
+    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check resolvers docker
     {{end}}
     acl myServiceUsersAcl http_auth(myServiceUsers)
     http-request auth realm myServiceRealm if !myServiceUsersAcl
@@ -163,7 +163,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersIsPresentA
 backend myService-be
     mode http
     {{range $i, $e := service "myService" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
+    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check resolvers docker
     {{end}}
     acl myServiceUsersAcl http_auth(myServiceUsers)
     http-request auth realm myServiceRealm if !myServiceUsersAcl
@@ -182,7 +182,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsFormattedContent_WhenMode
 		expected := `
 backend myService-be1234
     mode http
-    server myService myService:1234 check`
+    server myService myService:1234 check resolvers docker`
 
 		_, actual, _ := s.reconfigure.GetTemplates()
 
@@ -216,7 +216,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddSllVerifyNone_WhenSslVerifyNo
 		expected := `
 backend myService-be1234
     mode http
-    server myService myService:1234 check ssl verify none`
+    server myService myService:1234 check resolvers docker ssl verify none`
 
 		_, actual, _ := s.reconfigure.GetTemplates()
 
@@ -231,7 +231,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsFormattedContent_WhenReqM
 	expected := `
 backend myService-be1234
     mode tcp
-    server myService myService:1234 check`
+    server myService myService:1234 check resolvers docker`
 
 	_, actual, _ := s.reconfigure.GetTemplates()
 
@@ -247,7 +247,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenModeIsSwarmAndU
 	expected := `
 backend myService-be1234
     mode http
-    server myService myService:1234 check
+    server myService myService:1234 check resolvers docker
     acl defaultUsersAcl http_auth(defaultUsers)
     http-request auth realm defaultRealm if !defaultUsersAcl
     http-request del-header Authorization`
@@ -271,7 +271,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenModeIsSwarmAndU
 
 backend myService-be1234
     mode http
-    server myService myService:1234 check
+    server myService myService:1234 check resolvers docker
     acl myServiceUsersAcl http_auth(myServiceUsers)
     http-request auth realm myServiceRealm if !myServiceUsersAcl
     http-request del-header Authorization`
@@ -285,11 +285,11 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpsPort_WhenPresent() {
 	expectedBack := `
 backend myService-be1234
     mode http
-    server myService myService:1234 check
+    server myService myService:1234 check resolvers docker
 
 backend https-myService-be1234
     mode http
-    server myService myService:4321 check`
+    server myService myService:4321 check resolvers docker`
 	s.reconfigure.ServiceDest[0].Port = "1234"
 	s.reconfigure.Mode = "service"
 	s.reconfigure.HttpsPort = 4321
@@ -304,7 +304,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsConnectionMode_WhenPresent()
 backend myService-be1234
     mode http
     option my-connection-mode
-    server myService myService:1234 check`
+    server myService myService:1234 check resolvers docker`
 	s.reconfigure.ServiceDest[0].Port = "1234"
 	s.reconfigure.Mode = "service"
 	s.reconfigure.ConnectionMode = "my-connection-mode"
@@ -319,7 +319,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsTimeoutServer_WhenPresent() 
 backend myService-be1234
     mode http
     timeout server 9999s
-    server myService myService:1234 check`
+    server myService myService:1234 check resolvers docker`
 	s.reconfigure.ServiceDest[0].Port = "1234"
 	s.reconfigure.TimeoutServer = "9999"
 	s.reconfigure.Mode = "service"
@@ -334,7 +334,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsTimeoutTunnel_WhenPresent() 
 backend myService-be1234
     mode http
     timeout tunnel 9999s
-    server myService myService:1234 check`
+    server myService myService:1234 check resolvers docker`
 	s.reconfigure.ServiceDest[0].Port = "1234"
 	s.reconfigure.TimeoutTunnel = "9999"
 	s.reconfigure.Mode = "service"
@@ -353,13 +353,13 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsMultipleDestinations() {
 	expectedBack := `
 backend myService-be1111
     mode http
-    server myService myService:1111 check
+    server myService myService:1111 check resolvers docker
 backend myService-be3333
     mode tcp
-    server myService myService:3333 check
+    server myService myService:3333 check resolvers docker
 backend myService-be5555
     mode http
-    server myService myService:5555 check`
+    server myService myService:5555 check resolvers docker`
 	s.reconfigure.ServiceDest = sd
 	s.reconfigure.Mode = "service"
 	actualFront, actualBack, _ := s.reconfigure.GetTemplates()
@@ -377,7 +377,7 @@ backend myService-be
     mode http
     reqrep %s     %s
     {{range $i, $e := service "%s" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
+    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check resolvers docker
     {{end}}`,
 		s.reconfigure.ReqRepSearch,
 		s.reconfigure.ReqRepReplace,
@@ -397,7 +397,7 @@ backend myService-be
     mode http
     http-request set-path %%[path,regsub(%s,%s)]
     {{range $i, $e := service "%s" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
+    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check resolvers docker
     {{end}}`,
 		s.reconfigure.ReqPathSearch,
 		s.reconfigure.ReqPathReplace,
@@ -419,7 +419,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsColor() {
 }
 
 func (s ReconfigureTestSuite) Test_GetTemplates_DoesNotSetCheckWhenSkipCheckIsTrue() {
-	s.ConsulTemplateBe = strings.Replace(s.ConsulTemplateBe, " check", "", -1)
+	s.ConsulTemplateBe = strings.Replace(s.ConsulTemplateBe, " check resolvers docker", "", -1)
 	s.reconfigure.SkipCheck = true
 	_, actual, _ := s.reconfigure.GetTemplates()
 
@@ -547,7 +547,7 @@ func (s ReconfigureTestSuite) Test_Execute_WritesBeTemplate_WhenModeIsService() 
 		`
 backend %s-be%s
     mode http
-    server %s %s:%s check`,
+    server %s %s:%s check resolvers docker`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
 		s.ServiceName,
@@ -576,7 +576,7 @@ func (s ReconfigureTestSuite) Test_Execute_WritesBeTemplate_WhenModeIsSwarm() {
 		`
 backend %s-be%s
     mode http
-    server %s %s:%s check`,
+    server %s %s:%s check resolvers docker`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
 		s.ServiceName,
@@ -607,7 +607,7 @@ func (s ReconfigureTestSuite) Test_Execute_AddsXForwardedProto_WhenTrue() {
 backend %s-be%s
     mode http
     http-request add-header X-Forwarded-Proto https if { ssl_fc }
-    server %s %s:%s check`,
+    server %s %s:%s check resolvers docker`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
 		s.ServiceName,
@@ -639,7 +639,7 @@ backend %s-be%s
     mode http
     http-request add-header header-1
     http-request add-header header-2
-    server %s %s:%s check`,
+    server %s %s:%s check resolvers docker`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
 		s.ServiceName,
@@ -671,7 +671,7 @@ backend %s-be%s
     mode http
     http-response add-header header-1
     http-response add-header header-2
-    server %s %s:%s check`,
+    server %s %s:%s check resolvers docker`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
 		s.ServiceName,
@@ -703,7 +703,7 @@ backend %s-be%s
     mode http
     http-request set-header header-1
     http-request set-header header-2
-    server %s %s:%s check`,
+    server %s %s:%s check resolvers docker`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
 		s.ServiceName,
@@ -735,7 +735,7 @@ backend %s-be%s
     mode http
     http-response set-header header-1
     http-response set-header header-2
-    server %s %s:%s check`,
+    server %s %s:%s check resolvers docker`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
 		s.ServiceName,
@@ -767,7 +767,7 @@ backend %s-be%s
     mode http
     http-request del-header header-1
     http-request del-header header-2
-    server %s %s:%s check`,
+    server %s %s:%s check resolvers docker`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
 		s.ServiceName,
@@ -799,7 +799,7 @@ backend %s-be%s
     mode http
     http-response del-header header-1
     http-response del-header header-2
-    server %s %s:%s check`,
+    server %s %s:%s check resolvers docker`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
 		s.ServiceName,

@@ -1,4 +1,4 @@
 backend test-service-be
 	{{ range $i, $e := service "test-service" "any" }}
-	server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
+	server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check resolvers docker
 	{{end}}

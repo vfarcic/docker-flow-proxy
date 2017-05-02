@@ -287,15 +287,15 @@ func (m *Reconfigure) getServerTemplate(protocol string) string {
 	if strings.EqualFold(m.Mode, "service") || strings.EqualFold(m.Mode, "swarm") {
 		if strings.EqualFold(protocol, "https") {
 			return `
-    server {{$.ServiceName}} {{$.Host}}:{{$.HttpsPort}}{{if eq $.SkipCheck false}} check{{if eq $.SslVerifyNone true}} ssl verify none{{end}}{{end}}`
+    server {{$.ServiceName}} {{$.Host}}:{{$.HttpsPort}}{{if eq $.SkipCheck false}} check resolvers docker{{if eq $.SslVerifyNone true}} ssl verify none{{end}}{{end}}`
 		} else {
 			return `
-    server {{$.ServiceName}} {{$.Host}}:{{.Port}}{{if eq $.SkipCheck false}} check{{if eq $.SslVerifyNone true}} ssl verify none{{end}}{{end}}`
+    server {{$.ServiceName}} {{$.Host}}:{{.Port}}{{if eq $.SkipCheck false}} check resolvers docker{{if eq $.SslVerifyNone true}} ssl verify none{{end}}{{end}}`
 		}
 	} else { // It's Consul
 		return `
     {{"{{"}}range $i, $e := service "{{$.FullServiceName}}" "any"{{"}}"}}
-    server {{"{{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}"}}{{if eq $.SkipCheck false}} check{{if eq $.SslVerifyNone true}} ssl verify none{{end}}{{end}}
+    server {{"{{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}"}}{{if eq $.SkipCheck false}} check resolvers docker{{if eq $.SslVerifyNone true}} ssl verify none{{end}}{{end}}
     {{"{{end}}"}}`
 	}
 }

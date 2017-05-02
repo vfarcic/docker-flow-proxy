@@ -46,7 +46,7 @@ func (s *FetchTestSuite) SetupTest() {
 backend myService-be
     mode http
     {{range $i, $e := service "myService" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
+    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check resolvers docker
     {{end}}`
 	s.ConsulAddress = s.Server.URL
 	s.fetch = Fetch{

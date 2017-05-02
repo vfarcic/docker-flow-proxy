@@ -1450,7 +1450,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_WritesMockDataIfConfigs
     use_backend dummy-be if url_dummy
 
 backend dummy-be
-    server dummy 1.1.1.1:1111 check`,
+    server dummy 1.1.1.1:1111 check resolvers docker`,
 	)
 
 	writeFile = func(filename string, data []byte, perm os.FileMode) error {
