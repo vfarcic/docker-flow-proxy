@@ -1,4 +1,4 @@
 backend go-demo-be
 	{{ range $i, $e := service "go-demo" "any" }}
-	server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check resolvers docker
+	server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
 	{{end}}
