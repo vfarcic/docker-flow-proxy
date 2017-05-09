@@ -1,5 +1,7 @@
 package integration_test
 
+// TODO: Remove whole file
+
 import (
 	"fmt"
 	"github.com/stretchr/testify/suite"

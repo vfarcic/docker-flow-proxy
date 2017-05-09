@@ -78,15 +78,27 @@ func TestServerUnitTestSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-// TestHandler
+// Test1Handler
 
-func (s *ServerTestSuite) Test_TestHandler_ReturnsStatus200() {
+func (s *ServerTestSuite) Test_Test1Handler_ReturnsStatus200() {
+	rw := getResponseWriterMock()
+	req, _ := http.NewRequest("GET", "/v1/test", nil)
+
+	srv := serve{}
+	srv.Test1Handler(rw, req)
+
+	rw.AssertCalled(s.T(), "WriteHeader", 200)
+}
+
+// Test2Handler
+
+func (s *ServerTestSuite) Test_Test2Handler_ReturnsStatus200() {
 	for ver := 1; ver <= 2; ver++ {
 		rw := getResponseWriterMock()
-		req, _ := http.NewRequest("GET", fmt.Sprintf("/v%d/test", ver), nil)
+		req, _ := http.NewRequest("GET", "/v2/test", nil)
 
 		srv := serve{}
-		srv.TestHandler(rw, req)
+		srv.Test2Handler(rw, req)
 
 		rw.AssertCalled(s.T(), "WriteHeader", 200)
 	}
@@ -353,6 +365,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesReconfigureExecute_When
 	sd := proxy.ServiceDest{
 		ServicePath: []string{},
 		ReqMode:     "http",
+		UserAgent:   []string{},
 	}
 	pathFe := "/path/to/consul/fe/template"
 	pathBe := "/path/to/consul/be/template"
@@ -630,7 +643,7 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		ReqPathSearch:         "reqPathSearch",
 		ServiceCert:           "serviceCert",
 		ServiceColor:          "serviceColor",
-		ServiceDest:           []proxy.ServiceDest{{ServicePath: []string{"/"}, Port: "1234", ReqMode: "reqMode"}},
+		ServiceDest:           []proxy.ServiceDest{{ServicePath: []string{"/"}, Port: "1234", ReqMode: "reqMode", UserAgent: []string{}}},
 		ServiceDomain:         []string{"domain1", "domain2"},
 		ServiceDomainMatchAll: true,
 		ServiceName:           "serviceName",
@@ -704,7 +717,7 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_SetsServicePathToSlash_WhenDoma
 		ServiceDomain: []string{"domain1", "domain2"},
 		ServiceName:   "serviceName",
 		ServiceDest: []proxy.ServiceDest{
-			{ServicePath: []string{"/"}, Port: "1234", ReqMode: "http"},
+			{ServicePath: []string{"/"}, Port: "1234", ReqMode: "http", UserAgent: []string{}},
 		},
 	}
 	addr := fmt.Sprintf(

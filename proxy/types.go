@@ -16,7 +16,8 @@ type ServiceDest struct {
 	// The internal port of a service that should be reconfigured.
 	// The port is used only in the *swarm* mode.
 	Port string
-	// The request mode. The proxy should be able to work with any mode supported by HAProxy. However, actively supported and tested modes are *http*, *tcp*, and *sni*.
+	// The request mode. The proxy should be able to work with any mode supported by HAProxy.
+	// However, actively supported and tested modes are *http*, *tcp*, and *sni*.
 	ReqMode string
 	// Internal use only. Do not modify.
 	ReqModeFormatted string
@@ -29,17 +30,20 @@ type ServiceDest struct {
 	SrcPortAcl string
 	// Internal use only. Do not modify.
 	SrcPortAclName string
+	// If specified, only requests with the same agent will be forwarded to the backend.
+	UserAgent []string
 }
 
 // Description of a service that should be added to the proxy configuration.
 type Service struct {
-	// Additional headers that will be added to the request before forwarding it to the service. Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#add-a-header-to-the-request for more info.
-	AddReqHeader []string `split_words:"true"`
-	// Additional headers that will be added to the response before forwarding it to the client.
-	AddResHeader []string `split_words:"true"`
 	// ACLs are ordered alphabetically by their names.
 	// If not specified, serviceName is used instead.
 	AclName string `split_words:"true"`
+	// Additional headers that will be added to the request before forwarding it to the service.
+	// Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#add-a-header-to-the-request for more info.
+	AddReqHeader []string `split_words:"true"`
+	// Additional headers that will be added to the response before forwarding it to the client.
+	AddResHeader []string `split_words:"true"`
 	// Whether to use `docker` as a check resolver. Set through the environment variable CHECK_RESOLVERS
 	CheckResolvers bool `split_words:"true"`
 	// One of the five connection modes supported by the HAProxy.
@@ -237,10 +241,6 @@ type MapParameterProvider struct {
 }
 
 func (p *MapParameterProvider) Fill(service *Service) {
-	//tmpMap := make(map[string]string)
-	//for k, v := range *p.theMap {
-	//	tmpMap[strings.Title(k)] = v
-	//}
 	mapstructure.Decode(p.theMap, service)
 	//above library does not handle bools as strings
 	v := reflect.ValueOf(service).Elem()
@@ -314,55 +314,70 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 		globalUsersEncrypted,
 	)
 
-	sr.ServiceDest = getServiceDest(sr, provider)
+	sr.ServiceDest = getServiceDestList(sr, provider)
 	return sr
 }
 
-func getServiceDest(sr *Service, provider ServiceParameterProvider) []ServiceDest {
-	path := []string{}
-	if len(provider.GetString("servicePath")) > 0 {
-		path = strings.Split(provider.GetString("servicePath"), ",")
-	}
-	reqMode := "http"
-	if len(provider.GetString("reqMode")) > 0 {
-		reqMode = provider.GetString("reqMode")
-	}
-
-	port := provider.GetString("port")
-	srcPort, _ := strconv.Atoi(provider.GetString("srcPort"))
-	sd := []ServiceDest{}
-	if len(path) > 0 || len(port) > 0 || (len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0) {
-		sd = append(
-			sd,
-			ServiceDest{Port: port, ReqMode: reqMode, SrcPort: srcPort, ServicePath: path},
-		)
+func getServiceDestList(sr *Service, provider ServiceParameterProvider) []ServiceDest {
+	sdList := []ServiceDest{}
+	sd := getServiceDest(sr, provider, -1)
+	if isServiceDestValid(&sd) || (len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0) {
+		sdList = append(sdList, sd)
 	}
 	for i := 1; i <= 10; i++ {
-		port := provider.GetString(fmt.Sprintf("port.%d", i))
-		path := provider.GetString(fmt.Sprintf("servicePath.%d", i))
-		reqMode := provider.GetString(fmt.Sprintf("reqMode.%d", i))
-
-		srcPort, _ := strconv.Atoi(provider.GetString(fmt.Sprintf("srcPort.%d", i)))
-		if len(path) > 0 && len(port) > 0 {
-			sd = append(
-				sd,
-				ServiceDest{Port: port, ReqMode: reqMode, SrcPort: srcPort, ServicePath: strings.Split(path, ",")},
-			)
+		sd := getServiceDest(sr, provider, i)
+		if isIndexedServiceDestValid(&sd) {
+			sdList = append(sdList, sd)
 		} else {
 			break
 		}
 	}
-	if len(sd) == 0 {
-		sd = append(sd, ServiceDest{ReqMode: reqMode})
+	if len(sdList) == 0 {
+		reqMode := "http"
+		if len(provider.GetString("reqMode")) > 0 {
+			reqMode = provider.GetString("reqMode")
+		}
+		sdList = append(sdList, ServiceDest{ReqMode: reqMode})
 	}
 	if len(sr.ServiceDomain) > 0 {
-		for i := range sd {
-			if len(sd[i].ServicePath) == 0 {
-				sd[i].ServicePath = []string{"/"}
+		for i := range sdList {
+			if len(sdList[i].ServicePath) == 0 {
+				sdList[i].ServicePath = []string{"/"}
 			}
 		}
 	}
-	return sd
+	return sdList
+}
+
+func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) ServiceDest {
+	suffix := ""
+	if index > 0 {
+		suffix = fmt.Sprintf(".%d", index)
+	}
+	path := []string{}
+	userAgent := []string{}
+	if len(provider.GetString(fmt.Sprintf("servicePath%s", suffix))) > 0 {
+		path = strings.Split(provider.GetString(fmt.Sprintf("servicePath%s", suffix)), ",")
+	}
+	if len(provider.GetString(fmt.Sprintf("userAgent%s", suffix))) > 0 {
+		userAgent = strings.Split(provider.GetString(fmt.Sprintf("userAgent%s", suffix)), ",")
+	}
+	reqMode := "http"
+	if len(provider.GetString(fmt.Sprintf("reqMode%s", suffix))) > 0 {
+		reqMode = provider.GetString(fmt.Sprintf("reqMode%s", suffix))
+	}
+	port := provider.GetString(fmt.Sprintf("port%s", suffix))
+	srcPort, _ := strconv.Atoi(provider.GetString(fmt.Sprintf("srcPort%s", suffix)))
+	return ServiceDest{Port: port, ReqMode: reqMode, SrcPort: srcPort, ServicePath: path, UserAgent: userAgent}
+
+}
+
+func isServiceDestValid(sd *ServiceDest) bool {
+	return len(sd.ServicePath) > 0 || len(sd.Port) > 0
+}
+
+func isIndexedServiceDestValid(sd *ServiceDest) bool {
+	return len(sd.ServicePath) > 0 && len(sd.Port) > 0
 }
 
 func getBoolParam(req ServiceParameterProvider, param string) bool {

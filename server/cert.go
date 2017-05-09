@@ -70,7 +70,7 @@ func (m *Cert) Put(w http.ResponseWriter, req *http.Request) (string, error) {
 		return "", m.sendDistributeRequests(w, req)
 	}
 	certName, certContent, err := m.getCertFromRequest(w, req)
-	if err != nil {
+	if err != nil { // TODO: Test
 		m.writeError(w, err)
 		return "", err
 	}
@@ -100,7 +100,7 @@ func (m *Cert) Init() error {
 	certs := []Cert{}
 	for _, ip := range ips {
 		hostPort := ip
-		if !strings.Contains(ip, ":") {
+		if !strings.Contains(ip, ":") { // TODO: Test
 			hostPort = net.JoinHostPort(ip, m.ServicePort)
 		}
 		addr := fmt.Sprintf("http://%s/v1/docker-flow-proxy/certs", hostPort)
@@ -127,7 +127,7 @@ func (m *Cert) Init() error {
 
 func (m *Cert) getCertFromRequest(w http.ResponseWriter, req *http.Request) (certName string, certContent []byte, err error) {
 	certName = req.URL.Query().Get("certName")
-	if len(certName) == 0 {
+	if len(certName) == 0 { // TODO: Test
 		err := fmt.Errorf("Query parameter certName is mandatory")
 		return "", []byte{}, err
 	}

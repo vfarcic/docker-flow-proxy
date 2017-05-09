@@ -36,7 +36,7 @@ The following query parameters can be used to send a *reconfigure* request to *D
 |timeoutTunnel  |The tunnel timeout in seconds.<br>Example: `3600`                                            |No      |3600   |
 |xForwardedProto|Whether to add "X-Forwarded-Proto https" header.<br>Example: `true`                          |No      |false  |
 
-Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, and `ReqMode` parameters. In that case, `srcPort` is required. Defining multiple destinations is useful in cases when a service exposes multiple ports with different paths and functions.
+Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, and `ReqMode` parameters. In that case, `srcPort` is required. Defining multiple destinations is useful in cases when a service exposes multiple ports with different paths and functions.
 
 ### HTTP Mode HTTP Query Parameters
 
@@ -54,11 +54,12 @@ The following query parameters can be used only when `reqMode` is set to `http` 
 |sslVerifyNone|If set to true, backend server certificates are not verified. This flag should be set for SSL enabled backend services.<br>Example: `true`|No|false|
 |templateBePath|The path to the template representing a snippet of the backend configuration. If specified, the backend template will be loaded from the specified file. If specified, `templateFePath` must be set as well. See the [Templates](#templates) section for more info.<br>Example: `/tmpl/be.tmpl`| | |
 |templateFePath|The path to the template representing a snippet of the frontend configuration. If specified, the frontend template will be loaded from the specified file. If specified, `templateBePath` must be set as well. See the [Templates](#templates) section for more info.<br>Example: `/tmpl/fe.tmpl`| | |
+|userAgent    |A comma-separated list of user agents. only requests with the same User-Agent will be forwarded to the backend. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `userAgent.1`, `userAgent.2`, and so on).<br>Example: `googlebot,iphone`|No| |
 |users        |A comma-separated list of credentials (<user>:<pass>) for HTTP basic authentication. It applies only to the service that will be reconfigured. If used with `usersSecret`, or when `USERS` environment variable is set, password may be omitted. In that case, it will be taken from `usersSecret` file or the global configuration if `usersSecret` is not present.<br>Example: `usr1:pwd1, usr2:pwd2`|No| |
 |usersSecret  |Suffix of Docker secret from which credentials will be taken for this service. Files must be a comma-separated list of credentials (<user>:<pass>). This suffix will be prepended with `dfp_users_`. For example, if the value is `mysecrets` the expected name of the Docker secret is `dfp_users_mysecrets`.<br>Example: `mysecrets`|No| |
 |usersPassEncrypted|Indicates whether passwords provided by `users` or `usersSecret` contain encrypted data. Passwords can be encrypted with the command `mkpasswd -m sha-512 password1`.<br>Example: `true`|No|false|
 
-Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `serviceDomain`, `srcPort`, and `port` parameters. In that case, `srcPort` is required. Defining multiple destinations is useful in cases when a service exposes multiple ports with different paths and functions.
+Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, and `ReqMode` parameters. In that case, `srcPort` is required. Defining multiple destinations is useful in cases when a service exposes multiple ports with different paths and functions.
 
 ### TCP Mode HTTP Query Parameters
 

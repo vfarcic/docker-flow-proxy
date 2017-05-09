@@ -69,8 +69,8 @@ func (m *Serve) Execute(args []string) error {
 	r.HandleFunc("/v1/docker-flow-proxy/remove", server2.RemoveHandler)
 	r.HandleFunc("/v1/docker-flow-proxy/reload", server2.ReloadHandler)
 	r.HandleFunc("/v1/docker-flow-proxy/ping", server2.PingHandler)
-	r.HandleFunc("/v1/test", server2.TestHandler)
-	r.HandleFunc("/v2/test", server2.TestHandler)
+	r.HandleFunc("/v1/test", server2.Test1Handler)
+	r.HandleFunc("/v2/test", server2.Test2Handler)
 	if err := httpListenAndServe(address, r); err != nil {
 		return err
 	}

@@ -20,7 +20,8 @@ type Server interface {
 	ReconfigureHandler(w http.ResponseWriter, req *http.Request)
 	ReloadHandler(w http.ResponseWriter, req *http.Request)
 	RemoveHandler(w http.ResponseWriter, req *http.Request)
-	TestHandler(w http.ResponseWriter, req *http.Request)
+	Test1Handler(w http.ResponseWriter, req *http.Request)
+	Test2Handler(w http.ResponseWriter, req *http.Request)
 }
 
 const (
@@ -84,8 +85,15 @@ func (m *serve) GetServiceFromUrl(req *http.Request) *proxy.Service {
 	return proxy.GetServiceFromProvider(&provider)
 }
 
-func (m *serve) TestHandler(w http.ResponseWriter, req *http.Request) {
-	js, _ := json.Marshal(Response{Status: "OK"})
+func (m *serve) Test1Handler(w http.ResponseWriter, req *http.Request) {
+	js, _ := json.Marshal(Response{Status: "OK", Message: "Test v1"})
+	httpWriterSetContentType(w, "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(js)
+}
+
+func (m *serve) Test2Handler(w http.ResponseWriter, req *http.Request) {
+	js, _ := json.Marshal(Response{Status: "OK", Message: "Test v2"})
 	httpWriterSetContentType(w, "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(js)

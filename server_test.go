@@ -518,7 +518,8 @@ type ServerMock struct {
 	ReconfigureHandlerMock     func(w http.ResponseWriter, req *http.Request)
 	ReloadHandlerMock          func(w http.ResponseWriter, req *http.Request)
 	RemoveHandlerMock          func(w http.ResponseWriter, req *http.Request)
-	TestHandlerMock            func(w http.ResponseWriter, req *http.Request)
+	Test1HandlerMock           func(w http.ResponseWriter, req *http.Request)
+	Test2HandlerMock           func(w http.ResponseWriter, req *http.Request)
 }
 
 func MockServer(mock ServerMock) func() {
@@ -533,8 +534,12 @@ func (m ServerMock) GetServiceFromUrl(req *http.Request) *proxy.Service {
 	return m.GetServiceFromUrlMock(req)
 }
 
-func (m ServerMock) TestHandler(w http.ResponseWriter, req *http.Request) {
-	m.TestHandlerMock(w, req)
+func (m ServerMock) Test1Handler(w http.ResponseWriter, req *http.Request) {
+	m.Test1HandlerMock(w, req)
+}
+
+func (m ServerMock) Test2Handler(w http.ResponseWriter, req *http.Request) {
+	m.Test2HandlerMock(w, req)
 }
 
 func (m ServerMock) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {

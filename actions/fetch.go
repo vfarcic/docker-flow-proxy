@@ -11,13 +11,13 @@ import (
 )
 
 type Fetchable interface {
+	// TODO: It's deprecated (Consul). Remove it.
 	ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error
-	//sends request to swarm-listener to request reconfiguration of all
-	//proxy instances in swarm
+	// Sends request to swarm-listener to request reconfiguration of all proxy instances in Swarm.
 	ReloadClusterConfig(listenerAddr string) error
-	//reconfigures this instance of proxy based on configuration taken from
-	//swarm-listener. This is synchronous. if listenerAddr is nil, unreachable
-	//or any other problem error is returned.
+	// Reconfigures this instance of proxy based on configuration taken from swarm-listener.
+	// This is synchronous.
+	// If listenerAddr is nil, unreachable or any other problem error is returned.
 	ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr string) error
 }
 type Fetch struct {
@@ -32,6 +32,7 @@ var NewFetch = func(baseData BaseReconfigure, mode string) Fetchable {
 	}
 }
 
+// TODO: It's deprecated (Consul). Remove it.
 func (m *Fetch) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
 	if len(addresses) > 0 {
 		return m.reloadFromRegistry(addresses, instanceName, mode)
@@ -97,6 +98,7 @@ func (m *Fetch) getReload() Reloader {
 	return NewReload()
 }
 
+// TODO: It's deprecated (Consul). Remove it.
 func (m *Fetch) reloadFromRegistry(addresses []string, instanceName, mode string) error {
 	var resp *http.Response
 	var err error
@@ -139,6 +141,7 @@ func (m *Fetch) reloadFromRegistry(addresses []string, instanceName, mode string
 	return reload.Execute(true)
 }
 
+// TODO: It's deprecated (Consul). Remove it.
 func (m *Fetch) getService(addresses []string, serviceName, instanceName string, c chan proxy.Service) {
 	sr := proxy.Service{ServiceName: serviceName}
 
@@ -162,7 +165,7 @@ func (m *Fetch) getService(addresses []string, serviceName, instanceName string,
 	c <- sr
 }
 
-// TODO: Remove in favour of registry.GetServiceAttribute
+// TODO: It's deprecated (Consul). Remove it.
 func (m *Fetch) getServiceAttribute(addresses []string, serviceName, key, instanceName string) (string, bool) {
 	for _, address := range addresses {
 		url := fmt.Sprintf("%s/v1/kv/%s/%s/%s?raw", address, instanceName, serviceName, key)

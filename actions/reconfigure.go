@@ -39,13 +39,11 @@ type BaseReconfigure struct {
 	TemplatesPath   string `short:"t" long:"templates-path" default:"/cfg/tmpl" description:"The path to the templates directory"`
 }
 
-// TODO: Change proxy.Service to *proxy.Service
 // Singleton instance
 var ReconfigureInstance Reconfigure
 
 /*
 Creates new instance of the Reconfigurable interface
-TODO: Change proxy.Service to *proxy.Service
 */
 var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, mode string) Reconfigurable {
 	return &Reconfigure{
@@ -177,7 +175,7 @@ func (m *Reconfigure) GetTemplates() (front, back string, err error) {
 			return "", "", err
 		}
 		front, back = m.parseTemplate(string(feTmpl), "", string(beTmpl), sr)
-	} else if len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0 { // Sunset
+	} else if len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0 { // TODO: Deprecated (Consul). Remove it.
 		front, err = m.getConsulTemplateFromFile(sr.ConsulTemplateFePath)
 		if err != nil {
 			return "", "", err
@@ -386,7 +384,7 @@ func (m *Reconfigure) parseTemplate(front, usersList, back string, sr *proxy.Ser
 	return ctFront.String(), ctUsersList.String() + ctBack.String()
 }
 
-// TODO: Move to registry package
+// TODO: Deprecated (Consul). Remove it.
 func (m *Reconfigure) getConsulTemplateFromFile(path string) (string, error) {
 	content, err := readTemplateFile(path)
 	if err != nil {
@@ -395,6 +393,7 @@ func (m *Reconfigure) getConsulTemplateFromFile(path string) (string, error) {
 	return string(content), nil
 }
 
+// TODO: Deprecated (Consul). Remove it.
 func (m *Reconfigure) hasTemplate() bool {
 	return len(m.ConsulTemplateBePath) != 0 ||
 		len(m.ConsulTemplateFePath) != 0 ||

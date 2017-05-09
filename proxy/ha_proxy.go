@@ -377,6 +377,7 @@ func (m *HaProxy) getSni(services *Services, config *ConfigData) {
 	}
 }
 
+// TODO: Move to getFrontTemplate
 func (m *HaProxy) getFrontTemplateSNI(s Service, genHeader bool) string {
 	tmplString := ``
 	if genHeader {
@@ -394,6 +395,7 @@ frontend service_{{.SrcPort}}
 	return m.templateToString(tmplString, s)
 }
 
+// TODO: Move to getFrontTemplate
 func (m *HaProxy) getFrontTemplateTcp(port int, services Services) string {
 	sort.Sort(services)
 	tmpl := fmt.Sprintf(
@@ -444,42 +446,61 @@ frontend tcpFE_%d
 	return tmpl
 }
 
+// TODO: Move all the conditionals inside the template
 func (m *HaProxy) getFrontTemplate(s Service) string {
 	if len(s.PathType) == 0 {
 		s.PathType = "path_beg"
 	}
 	tmplString := fmt.Sprintf(
-		`{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
-    acl url_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{$.PathType}} {{.}}{{end}}{{.SrcPortAcl}}{{end}}{{end}}{{end}}%s`,
+		`
+{{- range .ServiceDest}}
+    {{- if eq .ReqMode "http"}}
+        {{- if ne .Port ""}}
+    acl url_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{$.PathType}} {{.}}{{end}}{{.SrcPortAcl}}
+        {{- end}}
+        {{- $length := len .UserAgent}}{{if gt $length 0}}
+    acl user_agent_{{$.AclName}} hdr(User-Agent) -i{{range .UserAgent}} {{.}}{{end}}
+        {{- end}}
+    {{- end}}
+{{- end}}%s`,
 		m.getAclDomain(&s),
 	)
-	if s.HttpsPort > 0 {
-		tmplString += `
+	tmplString += `
+{{- if gt $.HttpsPort 0 }}
     acl http_{{.ServiceName}} src_port 80
-    acl https_{{.ServiceName}} src_port 443`
-	}
-	if s.RedirectWhenHttpProto {
-		tmplString += `{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
+    acl https_{{.ServiceName}} src_port 443
+{{- end}}
+{{- if $.RedirectWhenHttpProto}}
+    {{- range .ServiceDest}}
+        {{- if eq .ReqMode "http"}}
+            {{- if ne .Port ""}}
     acl is_{{$.AclName}}_http hdr(X-Forwarded-Proto) http
-    redirect scheme https if is_{{$.AclName}}_http url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}{{end}}{{end}}{{end}}`
-	} else if s.HttpsOnly {
-		tmplString += `{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
-    redirect scheme https if !{ ssl_fc } url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}{{end}}{{end}}{{end}}`
-	}
-	tmplString += `{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
-    `
-	if s.HttpsPort > 0 {
-		tmplString += `use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}} http_{{$.ServiceName}}
-    use_backend https-{{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}} https_{{$.ServiceName}}`
-	} else {
-		tmplString += `use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}`
-	}
-	if s.IsDefaultBackend {
-		tmplString += fmt.Sprintf(
-			`
-    default_backend {{$.ServiceName}}-be{{.Port}}`)
-	}
-	tmplString += "{{end}}{{end}}{{end}}"
+    redirect scheme https if is_{{$.AclName}}_http url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}
+            {{- end}}
+        {{- end}}
+    {{- end}}
+{{- end}}
+{{- if not $.RedirectWhenHttpProto}}{{- if $.HttpsOnly}}
+    {{- range .ServiceDest}}
+        {{- if eq .ReqMode "http"}}
+            {{- if ne .Port ""}}
+    redirect scheme https if !{ ssl_fc } url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}
+            {{- end}}
+        {{- end}}
+    {{- end}}
+{{- end}}{{- end}}
+{{- range .ServiceDest}}
+    {{- if eq .ReqMode "http"}}{{- if ne .Port ""}}
+    use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}
+	    {{- if gt $.HttpsPort 0 }} http_{{$.ServiceName}}
+    use_backend https-{{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}} https_{{$.ServiceName}}
+        {{- end}}
+    {{- $length := len .UserAgent}}{{if gt $length 0}} user_agent_{{$.AclName}}{{end}}
+        {{- if $.IsDefaultBackend}}
+    default_backend {{$.ServiceName}}-be{{.Port}}
+        {{- end}}
+    {{- end}}{{- end}}
+{{- end}}`
 	return m.templateToString(tmplString, s)
 }
 
