@@ -459,7 +459,7 @@ func (m *HaProxy) getFrontTemplate(s Service) string {
     acl url_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{$.PathType}} {{.}}{{end}}{{.SrcPortAcl}}
         {{- end}}
         {{- $length := len .UserAgent}}{{if gt $length 0}}
-    acl user_agent_{{$.AclName}} hdr(User-Agent) -i{{range .UserAgent}} {{.}}{{end}}
+    acl user_agent_{{$.AclName}} hdr_sub(User-Agent) -i{{range .UserAgent}} {{.}}{{end}}
         {{- end}}
     {{- end}}
 {{- end}}%s`,

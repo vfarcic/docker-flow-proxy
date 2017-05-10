@@ -1055,7 +1055,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndUser
 	expectedData := fmt.Sprintf(
 		`%s
     acl url_my-service1111 path_beg /path
-    acl user_agent_my-service hdr(User-Agent) -i agent-1 agent-2
+    acl user_agent_my-service hdr_sub(User-Agent) -i agent-1 agent-2
     use_backend my-service-be1111 if url_my-service1111 user_agent_my-service%s`,
 		tmpl,
 		s.ServicesContent,

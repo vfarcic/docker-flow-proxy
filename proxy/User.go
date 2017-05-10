@@ -5,6 +5,7 @@ import (
 	"strconv"
 )
 
+// User data required for authentication
 type User struct {
 	Username      string
 	Password      string
