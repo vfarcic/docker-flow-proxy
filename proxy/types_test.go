@@ -225,7 +225,7 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"port" + indexSuffix:        expected.ServiceDest[0].Port,
 		"reqMode" + indexSuffix:     expected.ServiceDest[0].ReqMode,
 		"servicePath" + indexSuffix: strings.Join(expected.ServiceDest[0].ServicePath, ","),
-		"userAgent" + indexSuffix:   strings.Join(expected.ServiceDest[0].UserAgent, ","),
+		"userAgent" + indexSuffix:   strings.Join(expected.ServiceDest[0].UserAgent.Value, ","),
 	}
 }
 
@@ -251,7 +251,7 @@ func (s *TypesTestSuite) getExpectedService() Service {
 			ServicePath: []string{"/"},
 			Port: "1234",
 			ReqMode: "reqMode",
-			UserAgent: []string{"agent-1", "agent-2"},
+			UserAgent: UserAgent{Value: []string{"agent-1", "agent-2/replace-with_"}, AclName: "agent_1_agent_2_replace_with_"},
 		}},
 		ServiceDomain:         []string{"domain1", "domain2"},
 		ServiceDomainMatchAll: true,

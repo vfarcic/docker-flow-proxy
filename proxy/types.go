@@ -31,7 +31,13 @@ type ServiceDest struct {
 	// Internal use only. Do not modify.
 	SrcPortAclName string
 	// If specified, only requests with the same agent will be forwarded to the backend.
-	UserAgent []string
+	UserAgent UserAgent
+}
+
+// Data used to generate proxy configuration. It is extracted as a separate struct since each user agent needs an ACL identifier. If specified, only requests with the same agent will be forwarded to the backend.
+type UserAgent struct {
+	Value 	[]string
+	AclName string
 }
 
 // Description of a service that should be added to the proxy configuration.
@@ -355,12 +361,13 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 		suffix = fmt.Sprintf(".%d", index)
 	}
 	path := []string{}
-	userAgent := []string{}
+	userAgent := UserAgent{}
 	if len(provider.GetString(fmt.Sprintf("servicePath%s", suffix))) > 0 {
 		path = strings.Split(provider.GetString(fmt.Sprintf("servicePath%s", suffix)), ",")
 	}
 	if len(provider.GetString(fmt.Sprintf("userAgent%s", suffix))) > 0 {
-		userAgent = strings.Split(provider.GetString(fmt.Sprintf("userAgent%s", suffix)), ",")
+		userAgent.Value = strings.Split(provider.GetString(fmt.Sprintf("userAgent%s", suffix)), ",")
+		userAgent.AclName = replaceNonAlphabetAndNumbers(userAgent.Value)
 	}
 	reqMode := "http"
 	if len(provider.GetString(fmt.Sprintf("reqMode%s", suffix))) > 0 {

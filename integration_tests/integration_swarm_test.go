@@ -141,6 +141,40 @@ func (s IntegrationSwarmTestSuite) Test_UserAgent() {
 	if resp != nil {
 		s.NotEqual(200, resp.StatusCode, s.getProxyConf())
 	}
+
+	// With the amiga agent
+
+	req, _ = http.NewRequest("GET", url, nil)
+	req.Header.Add("User-Agent", "amiga")
+	resp, err = client.Do(req)
+
+	s.NoError(err)
+	if resp != nil {
+		s.Equal(200, resp.StatusCode, s.getProxyConf())
+	}
+}
+
+func (s IntegrationSwarmTestSuite) Test_UserAgent_LastIndexCatchesAllNonMatchedRequests() {
+	defer func() { s.reconfigureGoDemo("") }()
+	service1 := "&servicePath.1=/demo&port.1=1111&userAgent.1=amiga"
+	service2 := "&servicePath.2=/demo&port.2=2222&userAgent.2=amstrad"
+	service3 := "&servicePath.3=/demo&port.3=8080"
+	params := "serviceName=go-demo" + service1 + service2 + service3
+	s.reconfigureService(params)
+	url := fmt.Sprintf("http://%s/demo/hello", s.hostIP)
+	client := new(http.Client)
+
+	// Not testing ports 1111 and 2222 since go-demo is not listening on those ports
+
+	// Without the matching agent
+
+	req, _ := http.NewRequest("GET", url, nil)
+	resp, err := client.Do(req)
+
+	s.NoError(err)
+	if resp != nil {
+		s.Equal(200, resp.StatusCode, s.getProxyConf())
+	}
 }
 
 func (s IntegrationSwarmTestSuite) Test_Stats() {

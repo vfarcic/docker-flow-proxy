@@ -458,8 +458,8 @@ func (m *HaProxy) getFrontTemplate(s Service) string {
         {{- if ne .Port ""}}
     acl url_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{$.PathType}} {{.}}{{end}}{{.SrcPortAcl}}
         {{- end}}
-        {{- $length := len .UserAgent}}{{if gt $length 0}}
-    acl user_agent_{{$.AclName}} hdr_sub(User-Agent) -i{{range .UserAgent}} {{.}}{{end}}
+        {{- $length := len .UserAgent.Value}}{{if gt $length 0}}
+    acl user_agent_{{$.AclName}}_{{.UserAgent.AclName}} hdr_sub(User-Agent) -i{{range .UserAgent.Value}} {{.}}{{end}}
         {{- end}}
     {{- end}}
 {{- end}}%s`,
@@ -495,7 +495,7 @@ func (m *HaProxy) getFrontTemplate(s Service) string {
 	    {{- if gt $.HttpsPort 0 }} http_{{$.ServiceName}}
     use_backend https-{{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}} https_{{$.ServiceName}}
         {{- end}}
-    {{- $length := len .UserAgent}}{{if gt $length 0}} user_agent_{{$.AclName}}{{end}}
+    {{- $length := len .UserAgent.Value}}{{if gt $length 0}} user_agent_{{$.AclName}}_{{.UserAgent.AclName}}{{end}}
         {{- if $.IsDefaultBackend}}
     default_backend {{$.ServiceName}}-be{{.Port}}
         {{- end}}
