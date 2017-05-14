@@ -134,8 +134,7 @@ func (s IntegrationSwarmTestSuite) Test_UserAgent() {
 
 	// Without the matching agent
 
-	req, _ = http.NewRequest("GET", url, nil)
-	resp, err = client.Do(req)
+	resp, err = http.Get(url)
 
 	s.NoError(err)
 	if resp != nil {
@@ -162,18 +161,31 @@ func (s IntegrationSwarmTestSuite) Test_UserAgent_LastIndexCatchesAllNonMatchedR
 	params := "serviceName=go-demo" + service1 + service2 + service3
 	s.reconfigureService(params)
 	url := fmt.Sprintf("http://%s/demo/hello", s.hostIP)
-	client := new(http.Client)
 
 	// Not testing ports 1111 and 2222 since go-demo is not listening on those ports
 
 	// Without the matching agent
 
-	req, _ := http.NewRequest("GET", url, nil)
-	resp, err := client.Do(req)
+	resp, err := http.Get(url)
 
 	s.NoError(err)
 	if resp != nil {
 		s.Equal(200, resp.StatusCode, s.getProxyConf())
+	}
+}
+
+func (s IntegrationSwarmTestSuite) Test_VerifyClientSsl_DeniesRequest() {
+	defer func() { s.reconfigureGoDemo("") }()
+	s.reconfigureGoDemo("&verifyClientSsl=true")
+	url := fmt.Sprintf("http://%s/demo/hello", s.hostIP)
+
+	// Returns 403 Forbidden
+
+	resp, err := http.Get(url)
+
+	s.NoError(err)
+	if resp != nil {
+		s.Equal(403, resp.StatusCode, s.getProxyConf())
 	}
 }
 

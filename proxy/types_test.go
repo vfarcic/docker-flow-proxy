@@ -222,10 +222,11 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"usersPassEncrypted":    "true",
 		"xForwardedProto":       strconv.FormatBool(expected.XForwardedProto),
 		// ServiceDest
-		"port" + indexSuffix:        expected.ServiceDest[0].Port,
-		"reqMode" + indexSuffix:     expected.ServiceDest[0].ReqMode,
-		"servicePath" + indexSuffix: strings.Join(expected.ServiceDest[0].ServicePath, ","),
-		"userAgent" + indexSuffix:   strings.Join(expected.ServiceDest[0].UserAgent.Value, ","),
+		"port" + indexSuffix:        	 expected.ServiceDest[0].Port,
+		"reqMode" + indexSuffix:     	 expected.ServiceDest[0].ReqMode,
+		"servicePath" + indexSuffix: 	 strings.Join(expected.ServiceDest[0].ServicePath, ","),
+		"userAgent" + indexSuffix:   	 strings.Join(expected.ServiceDest[0].UserAgent.Value, ","),
+		"verifyClientSsl" + indexSuffix: strconv.FormatBool(expected.ServiceDest[0].VerifyClientSsl),
 	}
 }
 
@@ -252,6 +253,7 @@ func (s *TypesTestSuite) getExpectedService() Service {
 			Port: "1234",
 			ReqMode: "reqMode",
 			UserAgent: UserAgent{Value: []string{"agent-1", "agent-2/replace-with_"}, AclName: "agent_1_agent_2_replace_with_"},
+			VerifyClientSsl: true,
 		}},
 		ServiceDomain:         []string{"domain1", "domain2"},
 		ServiceDomainMatchAll: true,
