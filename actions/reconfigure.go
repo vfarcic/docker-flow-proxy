@@ -285,11 +285,16 @@ backend %s{{$.ServiceName}}-be{{.Port}}
 
 func (m *Reconfigure) getServerTemplate(protocol string) string {
 	if strings.EqualFold(m.Mode, "service") || strings.EqualFold(m.Mode, "swarm") {
+		tmpl := `
+    {{- if eq .VerifyClientSsl true}}
+    acl valid_client_cert_{{$.ServiceName}}{{.Port}} ssl_c_used ssl_c_verify 0
+    http-request deny unless valid_client_cert_{{$.ServiceName}}{{.Port}}
+    {{- end}}`
 		if strings.EqualFold(protocol, "https") {
-			return `
+			return tmpl + `
     server {{$.ServiceName}} {{$.Host}}:{{$.HttpsPort}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}`
 		}
-		return `
+		return tmpl + `
     server {{$.ServiceName}} {{$.Host}}:{{.Port}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}`
 	}
 	// It's Consul

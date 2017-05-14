@@ -30,6 +30,8 @@ type ServiceDest struct {
 	SrcPortAcl string
 	// Internal use only. Do not modify.
 	SrcPortAclName string
+	// Whether to verify client SSL and deny request when it is invalid
+	VerifyClientSsl bool
 	// If specified, only requests with the same agent will be forwarded to the backend.
 	UserAgent UserAgent
 }

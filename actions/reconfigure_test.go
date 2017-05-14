@@ -204,6 +204,22 @@ backend myService-be1234
 	s.Equal(expected, actual)
 }
 
+func (s ReconfigureTestSuite) Test_GetTemplates_AddsRequestDeny_WhenVerifyClientSslIsTrue() {
+	s.reconfigure.Mode = "service"
+	s.reconfigure.Service.ServiceDest[0].Port = "1234"
+	s.reconfigure.Service.ServiceDest[0].VerifyClientSsl = true
+	expected := `
+backend myService-be1234
+    mode http
+    acl valid_client_cert_myService1234 ssl_c_used ssl_c_verify 0
+    http-request deny unless valid_client_cert_myService1234
+    server myService myService:1234`
+
+	_, actual, _ := s.reconfigure.GetTemplates()
+
+	s.Equal(expected, actual)
+}
+
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsLoggin_WhenDebug() {
 	debugOrig := os.Getenv("DEBUG")
 	defer func() { os.Setenv("DEBUG", debugOrig) }()

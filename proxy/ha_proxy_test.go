@@ -1354,13 +1354,55 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCerts() {
 	tmpl := strings.Replace(
 		s.TemplateContent,
 		"\n    bind *:80\n    bind *:443",
-		"\n    bind *:80\n    bind *:443 "+expected,
+		"\n    bind *:80\n    bind *:443 " + expected,
 		-1)
 	expectedData := fmt.Sprintf(
 		`%s%s`,
 		tmpl,
 		s.ServicesContent,
 	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+
+	NewHaProxy(s.TemplatesPath, s.ConfigsPath).CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCaFile_WhenEnvVarIsSet() {
+	caFile := "my-ca-file"
+	caFileOrig := os.Getenv("CA_FILE")
+	readDirOrig := ReadDir
+	defer func() {
+		ReadDir = readDirOrig
+		os.Setenv("CA_FILE", caFileOrig)
+	}()
+	os.Setenv("CA_FILE", caFile)
+	certName := "my-cert"
+	file := FileInfoMock{
+		NameMock: func() string {
+			return certName
+		},
+		IsDirMock: func() bool {
+			return false
+		},
+	}
+	mockedFiles := []os.FileInfo{file}
+
+	ReadDir = func(dir string) ([]os.FileInfo, error) {
+		if dir == "/certs" {
+			return mockedFiles, nil
+		}
+		return []os.FileInfo{}, nil
+	}
+	var actualData string
+	tmpl := strings.Replace(
+		s.TemplateContent, "bind *:443",
+		"bind *:443 ssl crt /certs/" + certName + " ca-file " + caFile + " verify optional",
+		-1)
+	expectedData := tmpl + s.ServicesContent
 	writeFile = func(filename string, data []byte, perm os.FileMode) error {
 		actualData = string(data)
 		return nil

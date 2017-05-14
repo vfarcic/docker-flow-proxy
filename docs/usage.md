@@ -42,22 +42,23 @@ Multiple destinations for a single service can be specified by adding index as a
 
 The following query parameters can be used only when `reqMode` is set to `http` or is empty.
 
-|Query        |Description                                                                     |Required|Default|
-|-------------|--------------------------------------------------------------------------------|--------|-------|
-|distribute   |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.<br>Example: `true`|No|false|
-|httpsOnly    |If set to true, HTTP requests to the service will be redirected to HTTPS.<br>Example: `true`|No      |false  |
-|outboundHostname|The hostname where the service is running, for instance on a separate swarm. If specified, the proxy will dispatch requests to that domain.<br>Example: `ecme.com`|No| |
-|pathType     |The ACL derivative. Defaults to *path_beg*. See [HAProxy path](https://cbonte.github.io/haproxy-dconv/configuration-1.5.html#7.3.6-path) for more info.<br>Example: `path_beg`|No| |
-|redirectWhenHttpProto|Whether to redirect to https when X-Forwarded-Proto is set and the request is made over an HTTP port.<br>Example: `true`|No|false|
-|serviceCert  |Content of the PEM-encoded certificate to be used by the proxy when serving traffic over SSL.|No| |
-|servicePath  |The URL path of the service. Multiple values should be separated with comma (`,`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `servicePath.1`, `servicePath.2`, and so on).<br>Example: `/api/v1/books`|If `serviceDomain` is not specified.| |
-|sslVerifyNone|If set to true, backend server certificates are not verified. This flag should be set for SSL enabled backend services.<br>Example: `true`|No|false|
-|templateBePath|The path to the template representing a snippet of the backend configuration. If specified, the backend template will be loaded from the specified file. If specified, `templateFePath` must be set as well. See the [Templates](#templates) section for more info.<br>Example: `/tmpl/be.tmpl`| | |
-|templateFePath|The path to the template representing a snippet of the frontend configuration. If specified, the frontend template will be loaded from the specified file. If specified, `templateBePath` must be set as well. See the [Templates](#templates) section for more info.<br>Example: `/tmpl/fe.tmpl`| | |
-|userAgent    |A comma-separated list of user agents. only requests with the same User-Agent will be forwarded to the backend. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `userAgent.1`, `userAgent.2`, and so on). If the same service is used for multiple agents, it is recommended to use indexes with the last one being without `userAgent`. That way, if no match is found, the last indexed destination will be used as catch-all.<br>Example: `googlebot,iphone`|No| |
-|users        |A comma-separated list of credentials (<user>:<pass>) for HTTP basic authentication. It applies only to the service that will be reconfigured. If used with `usersSecret`, or when `USERS` environment variable is set, password may be omitted. In that case, it will be taken from `usersSecret` file or the global configuration if `usersSecret` is not present.<br>Example: `usr1:pwd1, usr2:pwd2`|No| |
-|usersSecret  |Suffix of Docker secret from which credentials will be taken for this service. Files must be a comma-separated list of credentials (<user>:<pass>). This suffix will be prepended with `dfp_users_`. For example, if the value is `mysecrets` the expected name of the Docker secret is `dfp_users_mysecrets`.<br>Example: `mysecrets`|No| |
-|usersPassEncrypted|Indicates whether passwords provided by `users` or `usersSecret` contain encrypted data. Passwords can be encrypted with the command `mkpasswd -m sha-512 password1`.<br>Example: `true`|No|false|
+|Query        |Description                                                                     |Default|
+|-------------|--------------------------------------------------------------------------------|-------|
+|distribute   |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.<br>Example: `true`|false|
+|httpsOnly    |If set to true, HTTP requests to the service will be redirected to HTTPS.<br>Example: `true`|false|
+|outboundHostname|The hostname where the service is running, for instance on a separate swarm. If specified, the proxy will dispatch requests to that domain.<br>Example: `ecme.com`| |
+|pathType     |The ACL derivative. Defaults to *path_beg*. See [HAProxy path](https://cbonte.github.io/haproxy-dconv/configuration-1.5.html#7.3.6-path) for more info.<br>Example: `path_beg`| |
+|redirectWhenHttpProto|Whether to redirect to https when X-Forwarded-Proto is set and the request is made over an HTTP port.<br>Example: `true`|false|
+|serviceCert  |Content of the PEM-encoded certificate to be used by the proxy when serving traffic over SSL.| |
+|servicePath  |The URL path of the service. Multiple values should be separated with comma (`,`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `servicePath.1`, `servicePath.2`, and so on). This parameter **is mandatory** unless `serviceDomain` is specified.<br>Example: `/api/v1/books` |
+|sslVerifyNone|If set to true, backend server certificates are not verified. This flag should be set for SSL enabled backend services.<br>Example: `true`|false|
+|templateBePath|The path to the template representing a snippet of the backend configuration. If specified, the backend template will be loaded from the specified file. If specified, `templateFePath` must be set as well. See the [Templates](#templates) section for more info.<br>Example: `/tmpl/be.tmpl`| |
+|templateFePath|The path to the template representing a snippet of the frontend configuration. If specified, the frontend template will be loaded from the specified file. If specified, `templateBePath` must be set as well. See the [Templates](#templates) section for more info.<br>Example: `/tmpl/fe.tmpl`| |
+|userAgent    |A comma-separated list of user agents. only requests with the same User-Agent will be forwarded to the backend. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `userAgent.1`, `userAgent.2`, and so on). If the same service is used for multiple agents, it is recommended to use indexes with the last one being without `userAgent`. That way, if no match is found, the last indexed destination will be used as catch-all.<br>Example: `googlebot,iphone`| |
+|users        |A comma-separated list of credentials (<user>:<pass>) for HTTP basic authentication. It applies only to the service that will be reconfigured. If used with `usersSecret`, or when `USERS` environment variable is set, password may be omitted. In that case, it will be taken from `usersSecret` file or the global configuration if `usersSecret` is not present.<br>Example: `usr1:pwd1, usr2:pwd2`| |
+|usersSecret  |Suffix of Docker secret from which credentials will be taken for this service. Files must be a comma-separated list of credentials (<user>:<pass>). This suffix will be prepended with `dfp_users_`. For example, if the value is `mysecrets` the expected name of the Docker secret is `dfp_users_mysecrets`.<br>Example: `mysecrets`| |
+|usersPassEncrypted|Indicates whether passwords provided by `users` or `usersSecret` contain encrypted data. Passwords can be encrypted with the command `mkpasswd -m sha-512 password1`.<br>Example: `true`|false|
+|verifyClientSsl|Whether to verify client SSL and, if it is not valid, deny request. SSL will be validated against the `ca-file` specified through the environment variable `CA_FILE`.|false|
 
 Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, and `ReqMode` parameters. In that case, `srcPort` is required. Defining multiple destinations is useful in cases when a service exposes multiple ports with different paths and functions.
 
@@ -130,6 +131,7 @@ The map between the HTTP query parameters and environment variables is as follow
 |users                |**Not supported**       |
 |usersSecret          |**Not supported**       |
 |usersPassEncrypted   |**Not supported**       |
+|verifyClientSsl      |VERIFY_CLIENT_SSL       |
 |xForwardedProto      |X_FORWARDED_PROTO       |
 
 Please explore the [Configuring Non-Swarm Services](non-swarm.md) tutorial for more info.
