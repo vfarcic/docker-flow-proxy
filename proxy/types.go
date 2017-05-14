@@ -377,7 +377,15 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 	}
 	port := provider.GetString(fmt.Sprintf("port%s", suffix))
 	srcPort, _ := strconv.Atoi(provider.GetString(fmt.Sprintf("srcPort%s", suffix)))
-	return ServiceDest{Port: port, ReqMode: reqMode, SrcPort: srcPort, ServicePath: path, UserAgent: userAgent}
+	verifyClientSsl := getBoolParam(provider, fmt.Sprintf("verifyClientSsl%s", suffix))
+	return ServiceDest{
+		Port: port,
+		ReqMode: reqMode,
+		SrcPort: srcPort,
+		ServicePath: path,
+		VerifyClientSsl: verifyClientSsl,
+		UserAgent: userAgent,
+	}
 
 }
 

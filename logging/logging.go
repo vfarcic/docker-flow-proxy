@@ -24,6 +24,7 @@ func (h *handler) mainLoop() {
 	}
 }
 
+// Starts listening to rsyslog and outputting it to stdout
 var StartLogging = func() {
 	s := syslog.NewServer()
 	s.AddHandler(newHandler())

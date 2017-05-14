@@ -43,6 +43,11 @@ func TestGeneralIntegrationSwarmTestSuite(t *testing.T) {
 
 	exec.Command("/bin/sh", "-c", "docker network create --driver overlay go-demo").Output()
 
+	out, err := exec.Command("/bin/sh", "-c", "docker secret create cert-xip.io.pem /usr/src/myapp/integration_tests/xip.io.pem").CombinedOutput()
+	if err != nil {
+		log.Fatal(err, "\n", string(out))
+	}
+
 	cmd = fmt.Sprintf(
 		`docker service create --name proxy \
     -p 80:80 \
@@ -50,14 +55,16 @@ func TestGeneralIntegrationSwarmTestSuite(t *testing.T) {
     -p 8080:8080 \
     -p 6379:6379 \
     --network proxy \
+    -e DEFAULT_PORTS=80,443:ssl \
     -e MODE=swarm \
     -e STATS_USER=none \
     -e STATS_PASS=none \
     -e TIMEOUT_CONNECT=10 \
     -e TIMEOUT_HTTP_REQUEST=10 \
+    --secret cert-xip.io.pem \
     %s/docker-flow-proxy:beta`,
 		s.dockerHubUser)
-	_, err := s.createService(cmd)
+	_, err = s.createService(cmd)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,6 +80,11 @@ func TestGeneralIntegrationSwarmTestSuite(t *testing.T) {
 	suite.Run(t, s)
 
 	s.removeServices("go-demo", "go-demo-db", "proxy", "proxy-env")
+
+	_, err = exec.Command("/bin/sh", "-c", "docker secret rm cert-xip.io.pem").Output()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 // Tests
@@ -185,7 +197,7 @@ func (s IntegrationSwarmTestSuite) Test_VerifyClientSsl_DeniesRequest() {
 
 	s.NoError(err)
 	if resp != nil {
-		s.Equal(403, resp.StatusCode, s.getProxyConf())
+		s.Equal(403111, resp.StatusCode, s.getProxyConf())
 	}
 }
 
