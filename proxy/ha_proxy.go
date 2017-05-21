@@ -322,7 +322,7 @@ func (m *HaProxy) getSni(services *Services, config *ConfigData) {
 			s.ServiceDest = []ServiceDest{{ReqMode: "http"}}
 		}
 		httpDone := false
-		for _, sd := range s.ServiceDest {
+		for i, sd := range s.ServiceDest {
 			if strings.EqualFold(sd.ReqMode, "http") {
 				if !httpDone {
 					config.ContentFrontend += m.getFrontTemplate(s)
@@ -330,7 +330,7 @@ func (m *HaProxy) getSni(services *Services, config *ConfigData) {
 				httpDone = true
 			} else if strings.EqualFold(sd.ReqMode, "sni") {
 				_, headerExists := snimap[sd.SrcPort]
-				snimap[sd.SrcPort] += m.getFrontTemplateSNI(s, !headerExists)
+				snimap[sd.SrcPort] += m.getFrontTemplateSNI(s, i, !headerExists)
 			} else {
 				tcpService := s
 				tcpService.ServiceDest = []ServiceDest{sd}
@@ -353,20 +353,20 @@ func (m *HaProxy) getSni(services *Services, config *ConfigData) {
 	}
 }
 
-func (m *HaProxy) getFrontTemplateSNI(s Service, gen_header bool) string {
+func (m *HaProxy) getFrontTemplateSNI(s Service, si int, gen_header bool) string {
 	tmplString := ``
 	if gen_header {
-		tmplString += `{{range .ServiceDest}}
+		tmplString += fmt.Sprintf(`{{$sd1 := index $.ServiceDest %d}}
 
-frontend service_{{.SrcPort}}
-    bind *:{{.SrcPort}}
+frontend service_{{$sd1.SrcPort}}
+    bind *:{{$sd1.SrcPort}}
     mode tcp
     tcp-request inspect-delay 5s
-    tcp-request content accept if { req_ssl_hello_type 1 }{{end}}`
+    tcp-request content accept if { req_ssl_hello_type 1 }`, si)
 	}
-	tmplString += `{{range .ServiceDest}}
-    acl sni_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{$.PathType}} {{.}}{{end}}{{.SrcPortAcl}}{{end}}{{range .ServiceDest}}
-    use_backend {{$.ServiceName}}-be{{.Port}} if sni_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}{{end}}`
+	tmplString += fmt.Sprintf(`{{$sd := index $.ServiceDest %d}}
+    acl sni_{{.AclName}}{{$sd.Port}}-%d{{range $sd.ServicePath}} {{$.PathType}} {{.}}{{end}}{{$sd.SrcPortAcl}}
+    use_backend {{$.ServiceName}}-be{{$sd.Port}} if sni_{{$.AclName}}{{$sd.Port}}-%d{{$.AclCondition}}{{$sd.SrcPortAclName}}`, si, si+1, si+1)
 	return m.templateToString(tmplString, s)
 }
 
