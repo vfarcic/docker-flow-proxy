@@ -7,7 +7,6 @@ const (
 	CERT_KEY                    = "cert"
 	HOSTNAME_KEY                = "hostname"
 	PATH_TYPE_KEY               = "pathtype"
-	SKIP_CHECK_KEY              = "skipcheck"
 	CONSUL_TEMPLATE_FE_PATH_KEY = "consultemplatefepath"
 	CONSUL_TEMPLATE_BE_PATH_KEY = "consultemplatebepath"
 	PORT                        = "port"
@@ -22,7 +21,6 @@ type Registry struct {
 	ServiceCert          string
 	OutboundHostname     string
 	PathType             string
-	SkipCheck            bool
 	ConsulTemplateFePath string
 	ConsulTemplateBePath string
 }

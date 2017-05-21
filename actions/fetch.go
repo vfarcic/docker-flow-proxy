@@ -7,18 +7,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
 type Fetchable interface {
+	// TODO: It's deprecated (Consul). Remove it.
 	ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error
-	//sends request to swarm-listener to request reconfiguration of all
-	//proxy instances in swarm
+	// Sends request to swarm-listener to request reconfiguration of all proxy instances in Swarm.
 	ReloadClusterConfig(listenerAddr string) error
-	//reconfigures this instance of proxy based on configuration taken from
-	//swarm-listener. This is synchronous. if listenerAddr is nil, unreachable
-	//or any other problem error is returned.
+	// Reconfigures this instance of proxy based on configuration taken from swarm-listener.
+	// This is synchronous.
+	// If listenerAddr is nil, unreachable or any other problem error is returned.
 	ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr string) error
 }
 type Fetch struct {
@@ -33,6 +32,7 @@ var NewFetch = func(baseData BaseReconfigure, mode string) Fetchable {
 	}
 }
 
+// TODO: It's deprecated (Consul). Remove it.
 func (m *Fetch) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
 	if len(addresses) > 0 {
 		return m.reloadFromRegistry(addresses, instanceName, mode)
@@ -41,39 +41,36 @@ func (m *Fetch) ReloadServicesFromRegistry(addresses []string, instanceName, mod
 }
 
 func (m *Fetch) ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr string) error {
-	if len(listenerAddr) > 0 {
-		fullAddress := fmt.Sprintf("%s/v1/docker-flow-swarm-listener/get-services", listenerAddr)
-		resp, err := httpGet(fullAddress)
-		if err != nil {
-			return err
-		} else if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("Swarm Listener responded with the status code %d", resp.StatusCode)
-		} else {
-			logPrintf("Got configuration from %s.", listenerAddr)
-			defer resp.Body.Close()
-			services := []map[string]string{}
-			err := json.NewDecoder(resp.Body).Decode(&services)
-			if err != nil {
-				return err
-			}
-			needsReload := false
-			for _, s := range services {
-				proxyService := proxy.GetServiceFromMap(&s)
-				if statusCode, _ := proxy.IsValidReconf(proxyService); statusCode == http.StatusOK {
-					reconfigure := NewReconfigure(baseData, *proxyService, mode)
-					reconfigure.Execute(false)
-					needsReload = true
-				}
-			}
-			if needsReload {
-				reload := m.getReload()
-				reload.Execute(true)
-			}
-			return nil
-		}
-
+	if len(listenerAddr) == 0 {
+		return fmt.Errorf("Swarm Listener address is missing %s", listenerAddr)
 	}
-	return fmt.Errorf("Swarm Listener address is missing %s", listenerAddr)
+	fullAddress := fmt.Sprintf("%s/v1/docker-flow-swarm-listener/get-services", listenerAddr)
+	resp, err := httpGet(fullAddress)
+	if err != nil {
+		return err
+	} else if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Swarm Listener responded with the status code %d", resp.StatusCode)
+	}
+	logPrintf("Got configuration from %s.", listenerAddr)
+	defer resp.Body.Close()
+	services := []map[string]string{}
+	if err = json.NewDecoder(resp.Body).Decode(&services); err != nil {
+		return err
+	}
+	needsReload := false
+	for _, s := range services {
+		proxyService := proxy.GetServiceFromMap(&s)
+		if statusCode, _ := proxy.IsValidReconf(proxyService); statusCode == http.StatusOK {
+			reconfigure := NewReconfigure(baseData, *proxyService, mode)
+			reconfigure.Execute(false)
+			needsReload = true
+		}
+	}
+	if needsReload {
+		reload := m.getReload()
+		reload.Execute(true)
+	}
+	return nil
 }
 
 func (m *Fetch) ReloadClusterConfig(listenerAddr string) error {
@@ -98,6 +95,7 @@ func (m *Fetch) getReload() Reloader {
 	return NewReload()
 }
 
+// TODO: It's deprecated (Consul). Remove it.
 func (m *Fetch) reloadFromRegistry(addresses []string, instanceName, mode string) error {
 	var resp *http.Response
 	var err error
@@ -140,6 +138,7 @@ func (m *Fetch) reloadFromRegistry(addresses []string, instanceName, mode string
 	return reload.Execute(true)
 }
 
+// TODO: It's deprecated (Consul). Remove it.
 func (m *Fetch) getService(addresses []string, serviceName, instanceName string, c chan proxy.Service) {
 	sr := proxy.Service{ServiceName: serviceName}
 
@@ -157,15 +156,13 @@ func (m *Fetch) getService(addresses []string, serviceName, instanceName string,
 		sr.ServiceCert, _ = m.getServiceAttribute(addresses, serviceName, registry.CERT_KEY, instanceName)
 		sr.OutboundHostname, _ = m.getServiceAttribute(addresses, serviceName, registry.HOSTNAME_KEY, instanceName)
 		sr.PathType, _ = m.getServiceAttribute(addresses, serviceName, registry.PATH_TYPE_KEY, instanceName)
-		skipCheck, _ := m.getServiceAttribute(addresses, serviceName, registry.SKIP_CHECK_KEY, instanceName)
-		sr.SkipCheck, _ = strconv.ParseBool(skipCheck)
 		sr.ConsulTemplateFePath, _ = m.getServiceAttribute(addresses, serviceName, registry.CONSUL_TEMPLATE_FE_PATH_KEY, instanceName)
 		sr.ConsulTemplateBePath, _ = m.getServiceAttribute(addresses, serviceName, registry.CONSUL_TEMPLATE_BE_PATH_KEY, instanceName)
 	}
 	c <- sr
 }
 
-// TODO: Remove in favour of registry.GetServiceAttribute
+// TODO: It's deprecated (Consul). Remove it.
 func (m *Fetch) getServiceAttribute(addresses []string, serviceName, key, instanceName string) (string, bool) {
 	for _, address := range addresses {
 		url := fmt.Sprintf("%s/v1/kv/%s/%s/%s?raw", address, instanceName, serviceName, key)

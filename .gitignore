@@ -11,3 +11,4 @@ secrets*
 do/proxy-key*
 /site
 /*.pem
+/tmp.md

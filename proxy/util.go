@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -71,4 +72,9 @@ func IsValidReconf(service *Service) (statusCode int, msg string) {
 		return http.StatusBadRequest, "When NOT using reqMode http (e.g. tcp), srcPort and port parameters are mandatory."
 	}
 	return http.StatusOK, ""
+}
+
+func replaceNonAlphabetAndNumbers(value []string) string {
+	reg, _ := regexp.Compile("[^A-Za-z0-9]+")
+	return reg.ReplaceAllString(strings.Join(value, "_"), "_")
 }

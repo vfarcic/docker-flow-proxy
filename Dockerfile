@@ -11,19 +11,22 @@ RUN apk add --no-cache --virtual .build-deps curl unzip && \
 RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 RUN mkdir -p /cfg/tmpl /consul_templates /templates /certs /logs
 
-ENV CONNECTION_MODE="http-keep-alive" \
+ENV CERTS="" \
+    CFG_TEMPLATE_PATH="/cfg/haproxy.cfg" \
+    CHECK_RESOLVERS=false \
+    CONNECTION_MODE="http-keep-alive" \
     CONSUL_ADDRESS="" \
     DEBUG="false" \
+    DEFAULT_PORTS="80,443:ssl" \
+    EXTRA_FRONTEND="" \
     LISTENER_ADDRESS="" \
     MODE="default" \
     PROXY_INSTANCE_NAME="docker-flow" \
+    RELOAD_INTERVAL="5000" \
     SERVICE_NAME="proxy" \
     STATS_USER="" STATS_USER_ENV="STATS_USER" STATS_PASS="" STATS_PASS_ENV="STATS_PASS" STATS_URI="" STATS_URI_ENV="STATS_URI" \
     TIMEOUT_HTTP_REQUEST="5" TIMEOUT_HTTP_KEEP_ALIVE="15" TIMEOUT_CLIENT="20" TIMEOUT_CONNECT="5" TIMEOUT_QUEUE="30" TIMEOUT_SERVER="20" TIMEOUT_TUNNEL="3600" \
     USERS="" \
-    EXTRA_FRONTEND="" \
-    DEFAULT_PORTS="80,443:ssl" \
-    CERTS="" \
     SKIP_ADDRESS_VALIDATION="true" \
     SSL_BIND_OPTIONS="no-sslv3" SSL_BIND_CIPHERS="ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS"
 

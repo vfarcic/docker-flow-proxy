@@ -8,8 +8,6 @@ type runner interface {
 
 type Run struct{}
 
-var run Run
-
 var NewRun = func() runner {
 	return &Run{}
 }

@@ -26,7 +26,6 @@ type FetchTestSuite struct {
 	PutPathResponse   string
 	ConsulRequestBody proxy.Service
 	InstanceName      string
-	SkipCheck         bool
 }
 
 func (s *FetchTestSuite) SetupTest() {
@@ -37,7 +36,6 @@ func (s *FetchTestSuite) SetupTest() {
 	s.ServiceDest = []proxy.ServiceDest{sd}
 	s.ConfigsPath = "path/to/configs/dir"
 	s.TemplatesPath = "test_configs/tmpl"
-	s.SkipCheck = false
 	s.PathType = "path_beg"
 	s.ConsulTemplateFe = `
     acl url_myService path_beg path/to/my/service/api path_beg path/to/my/other/service/api

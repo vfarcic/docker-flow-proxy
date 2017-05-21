@@ -12,7 +12,6 @@ global
 defaults
     mode    http
     balance roundrobin
-    default-server init-addr last,libc,none
 {{.ExtraDefaults}}
     option  {{.ConnectionMode}}
     option  forwardfor

@@ -83,7 +83,6 @@ func (s *ConsulTestSuite) Test_PutService_PutsDataToConsul() {
 		{"domain", strings.Join(s.registry.ServiceDomain, ",")},
 		{"hostname", s.registry.OutboundHostname},
 		{"pathtype", s.registry.PathType},
-		{"skipcheck", fmt.Sprintf("%t", s.registry.SkipCheck)},
 		{"consultemplatefepath", s.registry.ConsulTemplateFePath},
 		{"consultemplatebepath", s.registry.ConsulTemplateBePath},
 		{"port", string(s.registry.Port)},
@@ -499,7 +498,6 @@ func TestConsulUnitTestSuite(t *testing.T) {
 		ServiceDomain:        []string{"ServiceDomain"},
 		OutboundHostname:     "OutboundHostname",
 		PathType:             "PathType",
-		SkipCheck:            true,
 		ConsulTemplateFePath: "ConsulTemplateFePath",
 		ConsulTemplateBePath: "ConsulTemplateBePath",
 	}

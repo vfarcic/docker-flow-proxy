@@ -1,4 +1,4 @@
-version: "3"
+version: "3.1"
 
 services:
 
@@ -13,6 +13,8 @@ services:
       - LISTENER_ADDRESS=swarm-listener
       - MODE=swarm
       - CONNECTION_MODE=http-keep-alive
+    secrets:
+      - dfp_users_vfarcic
     deploy:
       replicas: 2
       update_config:
@@ -40,4 +42,8 @@ services:
 
 networks:
   proxy:
+    external: true
+
+secrets:
+  dfp_users_vfarcic:
     external: true

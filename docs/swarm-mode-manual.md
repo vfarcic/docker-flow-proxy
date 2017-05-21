@@ -105,7 +105,7 @@ That's it. All we had to do is send an HTTP request to `reconfigure` the proxy. 
 
 The output of the reconfigure request is as follows (formatted for better readability).
 
-```json
+```
 {
   "Status": "OK",
   "Message": "",
@@ -116,7 +116,6 @@ The output of the reconfigure request is as follows (formatted for better readab
   ],
   "ServiceDomain": "",
   "PathType": "",
-  "SkipCheck": false,
   "Mode": "swarm",
   "Port": "8080"
 }

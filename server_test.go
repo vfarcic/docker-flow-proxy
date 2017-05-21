@@ -192,48 +192,51 @@ func (s *ServerTestSuite) Test_Execute_InvokesReconfigureExecuteForEachServiceDe
 	s.Equal(2, called)
 }
 
-// TODO: Too slow. Refactor it.
-//func (s *ServerTestSuite) Test_Execute_InvokesReloadAllServicesWithListenerAddress() {
-//	expectedListenerAddress := "swarm-listener"
-//	reloadFromRegistryCalled := false
-//	actualListenerAddressChan := make(chan string)
-//	defer MockReconfigure(ReconfigureMock{
-//		ExecuteMock: func(reloadAfter bool) error {
-//			return nil
-//		},
-//	})()
-//	defer MockFetch(FetchMock{
-//		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
-//			reloadFromRegistryCalled = true
-//			return nil
-//		},
-//		ReloadConfigMock: func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
-//			actualListenerAddressChan <- listenerAddr
-//			return nil
-//		},
-//	})()
-//	consulAddressesOrig := []string{s.ConsulAddress}
-//	defer func() {
-//		os.Unsetenv("CONSUL_ADDRESS")
-//		os.Unsetenv("LISTENER_ADDRESS")
-//		serverImpl.ConsulAddresses = consulAddressesOrig
-//	}()
-//	os.Setenv("CONSUL_ADDRESS", s.ConsulAddress)
-//	serverImpl.ListenerAddress = expectedListenerAddress
-//
-//	serverImpl.Execute([]string{})
-//
-//	actualListenerAddress, _ := <-actualListenerAddressChan
-//	close(actualListenerAddressChan)
-//	s.Equal(fmt.Sprintf("http://%s:8080", expectedListenerAddress), actualListenerAddress)
-//}
+// TODO: Extract common code from Test_Execute_InvokesReloadAllServicesWithListenerAddress, Test_Execute_RetriesContactingSwarmListenerAddress_WhenError, and Test_Execute_RepeatsContactingSwarmListenerAddress
+func (s *ServerTestSuite) Test_Execute_InvokesReloadAllServicesWithListenerAddress() {
+	expectedListenerAddress := "swarm-listener"
+	reloadFromRegistryCalled := false
+	actualListenerAddressChan := make(chan string)
+	retryIntervalOrig := os.Getenv("RELOAD_INTERVAL")
+	defer func() { os.Setenv("RELOAD_INTERVAL", retryIntervalOrig) }()
+	os.Setenv("RELOAD_INTERVAL", "1")
+	defer MockReconfigure(ReconfigureMock{
+		ExecuteMock: func(reloadAfter bool) error {
+			return nil
+		},
+	})()
+	defer MockFetch(FetchMock{
+		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
+			reloadFromRegistryCalled = true
+			return nil
+		},
+		ReloadConfigMock: func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
+			actualListenerAddressChan <- listenerAddr
+			return nil
+		},
+	})()
+	consulAddressesOrig := []string{s.ConsulAddress}
+	defer func() {
+		os.Unsetenv("CONSUL_ADDRESS")
+		os.Unsetenv("LISTENER_ADDRESS")
+		serverImpl.ConsulAddresses = consulAddressesOrig
+	}()
+	os.Setenv("CONSUL_ADDRESS", s.ConsulAddress)
+	serverImpl.ListenerAddress = expectedListenerAddress
 
-func (s *ServerTestSuite) Test_Execute_RetriesContactingSwarmListenerAddress() {
+	serverImpl.Execute([]string{})
+
+	actualListenerAddress, _ := <-actualListenerAddressChan
+	close(actualListenerAddressChan)
+	s.Equal(fmt.Sprintf("http://%s:8080", expectedListenerAddress), actualListenerAddress)
+}
+
+func (s *ServerTestSuite) Test_Execute_RetriesContactingSwarmListenerAddress_WhenError() {
 	expectedListenerAddress := "swarm-listener"
 	actualListenerAddressChan := make(chan string)
-	retryIntervalOrig := retryInterval
-	defer func() { retryInterval = retryIntervalOrig }()
-	retryInterval = 1
+	retryIntervalOrig := os.Getenv("RELOAD_INTERVAL")
+	defer func() { os.Setenv("RELOAD_INTERVAL", retryIntervalOrig) }()
+	os.Setenv("RELOAD_INTERVAL", "1")
 	callNum := 0
 	defer MockFetch(FetchMock{
 		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
@@ -247,6 +250,52 @@ func (s *ServerTestSuite) Test_Execute_RetriesContactingSwarmListenerAddress() {
 				return nil
 			}
 			return fmt.Errorf("On iteration %d", callNum)
+		},
+	})()
+	consulAddressesOrig := []string{s.ConsulAddress}
+	defer func() {
+		os.Unsetenv("CONSUL_ADDRESS")
+		os.Unsetenv("LISTENER_ADDRESS")
+		serverImpl.ConsulAddresses = consulAddressesOrig
+	}()
+	os.Setenv("CONSUL_ADDRESS", s.ConsulAddress)
+	serverImpl.ListenerAddress = expectedListenerAddress
+
+	serverImpl.Execute([]string{})
+
+	actualListenerAddress1, chok1 := <-actualListenerAddressChan
+	s.True(chok1)
+	actualListenerAddress2, _ := <-actualListenerAddressChan
+	_, chok2 := <-actualListenerAddressChan
+
+	s.False(chok2)
+
+	s.Equal(fmt.Sprintf("http://%s:8080-1", expectedListenerAddress), actualListenerAddress1)
+	s.Equal(fmt.Sprintf("http://%s:8080-2", expectedListenerAddress), actualListenerAddress2)
+}
+
+func (s *ServerTestSuite) Test_Execute_RepeatsContactingSwarmListenerAddress() {
+	defer os.Unsetenv("REPEAT_RELOAD")
+	os.Setenv("REPEAT_RELOAD", "true")
+	expectedListenerAddress := "swarm-listener"
+	actualListenerAddressChan := make(chan string)
+	retryIntervalOrig := os.Getenv("RELOAD_INTERVAL")
+	defer func() { os.Setenv("RELOAD_INTERVAL", retryIntervalOrig) }()
+	os.Setenv("RELOAD_INTERVAL", "1")
+	callNum := 0
+	defer MockFetch(FetchMock{
+		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
+			return nil
+		},
+		ReloadConfigMock: func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
+			callNum = callNum + 1
+			if callNum <= 2 {
+				actualListenerAddressChan <- fmt.Sprintf("%s-%d", listenerAddr, callNum)
+				if callNum == 2 {
+					close(actualListenerAddressChan)
+				}
+			}
+			return nil
 		},
 	})()
 	consulAddressesOrig := []string{s.ConsulAddress}
@@ -420,43 +469,8 @@ func (s *ServerTestSuite) Test_ConfigHandler_ReturnsStatus500_WhenReadFileFails(
 
 // Suite
 
-// TODO: Review whether everything is needed
 func TestServerUnitTestSuite(t *testing.T) {
 	s := new(ServerTestSuite)
-	logPrintf = func(format string, v ...interface{}) {}
-	s.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		actualPath := r.URL.Path
-		if r.Method == "GET" {
-			switch actualPath {
-			case "/v1/docker-flow-proxy/reconfigure":
-				if strings.EqualFold(r.URL.Query().Get("returnError"), "true") {
-					w.WriteHeader(http.StatusInternalServerError)
-				} else {
-					w.WriteHeader(http.StatusOK)
-					w.Header().Set("Content-Type", "application/json")
-				}
-			case "/v1/docker-flow-proxy/remove":
-				w.WriteHeader(http.StatusOK)
-				w.Header().Set("Content-Type", "application/json")
-			default:
-				w.WriteHeader(http.StatusNotFound)
-			}
-		}
-	}))
-	defer func() { s.Server.Close() }()
-	addr := strings.Replace(s.Server.URL, "http://", "", -1)
-	s.DnsIps = []string{strings.Split(addr, ":")[0]}
-
-	lookupHostOrig := lookupHost
-	defer func() { lookupHost = lookupHostOrig }()
-	lookupHost = func(host string) (addrs []string, err error) {
-		return s.DnsIps, nil
-	}
-	sd := proxy.ServiceDest{
-		Port: strings.Split(addr, ":")[1],
-	}
-	s.ServiceDest = []proxy.ServiceDest{sd}
-
 	suite.Run(t, s)
 }
 
@@ -518,7 +532,8 @@ type ServerMock struct {
 	ReconfigureHandlerMock     func(w http.ResponseWriter, req *http.Request)
 	ReloadHandlerMock          func(w http.ResponseWriter, req *http.Request)
 	RemoveHandlerMock          func(w http.ResponseWriter, req *http.Request)
-	TestHandlerMock            func(w http.ResponseWriter, req *http.Request)
+	Test1HandlerMock           func(w http.ResponseWriter, req *http.Request)
+	Test2HandlerMock           func(w http.ResponseWriter, req *http.Request)
 }
 
 func MockServer(mock ServerMock) func() {
@@ -533,8 +548,12 @@ func (m ServerMock) GetServiceFromUrl(req *http.Request) *proxy.Service {
 	return m.GetServiceFromUrlMock(req)
 }
 
-func (m ServerMock) TestHandler(w http.ResponseWriter, req *http.Request) {
-	m.TestHandlerMock(w, req)
+func (m ServerMock) Test1Handler(w http.ResponseWriter, req *http.Request) {
+	m.Test1HandlerMock(w, req)
+}
+
+func (m ServerMock) Test2Handler(w http.ResponseWriter, req *http.Request) {
+	m.Test2HandlerMock(w, req)
 }
 
 func (m ServerMock) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {

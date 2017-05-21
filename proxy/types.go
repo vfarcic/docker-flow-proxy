@@ -2,44 +2,57 @@ package proxy
 
 import (
 	"fmt"
-	"github.com/mitchellh/mapstructure"
-	"reflect"
 	"strconv"
 	"strings"
 )
 
-var extractUsersFromString = ExtractUsersFromString
 var usersBasePath string = "/run/secrets/dfp_users_%s"
 
-// Data used to generate proxy configuration. It is extracted as a separate struct since a single service can have multiple combinations.
+// ServiceDest holds data used to generate proxy configuration. It is extracted as a separate struct since a single service can have multiple combinations.
 type ServiceDest struct {
 	// The internal port of a service that should be reconfigured.
 	// The port is used only in the *swarm* mode.
-	Port             string
-	// The request mode. The proxy should be able to work with any mode supported by HAProxy. However, actively supported and tested modes are *http*, *tcp*, and *sni*.
-	ReqMode          string
+	Port string
+	// The request mode. The proxy should be able to work with any mode supported by HAProxy.
+	// However, actively supported and tested modes are *http*, *tcp*, and *sni*.
+	ReqMode string
 	// Internal use only. Do not modify.
 	ReqModeFormatted string
 	// The URL path of the service.
-	ServicePath      []string
+	ServicePath []string
 	// The source (entry) port of a service.
 	// Useful only when specifying multiple destinations of a single service.
-	SrcPort          int
+	SrcPort int
 	// Internal use only. Do not modify.
-	SrcPortAcl       string
+	SrcPortAcl string
 	// Internal use only. Do not modify.
-	SrcPortAclName   string
+	SrcPortAclName string
+	// Whether to verify client SSL and deny request when it is invalid
+	VerifyClientSsl bool
+	// If specified, only requests with the same agent will be forwarded to the backend.
+	UserAgent UserAgent
 }
 
-// Description of a service that should be added to the proxy configuration.
+// UserAgent holds data used to generate proxy configuration. It is extracted as a separate struct since each user agent needs an ACL identifier. If specified, only requests with the same agent will be forwarded to the backend.
+type UserAgent struct {
+	Value   []string
+	AclName string
+}
+
+// Service contains description of a service that should be added to the proxy configuration.
 type Service struct {
-	// Additional headers that will be added to the request before forwarding it to the service. Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#add-a-header-to-the-request for more info.
-	AddReqHeader []string `split_words:"true"`
-	// Additional headers that will be added to the response before forwarding it to the client.
-	AddResHeader []string `split_words:"true"`
 	// ACLs are ordered alphabetically by their names.
 	// If not specified, serviceName is used instead.
 	AclName string `split_words:"true"`
+	// Additional headers that will be added to the request before forwarding it to the service.
+	// Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#add-a-header-to-the-request for more info.
+	AddReqHeader []string `split_words:"true"`
+	// Additional headers that will be added to the response before forwarding it to the client.
+	AddResHeader []string `split_words:"true"`
+	// Additional configuration that will be added to the bottom of the service backend
+	BackendExtra string `split_words:"true"`
+	// Whether to use `docker` as a check resolver. Set through the environment variable CHECK_RESOLVERS
+	CheckResolvers bool `split_words:"true"`
 	// One of the five connection modes supported by the HAProxy.
 	// `http-keep-alive`: all requests and responses are processed.
 	// `http-tunnel`: only the first request and response are processed, everything else is forwarded with no analysis.
@@ -103,9 +116,6 @@ type Service struct {
 	SetReqHeader []string `split_words:"true"`
 	// Additional headers that will be set to the response before forwarding it to the client. If a specified header exists, it will be replaced with the new one.
 	SetResHeader []string `split_words:"true"`
-	// Whether to skip adding proxy checks.
-	// This option is used only in the default mode.
-	SkipCheck bool `split_words:"true"`
 	// If set to true, server certificates are not verified. This flag should be set for SSL enabled backend services.
 	SslVerifyNone bool `split_words:"true"`
 	// The path to the template representing a snippet of the backend configuration.
@@ -136,7 +146,7 @@ type Service struct {
 	ServiceDest         []ServiceDest
 }
 
-// The list of services used inside the proxy
+// Services contains the list of services used inside the proxy
 type Services []Service
 
 func (slice Services) Len() int {
@@ -187,7 +197,7 @@ func (slice Services) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
 
-func ExtractUsersFromString(context, usersString string, encrypted, skipEmptyPassword bool) []*User {
+func extractUsersFromString(context, usersString string, encrypted, skipEmptyPassword bool) []*User {
 	collectedUsers := []*User{}
 	// TODO: Test
 	if len(usersString) == 0 {
@@ -228,48 +238,14 @@ func ExtractUsersFromString(context, usersString string, encrypted, skipEmptyPas
 	return collectedUsers
 }
 
+// ServiceParameterProvider defines common interface for translating parameters into structs.
 type ServiceParameterProvider interface {
 	Fill(service *Service)
 	GetString(name string) string
 }
 
-type MapParameterProvider struct {
-	theMap *map[string]string
-}
-
-func (p *MapParameterProvider) Fill(service *Service) {
-	//tmpMap := make(map[string]string)
-	//for k, v := range *p.theMap {
-	//	tmpMap[strings.Title(k)] = v
-	//}
-	mapstructure.Decode(p.theMap, service)
-	//above library does not handle bools as strings
-	v := reflect.ValueOf(service).Elem()
-	for i := 0; i < v.NumField(); i++ {
-		if v.Field(i).CanSet() && v.Field(i).Kind() == reflect.Bool {
-			fieldName := v.Type().Field(i).Name
-			value := ""
-			if len(p.GetString(fieldName)) > 0 {
-				value = p.GetString(fieldName)
-			} else if len(p.GetString(LowerFirst(fieldName))) > 0 {
-				value = p.GetString(LowerFirst(fieldName))
-			}
-			value = strings.ToLower(value)
-			if strings.EqualFold(value, "true") {
-				v.Field(i).SetBool(true)
-			} else if strings.EqualFold(value, "false") {
-				v.Field(i).SetBool(false)
-			}
-		}
-	}
-}
-
-func (p *MapParameterProvider) GetString(name string) string {
-	return (*p.theMap)[name]
-}
-
 func GetServiceFromMap(req *map[string]string) *Service {
-	provider := MapParameterProvider{theMap: req}
+	provider := mapParameterProvider{theMap: req}
 	return GetServiceFromProvider(&provider)
 }
 
@@ -315,55 +291,79 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 		globalUsersEncrypted,
 	)
 
-	sr.ServiceDest = getServiceDest(sr, provider)
+	sr.ServiceDest = getServiceDestList(sr, provider)
 	return sr
 }
 
-func getServiceDest(sr *Service, provider ServiceParameterProvider) []ServiceDest {
-	path := []string{}
-	if len(provider.GetString("servicePath")) > 0 {
-		path = strings.Split(provider.GetString("servicePath"), ",")
-	}
-	reqMode := "http"
-	if len(provider.GetString("reqMode")) > 0 {
-		reqMode = provider.GetString("reqMode")
-	}
-
-	port := provider.GetString("port")
-	srcPort, _ := strconv.Atoi(provider.GetString("srcPort"))
-	sd := []ServiceDest{}
-	if len(path) > 0 || len(port) > 0 || (len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0) {
-		sd = append(
-			sd,
-			ServiceDest{Port: port, ReqMode: reqMode, SrcPort: srcPort, ServicePath: path},
-		)
+func getServiceDestList(sr *Service, provider ServiceParameterProvider) []ServiceDest {
+	sdList := []ServiceDest{}
+	sd := getServiceDest(sr, provider, -1)
+	if isServiceDestValid(&sd) || (len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0) {
+		sdList = append(sdList, sd)
 	}
 	for i := 1; i <= 10; i++ {
-		port := provider.GetString(fmt.Sprintf("port.%d", i))
-		path := provider.GetString(fmt.Sprintf("servicePath.%d", i))
-		reqMode := provider.GetString(fmt.Sprintf("reqMode.%d", i))
-
-		srcPort, _ := strconv.Atoi(provider.GetString(fmt.Sprintf("srcPort.%d", i)))
-		if len(path) > 0 && len(port) > 0 {
-			sd = append(
-				sd,
-				ServiceDest{Port: port, ReqMode: reqMode, SrcPort: srcPort, ServicePath: strings.Split(path, ",")},
-			)
+		sd := getServiceDest(sr, provider, i)
+		if isIndexedServiceDestValid(&sd) {
+			sdList = append(sdList, sd)
 		} else {
 			break
 		}
 	}
-	if len(sd) == 0 {
-		sd = append(sd, ServiceDest{ReqMode: reqMode})
+	if len(sdList) == 0 {
+		reqMode := "http"
+		if len(provider.GetString("reqMode")) > 0 {
+			reqMode = provider.GetString("reqMode")
+		}
+		sdList = append(sdList, ServiceDest{ReqMode: reqMode})
 	}
 	if len(sr.ServiceDomain) > 0 {
-		for i := range sd {
-			if len(sd[i].ServicePath) == 0 {
-				sd[i].ServicePath = []string{"/"}
+		for i := range sdList {
+			if len(sdList[i].ServicePath) == 0 {
+				sdList[i].ServicePath = []string{"/"}
 			}
 		}
 	}
-	return sd
+	return sdList
+}
+
+func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) ServiceDest {
+	suffix := ""
+	if index > 0 {
+		suffix = fmt.Sprintf(".%d", index)
+	}
+	path := []string{}
+	userAgent := UserAgent{}
+	if len(provider.GetString(fmt.Sprintf("servicePath%s", suffix))) > 0 {
+		path = strings.Split(provider.GetString(fmt.Sprintf("servicePath%s", suffix)), ",")
+	}
+	if len(provider.GetString(fmt.Sprintf("userAgent%s", suffix))) > 0 {
+		userAgent.Value = strings.Split(provider.GetString(fmt.Sprintf("userAgent%s", suffix)), ",")
+		userAgent.AclName = replaceNonAlphabetAndNumbers(userAgent.Value)
+	}
+	reqMode := "http"
+	if len(provider.GetString(fmt.Sprintf("reqMode%s", suffix))) > 0 {
+		reqMode = provider.GetString(fmt.Sprintf("reqMode%s", suffix))
+	}
+	port := provider.GetString(fmt.Sprintf("port%s", suffix))
+	srcPort, _ := strconv.Atoi(provider.GetString(fmt.Sprintf("srcPort%s", suffix)))
+	verifyClientSsl := getBoolParam(provider, fmt.Sprintf("verifyClientSsl%s", suffix))
+	return ServiceDest{
+		Port:            port,
+		ReqMode:         reqMode,
+		SrcPort:         srcPort,
+		ServicePath:     path,
+		VerifyClientSsl: verifyClientSsl,
+		UserAgent:       userAgent,
+	}
+
+}
+
+func isServiceDestValid(sd *ServiceDest) bool {
+	return len(sd.ServicePath) > 0 || len(sd.Port) > 0
+}
+
+func isIndexedServiceDestValid(sd *ServiceDest) bool {
+	return len(sd.ServicePath) > 0 && len(sd.Port) > 0
 }
 
 func getBoolParam(req ServiceParameterProvider, param string) bool {
@@ -388,7 +388,7 @@ func mergeUsers(
 	if len(paramUsers) > 0 {
 		if !allUsersHavePasswords(paramUsers) {
 			if len(usersSecret) == 0 {
-				fileUsers = ExtractUsersFromString(serviceName, globalUsersString, globalUsersEncrypted, true)
+				fileUsers = extractUsersFromString(serviceName, globalUsersString, globalUsersEncrypted, true)
 			}
 			for _, u := range paramUsers {
 				if !u.HasPassword() {
@@ -428,10 +428,8 @@ func mergeUsers(
 func getUsersFromFile(serviceName, fileName string, passEncrypted bool) ([]*User, error) {
 	if len(fileName) > 0 {
 		usersFile := fmt.Sprintf(usersBasePath, fileName)
-		if content, err := readFile(usersFile); err == nil {
-			userContents := strings.TrimRight(string(content[:]), "\n")
-			return ExtractUsersFromString(serviceName, userContents, passEncrypted, true), nil
-		} else { // TODO: Test
+		content, err := readFile(usersFile)
+		if err != nil {
 			logPrintf(
 				"For service %s it was impossible to load userFile %s due to error %s",
 				serviceName,
@@ -440,6 +438,8 @@ func getUsersFromFile(serviceName, fileName string, passEncrypted bool) ([]*User
 			)
 			return []*User{}, err
 		}
+		userContents := strings.TrimRight(string(content[:]), "\n")
+		return extractUsersFromString(serviceName, userContents, passEncrypted, true), nil
 	}
 	return []*User{}, nil
 }

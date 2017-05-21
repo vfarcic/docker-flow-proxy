@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -38,13 +39,11 @@ type BaseReconfigure struct {
 	TemplatesPath   string `short:"t" long:"templates-path" default:"/cfg/tmpl" description:"The path to the templates directory"`
 }
 
-// TODO: Change proxy.Service to *proxy.Service
 // Singleton instance
 var ReconfigureInstance Reconfigure
 
 /*
 Creates new instance of the Reconfigurable interface
-TODO: Change proxy.Service to *proxy.Service
 */
 var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, mode string) Reconfigurable {
 	return &Reconfigure{
@@ -146,7 +145,6 @@ func (m *Reconfigure) putToConsul(addresses []string, sr proxy.Service, instance
 		ServiceCert:          sr.ServiceCert,
 		OutboundHostname:     sr.OutboundHostname,
 		PathType:             sr.PathType,
-		SkipCheck:            sr.SkipCheck,
 		ConsulTemplateFePath: sr.ConsulTemplateFePath,
 		ConsulTemplateBePath: sr.ConsulTemplateBePath,
 		Port:                 port,
@@ -159,23 +157,15 @@ func (m *Reconfigure) putToConsul(addresses []string, sr proxy.Service, instance
 
 func (m *Reconfigure) GetTemplates() (front, back string, err error) {
 	sr := &m.Service
-	// TODO: Test
+	if value, err := strconv.ParseBool(os.Getenv("CHECK_RESOLVERS")); err == nil {
+		sr.CheckResolvers = value
+	}
 	for i := range sr.ServiceDest {
 		if len(sr.ServiceDest[i].ReqMode) == 0 {
 			sr.ServiceDest[i].ReqMode = "http"
 		}
 	}
-	if len(sr.TemplateFePath) > 0 && len(sr.TemplateBePath) > 0 {
-		feTmpl, err := readTemplateFile(sr.TemplateFePath)
-		if err != nil {
-			return "", "", err
-		}
-		beTmpl, err := readTemplateFile(sr.TemplateBePath)
-		if err != nil {
-			return "", "", err
-		}
-		front, back = m.parseTemplate(string(feTmpl), "", string(beTmpl), sr)
-	} else if len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0 { // Sunset
+	if len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0 { // TODO: Deprecated (Consul). Remove it.
 		front, err = m.getConsulTemplateFromFile(sr.ConsulTemplateFePath)
 		if err != nil {
 			return "", "", err
@@ -186,11 +176,22 @@ func (m *Reconfigure) GetTemplates() (front, back string, err error) {
 		}
 	} else {
 		m.formatData(sr)
-		front, back = m.parseTemplate(
-			"",
-			m.getUsersList(sr),
-			m.getBackTemplate(sr),
-			sr)
+		if len(sr.TemplateFePath) > 0 {
+			feTmpl, err := readTemplateFile(sr.TemplateFePath)
+			if err != nil {
+				return "", "", err
+			}
+			front = m.parseFrontTemplate(string(feTmpl), sr)
+		}
+		if len(sr.TemplateBePath) > 0 {
+			beTmpl, err := readTemplateFile(sr.TemplateBePath)
+			if err != nil {
+				return "", "", err
+			}
+			back = m.parseBackTemplate(string(beTmpl), "", sr)
+		} else {
+			back = m.parseBackTemplate(proxy.GetBackTemplate(sr, m.Mode), m.getUsersList(sr), sr)
+		}
 	}
 	return front, back, nil
 }
@@ -222,144 +223,6 @@ func (m *Reconfigure) formatData(sr *proxy.Service) {
 	}
 }
 
-// TODO: Move to ha_proxy.go
-func (m *Reconfigure) getBackTemplate(sr *proxy.Service) string {
-	back := m.getBackTemplateProtocol("http", sr)
-	if sr.HttpsPort > 0 {
-		back += fmt.Sprintf(
-			`
-%s`,
-			m.getBackTemplateProtocol("https", sr))
-	}
-	return back
-}
-
-func (m *Reconfigure) getBackTemplateProtocol(protocol string, sr *proxy.Service) string {
-	prefix := ""
-	if strings.EqualFold(protocol, "https") {
-		prefix = "https-"
-	}
-	for i := range sr.ServiceDest {
-		if strings.EqualFold(sr.ServiceDest[i].ReqMode, "sni") {
-			sr.ServiceDest[i].ReqModeFormatted = "tcp"
-		} else {
-			sr.ServiceDest[i].ReqModeFormatted = sr.ServiceDest[i].ReqMode
-		}
-	}
-	tmpl := fmt.Sprintf(`{{range .ServiceDest}}
-backend %s{{$.ServiceName}}-be{{.Port}}
-    mode {{.ReqModeFormatted}}`,
-		prefix,
-	)
-	if len(sr.ConnectionMode) > 0 {
-		tmpl += `
-    option {{$.ConnectionMode}}`
-	}
-	if strings.EqualFold(os.Getenv("DEBUG"), "true") {
-		tmpl += `
-    log global`
-	}
-	tmpl += m.getHeaders(sr)
-	if len(sr.TimeoutServer) > 0 {
-		tmpl += `
-    timeout server {{$.TimeoutServer}}s`
-	}
-	if len(sr.TimeoutTunnel) > 0 {
-		tmpl += `
-    timeout tunnel {{$.TimeoutTunnel}}s`
-	}
-	// TODO: Deprecated (dec. 2016).
-	if len(sr.ReqRepSearch) > 0 && len(sr.ReqRepReplace) > 0 {
-		tmpl += `
-    reqrep {{$.ReqRepSearch}}     {{$.ReqRepReplace}}`
-	}
-	if len(sr.ReqPathSearch) > 0 && len(sr.ReqPathReplace) > 0 {
-		tmpl += `
-    http-request set-path %[path,regsub({{$.ReqPathSearch}},{{$.ReqPathReplace}})]`
-	}
-	tmpl += m.getServerTemplate(protocol)
-	tmpl += m.getUsersTemplate(sr.Users)
-	tmpl += "{{end}}"
-	return tmpl
-}
-
-func (m *Reconfigure) getServerTemplate(protocol string) string {
-	if strings.EqualFold(m.Mode, "service") || strings.EqualFold(m.Mode, "swarm") {
-		if strings.EqualFold(protocol, "https") {
-			return `
-    server {{$.ServiceName}} {{$.Host}}:{{$.HttpsPort}}{{if eq $.SkipCheck false}} check{{if eq $.SslVerifyNone true}} ssl verify none{{end}}{{end}}`
-		} else {
-			return `
-    server {{$.ServiceName}} {{$.Host}}:{{.Port}}{{if eq $.SkipCheck false}} check{{if eq $.SslVerifyNone true}} ssl verify none{{end}}{{end}}`
-		}
-	} else { // It's Consul
-		return `
-    {{"{{"}}range $i, $e := service "{{$.FullServiceName}}" "any"{{"}}"}}
-    server {{"{{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}"}}{{if eq $.SkipCheck false}} check{{if eq $.SslVerifyNone true}} ssl verify none{{end}}{{end}}
-    {{"{{end}}"}}`
-	}
-}
-
-func (m *Reconfigure) getUsersTemplate(users []proxy.User) string {
-	if len(users) > 0 {
-		return `
-    acl {{$.ServiceName}}UsersAcl http_auth({{$.ServiceName}}Users)
-    http-request auth realm {{$.ServiceName}}Realm if !{{$.ServiceName}}UsersAcl
-    http-request del-header Authorization`
-	} else if len(proxy.GetSecretOrEnvVar("USERS", "")) > 0 {
-		return `
-    acl defaultUsersAcl http_auth(defaultUsers)
-    http-request auth realm defaultRealm if !defaultUsersAcl
-    http-request del-header Authorization`
-	}
-	return ""
-}
-
-func (m *Reconfigure) getHeaders(sr *proxy.Service) string {
-	tmpl := ""
-	if sr.XForwardedProto {
-		tmpl += `
-    http-request add-header X-Forwarded-Proto https if { ssl_fc }`
-	}
-	for _, header := range sr.AddReqHeader {
-		tmpl += fmt.Sprintf(`
-    http-request add-header %s`,
-			header,
-		)
-	}
-	for _, header := range sr.SetReqHeader {
-		tmpl += fmt.Sprintf(`
-    http-request set-header %s`,
-			header,
-		)
-	}
-	for _, header := range sr.AddResHeader {
-		tmpl += fmt.Sprintf(`
-    http-response add-header %s`,
-			header,
-		)
-	}
-	for _, header := range sr.SetResHeader {
-		tmpl += fmt.Sprintf(`
-    http-response set-header %s`,
-			header,
-		)
-	}
-	for _, header := range sr.DelReqHeader {
-		tmpl += fmt.Sprintf(`
-    http-request del-header %s`,
-			header,
-		)
-	}
-	for _, header := range sr.DelResHeader {
-		tmpl += fmt.Sprintf(`
-    http-response del-header %s`,
-			header,
-		)
-	}
-	return tmpl
-}
-
 func (m *Reconfigure) getUsersList(sr *proxy.Service) string {
 	if len(sr.Users) > 0 {
 		return `userlist {{.ServiceName}}Users{{range .Users}}
@@ -370,22 +233,26 @@ func (m *Reconfigure) getUsersList(sr *proxy.Service) string {
 	return ""
 }
 
-func (m *Reconfigure) parseTemplate(front, usersList, back string, sr *proxy.Service) (pFront, pBack string) {
-	var ctFront bytes.Buffer
-	if len(front) > 0 {
-		tmplFront, _ := template.New("template").Parse(front)
-		tmplFront.Execute(&ctFront, sr)
+func (m *Reconfigure) parseFrontTemplate(src string, sr *proxy.Service) string {
+	var buf bytes.Buffer
+	if len(src) > 0 {
+		tmpl, _ := template.New("").Parse(src)
+		tmpl.Execute(&buf, sr)
 	}
-	tmplUsersList, _ := template.New("template").Parse(usersList)
-	tmplBack, _ := template.New("template").Parse(back)
-	var ctUsersList bytes.Buffer
-	var ctBack bytes.Buffer
-	tmplUsersList.Execute(&ctUsersList, sr)
-	tmplBack.Execute(&ctBack, sr)
-	return ctFront.String(), ctUsersList.String() + ctBack.String()
+	return buf.String()
 }
 
-// TODO: Move to registry package
+func (m *Reconfigure) parseBackTemplate(src, usersList string, sr *proxy.Service) string {
+	tmplUsersList, _ := template.New("template").Parse(usersList)
+	tmpl, _ := template.New("").Parse(src)
+	var bufUsersList bytes.Buffer
+	var buf bytes.Buffer
+	tmplUsersList.Execute(&bufUsersList, sr)
+	tmpl.Execute(&buf, sr)
+	return bufUsersList.String() + buf.String()
+}
+
+// TODO: Deprecated (Consul). Remove it.
 func (m *Reconfigure) getConsulTemplateFromFile(path string) (string, error) {
 	content, err := readTemplateFile(path)
 	if err != nil {
@@ -394,6 +261,7 @@ func (m *Reconfigure) getConsulTemplateFromFile(path string) (string, error) {
 	return string(content), nil
 }
 
+// TODO: Deprecated (Consul). Remove it.
 func (m *Reconfigure) hasTemplate() bool {
 	return len(m.ConsulTemplateBePath) != 0 ||
 		len(m.ConsulTemplateFePath) != 0 ||

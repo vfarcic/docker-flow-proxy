@@ -41,7 +41,6 @@ func TestHaProxyUnitTestSuite(t *testing.T) {
 defaults
     mode    http
     balance roundrobin
-    default-server init-addr last,libc,none
 
     option  dontlognull
     option  dontlog-normal
@@ -86,6 +85,7 @@ config2 be content`
 	os.Setenv("STATS_USER_ENV", "STATS_USER")
 	os.Setenv("STATS_PASS_ENV", "STATS_PASS")
 	os.Setenv("STATS_URI_ENV", "STATS_URI")
+	os.Setenv("CFG_TEMPLATE_PATH", "/cfg/haproxy.cfg")
 	reloadPauseMillisecondsOrig := reloadPauseMilliseconds
 	defer func() { reloadPauseMilliseconds = reloadPauseMillisecondsOrig }()
 	reloadPauseMilliseconds = 1
@@ -298,6 +298,92 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsLogging_WhenDebug()
 	expectedData := fmt.Sprintf(
 		"%s%s",
 		s.getTemplateWithLogs(),
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+
+	NewHaProxy(s.TemplatesPath, s.ConfigsPath).CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsDefaultServer_WhenCheckResolversIsSetToTrue() {
+	checkResolversOrig := os.Getenv("CHECK_RESOLVERS")
+	defer func() { os.Setenv("CHECK_RESOLVERS", checkResolversOrig) }()
+	os.Setenv("CHECK_RESOLVERS", "true")
+	var actualData string
+	tmpl := strings.Replace(
+		s.TemplateContent,
+		"balance roundrobin\n",
+		"balance roundrobin\n\n    default-server init-addr last,libc,none",
+		-1,
+	)
+	expectedData := fmt.Sprintf(
+		"%s%s",
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+
+	NewHaProxy(s.TemplatesPath, s.ConfigsPath).CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCompressionAlgo_WhenSet() {
+	compressionAlgoOrig := os.Getenv("COMPRESSION_ALGO")
+	defer func() { os.Setenv("COMPRESSION_ALGO", compressionAlgoOrig) }()
+	os.Setenv("COMPRESSION_ALGO", "gzip")
+	var actualData string
+	tmpl := strings.Replace(
+		s.TemplateContent,
+		"balance roundrobin\n",
+		"balance roundrobin\n\n    compression algo gzip",
+		-1,
+	)
+	expectedData := fmt.Sprintf(
+		"%s%s",
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+
+	NewHaProxy(s.TemplatesPath, s.ConfigsPath).CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCompressionType_WhenCompressionAlgoAndTypeAreSet() {
+	compressionAlgoOrig := os.Getenv("COMPRESSION_ALGO")
+	compressionTypeOrig := os.Getenv("COMPRESSION_TYPE")
+	defer func() {
+		os.Setenv("COMPRESSION_ALGO", compressionAlgoOrig)
+		os.Setenv("COMPRESSION_TYPE", compressionTypeOrig)
+	}()
+	os.Setenv("COMPRESSION_ALGO", "gzip")
+	os.Setenv("COMPRESSION_TYPE", "text/css text/html text/javascript application/javascript text/plain text/xml application/json")
+	var actualData string
+	tmpl := strings.Replace(
+		s.TemplateContent,
+		"balance roundrobin\n",
+		`balance roundrobin
+
+    compression algo gzip
+    compression type text/css text/html text/javascript application/javascript text/plain text/xml application/json`,
+		-1,
+	)
+	expectedData := fmt.Sprintf(
+		"%s%s",
+		tmpl,
 		s.ServicesContent,
 	)
 	writeFile = func(filename string, data []byte, perm os.FileMode) error {
@@ -1015,6 +1101,50 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	s.Equal(expectedData, actualData)
 }
 
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndUserAgent() {
+	var actualData string
+	tmpl := s.TemplateContent
+	expectedData := fmt.Sprintf(
+		`%s
+    acl url_my-service1111 path_beg /path
+    acl user_agent_my-service_my-acl-name-1-2 hdr_sub(User-Agent) -i agent-1 agent-2
+    acl url_my-service2222 path_beg /path
+    acl user_agent_my-service_my-acl-name-3 hdr_sub(User-Agent) -i agent-3
+    acl url_my-service3333 path_beg /path
+    use_backend my-service-be1111 if url_my-service1111 user_agent_my-service_my-acl-name-1-2
+    use_backend my-service-be2222 if url_my-service2222 user_agent_my-service_my-acl-name-3
+    use_backend my-service-be3333 if url_my-service3333%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	data.Services["my-service"] = Service{
+		AclName:  "my-service",
+		PathType: "path_beg",
+		ServiceDest: []ServiceDest{{
+			Port:        "1111",
+			ServicePath: []string{"/path"},
+			UserAgent:   UserAgent{Value: []string{"agent-1", "agent-2"}, AclName: "my-acl-name-1-2"},
+		}, {
+			Port:        "2222",
+			ServicePath: []string{"/path"},
+			UserAgent:   UserAgent{Value: []string{"agent-3"}, AclName: "my-acl-name-3"},
+		}, {
+			Port:        "3333",
+			ServicePath: []string{"/path"},
+		}},
+		ServiceName: "my-service",
+	}
+
+	p.CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWithDefaultBackend_WhenIsDefaultBackendIsTrue() {
 	var actualData string
 	tmpl := s.TemplateContent
@@ -1293,6 +1423,48 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCerts() {
 	s.Equal(expectedData, actualData)
 }
 
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCaFile_WhenEnvVarIsSet() {
+	caFile := "my-ca-file"
+	caFileOrig := os.Getenv("CA_FILE")
+	readDirOrig := ReadDir
+	defer func() {
+		ReadDir = readDirOrig
+		os.Setenv("CA_FILE", caFileOrig)
+	}()
+	os.Setenv("CA_FILE", caFile)
+	certName := "my-cert"
+	file := FileInfoMock{
+		NameMock: func() string {
+			return certName
+		},
+		IsDirMock: func() bool {
+			return false
+		},
+	}
+	mockedFiles := []os.FileInfo{file}
+
+	ReadDir = func(dir string) ([]os.FileInfo, error) {
+		if dir == "/certs" {
+			return mockedFiles, nil
+		}
+		return []os.FileInfo{}, nil
+	}
+	var actualData string
+	tmpl := strings.Replace(
+		s.TemplateContent, "bind *:443",
+		"bind *:443 ssl crt /certs/"+certName+" ca-file "+caFile+" verify optional",
+		-1)
+	expectedData := tmpl + s.ServicesContent
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+
+	NewHaProxy(s.TemplatesPath, s.ConfigsPath).CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsUserList() {
 	var actualData string
 	usersOrig := os.Getenv("USERS")
@@ -1465,9 +1637,8 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ReplacesValuesWithSecre
 		readSecretsFile = func(dirname string) ([]byte, error) {
 			if strings.HasSuffix(dirname, t.secretFile) {
 				return []byte(t.value), nil
-			} else {
-				return []byte(""), fmt.Errorf("This is an error")
 			}
+			return []byte(""), fmt.Errorf("This is an error")
 		}
 
 		writeFile = func(filename string, data []byte, perm os.FileMode) error {
@@ -1610,6 +1781,42 @@ func (s *HaProxyTestSuite) Test_Reload_RunsRunCmd() {
 	}
 
 	HaProxy{}.Reload()
+
+	s.Equal(expected, *actual)
+}
+
+// RunCmd
+
+func (s *HaProxyTestSuite) Test_RunCmd_AddsExtraArguments() {
+	actual := HaProxyTestSuite{}.mockHaExecCmd()
+	expected := []string{
+		"-f",
+		"/cfg/haproxy.cfg",
+		"-D",
+		"-p",
+		"/var/run/haproxy.pid",
+		"arg1", "arg2", "arg3",
+	}
+
+	HaProxy{}.RunCmd([]string{"arg1", "arg2", "arg3"})
+
+	s.Equal(expected, *actual)
+}
+
+func (s *HaProxyTestSuite) Test_RunCmd_UsesCfgFromEnvVar() {
+	cfgTemplatePathOrig := os.Getenv("CFG_TEMPLATE_PATH")
+	defer func() { os.Setenv("CFG_TEMPLATE_PATH", cfgTemplatePathOrig) }()
+	os.Setenv("CFG_TEMPLATE_PATH", "/path/to/my/template")
+	actual := HaProxyTestSuite{}.mockHaExecCmd()
+	expected := []string{
+		"-f",
+		os.Getenv("CFG_TEMPLATE_PATH"),
+		"-D",
+		"-p",
+		"/var/run/haproxy.pid",
+	}
+
+	HaProxy{}.RunCmd([]string{})
 
 	s.Equal(expected, *actual)
 }

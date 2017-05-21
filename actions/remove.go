@@ -22,7 +22,6 @@ type Remove struct {
 
 var RemoveInstance Remove
 
-// TODO: Change to addresses
 var NewRemove = func(serviceName, aclName, configsPath, templatesPath string, consulAddresses []string, instanceName, mode string) Removable {
 	return &Remove{
 		ServiceName:     serviceName,

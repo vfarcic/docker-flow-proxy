@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// Handles server requests
+// Server handles requests
 type Server interface {
 	GetServicesFromEnvVars() *[]proxy.Service
 	GetServiceFromUrl(req *http.Request) *proxy.Service
@@ -20,7 +20,8 @@ type Server interface {
 	ReconfigureHandler(w http.ResponseWriter, req *http.Request)
 	ReloadHandler(w http.ResponseWriter, req *http.Request)
 	RemoveHandler(w http.ResponseWriter, req *http.Request)
-	TestHandler(w http.ResponseWriter, req *http.Request)
+	Test1Handler(w http.ResponseWriter, req *http.Request)
+	Test2Handler(w http.ResponseWriter, req *http.Request)
 }
 
 const (
@@ -38,6 +39,7 @@ type serve struct {
 	cert            Certer
 }
 
+// NewServer returns instance of the Server with populated data
 var NewServer = func(listenerAddr, mode, port, serviceName, configsPath, templatesPath string, consulAddresses []string, cert Certer) Server {
 	return &serve{
 		listenerAddress: listenerAddr,
@@ -51,6 +53,7 @@ var NewServer = func(listenerAddr, mode, port, serviceName, configsPath, templat
 	}
 }
 
+//Response message returns to HTTP clients
 type Response struct {
 	Mode        string
 	Status      string
@@ -82,8 +85,15 @@ func (m *serve) GetServiceFromUrl(req *http.Request) *proxy.Service {
 	return proxy.GetServiceFromProvider(&provider)
 }
 
-func (m *serve) TestHandler(w http.ResponseWriter, req *http.Request) {
-	js, _ := json.Marshal(Response{Status: "OK"})
+func (m *serve) Test1Handler(w http.ResponseWriter, req *http.Request) {
+	js, _ := json.Marshal(Response{Status: "OK", Message: "Test v1"})
+	httpWriterSetContentType(w, "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(js)
+}
+
+func (m *serve) Test2Handler(w http.ResponseWriter, req *http.Request) {
+	js, _ := json.Marshal(Response{Status: "OK", Message: "Test v2"})
 	httpWriterSetContentType(w, "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(js)

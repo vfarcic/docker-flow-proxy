@@ -9,10 +9,12 @@ global
     ssl-default-server-options {{.SslBindOptions}}
     ssl-default-server-ciphers {{.SslBindCiphers}}
 
+resolvers docker
+    nameserver dns 127.0.0.11:53
+
 defaults
     mode    http
     balance roundrobin
-    default-server init-addr last,libc,none
 {{.ExtraDefaults}}
     option  {{.ConnectionMode}}
     option  forwardfor

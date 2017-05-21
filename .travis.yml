@@ -19,7 +19,7 @@ script:
   - docker tag vfarcic/docker-flow-proxy vfarcic/docker-flow-proxy:beta
   - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD; fi'
   - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then docker push vfarcic/docker-flow-proxy:beta; fi'
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then HOST_IP=$(ifconfig eth0 | grep -Eo "inet (addr:)?([0-9]*\.){3}[0-9]*" | grep -Eo "([0-9]*\.){3}[0-9]*" | grep -v "127.0.0.1") docker-compose -f docker-compose-test.yml run --rm staging-swarm; fi'
+#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then HOST_IP=$(ifconfig eth0 | grep -Eo "inet (addr:)?([0-9]*\.){3}[0-9]*" | grep -Eo "([0-9]*\.){3}[0-9]*" | grep -v "127.0.0.1") docker-compose -f docker-compose-test.yml run --rm staging-swarm; fi'
   - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then docker tag vfarcic/docker-flow-proxy vfarcic/docker-flow-proxy:${VERSION}; fi'
   - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then docker push vfarcic/docker-flow-proxy:${VERSION}; fi'
   - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then docker push vfarcic/docker-flow-proxy; fi'

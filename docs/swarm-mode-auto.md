@@ -535,7 +535,7 @@ To demonstrated how encrypted passwords work we'll start by hashing a password.
 mkpasswd -m sha-512 password
 ```
 
-The out should be similar to the one that follows.
+The output should be similar to the one that follows.
 
 ```
 $6$F2eJJA.G$BfoxX38MoNS10tywEzQZVDZOAjJn9wyTZJecYg.CymjwE8Rgm7xJn0KG3faT36GZbOtrsu4ba.vhsnHrPCNAa0

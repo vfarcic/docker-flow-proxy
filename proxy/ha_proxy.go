@@ -25,6 +25,9 @@ var reloadPauseMilliseconds time.Duration = 1000
 type ConfigData struct {
 	CertsString          string
 	ConnectionMode       string
+	ExtraDefaults        string
+	ExtraFrontend        string
+	ExtraGlobal          string
 	TimeoutConnect       string
 	TimeoutClient        string
 	TimeoutServer        string
@@ -36,10 +39,7 @@ type ConfigData struct {
 	SslBindCiphers       string
 	Stats                string
 	UserList             string
-	ExtraGlobal          string
-	ExtraDefaults        string
 	DefaultBinds         string
-	ExtraFrontend        string
 	ContentFrontend      string
 	ContentFrontendTcp   string
 	ContentFrontendSNI   string
@@ -88,7 +88,7 @@ func (m HaProxy) GetCerts() map[string]string {
 func (m HaProxy) RunCmd(extraArgs []string) error {
 	args := []string{
 		"-f",
-		"/cfg/haproxy.cfg",
+		os.Getenv("CFG_TEMPLATE_PATH"),
 		"-D",
 		"-p",
 		"/var/run/haproxy.pid",
@@ -96,7 +96,12 @@ func (m HaProxy) RunCmd(extraArgs []string) error {
 	args = append(args, extraArgs...)
 	if err := cmdRunHa(args); err != nil {
 		configData, _ := readConfigsFile("/cfg/haproxy.cfg")
-		return fmt.Errorf("Command %s\n%s\n%s", strings.Join(args, " "), err.Error(), string(configData))
+		return fmt.Errorf(
+			"Command %s\n%s\n%s",
+			strings.Join(args, " "),
+			err.Error(),
+			string(configData),
+		)
 	}
 	return nil
 }
@@ -195,6 +200,9 @@ func (m HaProxy) getConfigData() ConfigData {
 			certsString = append(certsString, fmt.Sprintf("crt %s", certPath))
 		}
 	}
+	if len(os.Getenv("CA_FILE")) > 0 {
+		certsString = append(certsString, "ca-file "+os.Getenv("CA_FILE")+" verify optional")
+	}
 	d := ConfigData{
 		CertsString: strings.Join(certsString, " "),
 	}
@@ -214,28 +222,12 @@ func (m HaProxy) getConfigData() ConfigData {
 	if len(d.ExtraFrontend) > 0 {
 		d.ExtraFrontend = fmt.Sprintf("    %s", d.ExtraFrontend)
 	}
-	if strings.EqualFold(GetSecretOrEnvVar("DEBUG", ""), "true") {
-		d.ExtraGlobal += `
-    log 127.0.0.1:1514 local0`
-		d.ExtraFrontend += `
-    option httplog
-    log global`
-		format := GetSecretOrEnvVar("DEBUG_HTTP_FORMAT", "")
-		if len(format) > 0 {
-			d.ExtraFrontend += fmt.Sprintf(`
-    log-format %s`,
-				format,
-			)
-		}
-		if strings.EqualFold(GetSecretOrEnvVar("DEBUG_ERRORS_ONLY", ""), "true") {
-			d.ExtraDefaults += `
-    option  dontlog-normal`
-		}
-	} else {
+	if value, err := strconv.ParseBool(os.Getenv("CHECK_RESOLVERS")); err == nil && value {
 		d.ExtraDefaults += `
-    option  dontlognull
-    option  dontlog-normal`
+    default-server init-addr last,libc,none`
 	}
+	m.addCompression(&d)
+	m.addDebug(&d)
 
 	defaultPortsString := GetSecretOrEnvVar("DEFAULT_PORTS", "")
 	defaultPorts := strings.Split(defaultPortsString, ",")
@@ -270,6 +262,46 @@ func (m HaProxy) getConfigData() ConfigData {
 	return d
 }
 
+func (m *HaProxy) addCompression(data *ConfigData) {
+	if len(os.Getenv("COMPRESSION_ALGO")) > 0 {
+		data.ExtraDefaults += fmt.Sprintf(`
+    compression algo %s`,
+			os.Getenv("COMPRESSION_ALGO"),
+		)
+		if len(os.Getenv("COMPRESSION_TYPE")) > 0 {
+			data.ExtraDefaults += fmt.Sprintf(`
+    compression type %s`,
+				os.Getenv("COMPRESSION_TYPE"),
+			)
+		}
+	}
+}
+
+func (m *HaProxy) addDebug(data *ConfigData) {
+	if strings.EqualFold(GetSecretOrEnvVar("DEBUG", ""), "true") {
+		data.ExtraGlobal += `
+    log 127.0.0.1:1514 local0`
+		data.ExtraFrontend += `
+    option httplog
+    log global`
+		format := GetSecretOrEnvVar("DEBUG_HTTP_FORMAT", "")
+		if len(format) > 0 {
+			data.ExtraFrontend += fmt.Sprintf(`
+    log-format %s`,
+				format,
+			)
+		}
+		if strings.EqualFold(GetSecretOrEnvVar("DEBUG_ERRORS_ONLY", ""), "true") {
+			data.ExtraDefaults += `
+    option  dontlog-normal`
+		}
+	} else {
+		data.ExtraDefaults += `
+    option  dontlognull
+    option  dontlog-normal`
+	}
+}
+
 func (m *HaProxy) putStats(data *ConfigData) {
 	statsUser := GetSecretOrEnvVar(os.Getenv("STATS_USER_ENV"), "")
 	statsPass := GetSecretOrEnvVar(os.Getenv("STATS_PASS_ENV"), "")
@@ -298,7 +330,7 @@ func (m *HaProxy) getUserList(data *ConfigData) {
 	if len(usersString) > 0 {
 		data.UserList = "\nuserlist defaultUsers\n"
 		encrypted := strings.EqualFold(encryptedString, "true")
-		users := ExtractUsersFromString("globalUsers", usersString, encrypted, true)
+		users := extractUsersFromString("globalUsers", usersString, encrypted, true)
 		// TODO: Test
 		if len(users) == 0 {
 			users = append(users, RandomUser())
@@ -370,6 +402,7 @@ frontend service_{{$sd1.SrcPort}}
 	return m.templateToString(tmplString, s)
 }
 
+// TODO: Move to getFrontTemplate
 func (m *HaProxy) getFrontTemplateTcp(port int, services Services) string {
 	sort.Sort(services)
 	tmpl := fmt.Sprintf(
@@ -420,42 +453,61 @@ frontend tcpFE_%d
 	return tmpl
 }
 
+// TODO: Move all the conditionals inside the template
 func (m *HaProxy) getFrontTemplate(s Service) string {
 	if len(s.PathType) == 0 {
 		s.PathType = "path_beg"
 	}
 	tmplString := fmt.Sprintf(
-		`{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
-    acl url_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{$.PathType}} {{.}}{{end}}{{.SrcPortAcl}}{{end}}{{end}}{{end}}%s`,
+		`
+{{- range .ServiceDest}}
+    {{- if eq .ReqMode "http"}}
+        {{- if ne .Port ""}}
+    acl url_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{$.PathType}} {{.}}{{end}}{{.SrcPortAcl}}
+        {{- end}}
+        {{- $length := len .UserAgent.Value}}{{if gt $length 0}}
+    acl user_agent_{{$.AclName}}_{{.UserAgent.AclName}} hdr_sub(User-Agent) -i{{range .UserAgent.Value}} {{.}}{{end}}
+        {{- end}}
+    {{- end}}
+{{- end}}%s`,
 		m.getAclDomain(&s),
 	)
-	if s.HttpsPort > 0 {
-		tmplString += `
+	tmplString += `
+{{- if gt $.HttpsPort 0 }}
     acl http_{{.ServiceName}} src_port 80
-    acl https_{{.ServiceName}} src_port 443`
-	}
-	if s.RedirectWhenHttpProto {
-		tmplString += `{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
+    acl https_{{.ServiceName}} src_port 443
+{{- end}}
+{{- if $.RedirectWhenHttpProto}}
+    {{- range .ServiceDest}}
+        {{- if eq .ReqMode "http"}}
+            {{- if ne .Port ""}}
     acl is_{{$.AclName}}_http hdr(X-Forwarded-Proto) http
-    redirect scheme https if is_{{$.AclName}}_http url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}{{end}}{{end}}{{end}}`
-	} else if s.HttpsOnly {
-		tmplString += `{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
-    redirect scheme https if !{ ssl_fc } url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}{{end}}{{end}}{{end}}`
-	}
-	tmplString += `{{range .ServiceDest}}{{if eq .ReqMode "http"}}{{if ne .Port ""}}
-    `
-	if s.HttpsPort > 0 {
-		tmplString += `use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}} http_{{$.ServiceName}}
-    use_backend https-{{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}} https_{{$.ServiceName}}`
-	} else {
-		tmplString += `use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}`
-	}
-	if s.IsDefaultBackend {
-		tmplString += fmt.Sprintf(
-			`
-    default_backend {{$.ServiceName}}-be{{.Port}}`)
-	}
-	tmplString += "{{end}}{{end}}{{end}}"
+    redirect scheme https if is_{{$.AclName}}_http url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}
+            {{- end}}
+        {{- end}}
+    {{- end}}
+{{- end}}
+{{- if not $.RedirectWhenHttpProto}}{{- if $.HttpsOnly}}
+    {{- range .ServiceDest}}
+        {{- if eq .ReqMode "http"}}
+            {{- if ne .Port ""}}
+    redirect scheme https if !{ ssl_fc } url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}
+            {{- end}}
+        {{- end}}
+    {{- end}}
+{{- end}}{{- end}}
+{{- range .ServiceDest}}
+    {{- if eq .ReqMode "http"}}{{- if ne .Port ""}}
+    use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}
+	    {{- if gt $.HttpsPort 0 }} http_{{$.ServiceName}}
+    use_backend https-{{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}} https_{{$.ServiceName}}
+        {{- end}}
+    {{- $length := len .UserAgent.Value}}{{if gt $length 0}} user_agent_{{$.AclName}}_{{.UserAgent.AclName}}{{end}}
+        {{- if $.IsDefaultBackend}}
+    default_backend {{$.ServiceName}}-be{{.Port}}
+        {{- end}}
+    {{- end}}{{- end}}
+{{- end}}`
 	return m.templateToString(tmplString, s)
 }
 

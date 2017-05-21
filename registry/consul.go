@@ -37,7 +37,6 @@ func (m Consul) PutService(addresses []string, instanceName string, r Registry) 
 		{DOMAIN_KEY, strings.Join(r.ServiceDomain, ",")},
 		{HOSTNAME_KEY, r.OutboundHostname},
 		{PATH_TYPE_KEY, r.PathType},
-		{SKIP_CHECK_KEY, fmt.Sprintf("%t", r.SkipCheck)},
 		{CONSUL_TEMPLATE_FE_PATH_KEY, r.ConsulTemplateFePath},
 		{CONSUL_TEMPLATE_BE_PATH_KEY, r.ConsulTemplateBePath},
 		{PORT, r.Port},

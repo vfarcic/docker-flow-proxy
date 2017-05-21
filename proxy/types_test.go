@@ -95,59 +95,59 @@ func (s *TypesTestSuite) Test_UsersMerge_AllCases() {
 
 func (s TypesTestSuite) Test_ExtractUsersFromString() {
 
-	users := ExtractUsersFromString("sn", "u:p", false, false)
+	users := extractUsersFromString("sn", "u:p", false, false)
 	s.Equal(users, []*User{
 		{PassEncrypted: false, Password: "p", Username: "u"},
 	})
 
-	users = ExtractUsersFromString("sn", "u:p", true, false)
+	users = extractUsersFromString("sn", "u:p", true, false)
 	s.Equal(users, []*User{
 		{PassEncrypted: true, Password: "p", Username: "u"},
 	})
 
-	users = ExtractUsersFromString("sn", "u:p:2", true, false)
+	users = extractUsersFromString("sn", "u:p:2", true, false)
 	s.Equal(users, []*User{
 		{PassEncrypted: true, Password: "p:2", Username: "u"},
 	})
 
-	users = ExtractUsersFromString("sn", "u", false, false)
+	users = extractUsersFromString("sn", "u", false, false)
 	s.Equal(users, []*User{
 		{PassEncrypted: false, Password: "", Username: "u"},
 	})
 
-	users = ExtractUsersFromString("sn", "u:p,ww", false, true)
+	users = extractUsersFromString("sn", "u:p,ww", false, true)
 	s.Equal(users, []*User{
 		{PassEncrypted: false, Password: "p", Username: "u"},
 	})
 
-	users = ExtractUsersFromString("sn", "u:p,ww:,:asd", false, false)
+	users = extractUsersFromString("sn", "u:p,ww:,:asd", false, false)
 	s.Equal(users, []*User{
 		{PassEncrypted: false, Password: "p", Username: "u"},
 	})
 
-	users = ExtractUsersFromString("sn", "u   ,    uu     ", false, false)
+	users = extractUsersFromString("sn", "u   ,    uu     ", false, false)
 	s.Equal(users, []*User{
 		{PassEncrypted: false, Password: "", Username: "u"},
 		{PassEncrypted: false, Password: "", Username: "uu"},
 	})
 
-	users = ExtractUsersFromString("sn", "", false, false)
+	users = extractUsersFromString("sn", "", false, false)
 	s.Equal(users, []*User{})
 
-	users = ExtractUsersFromString("sn", `u   ,
+	users = extractUsersFromString("sn", `u   ,
 	 uu     `, false, false)
 	s.Equal(users, []*User{
 		{PassEncrypted: false, Password: "", Username: "u"},
 		{PassEncrypted: false, Password: "", Username: "uu"},
 	})
-	users = ExtractUsersFromString("sn", `u
+	users = extractUsersFromString("sn", `u
 uu`, false, false)
 	s.Equal(users, []*User{
 		{PassEncrypted: false, Password: "", Username: "u"},
 		{PassEncrypted: false, Password: "", Username: "uu"},
 	})
 
-	users = ExtractUsersFromString("sn",
+	users = extractUsersFromString("sn",
 		`u:p
 uu:pp,
 uuu:ppp
@@ -166,12 +166,77 @@ x:X`, false, false)
 // GetServiceFromMap
 
 func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
-	expected := Service{
+	expected := s.getExpectedService()
+	serviceMap := s.getServiceMap(expected, "")
+	actual := GetServiceFromMap(&serviceMap)
+	s.Equal(expected, *actual)
+}
+
+// GetServiceFromProvider
+
+func (s *TypesTestSuite) Test_GetServiceFromProvider_ReturnsProxyServiceWithIndexedData() {
+	expected := s.getExpectedService()
+	serviceMap := s.getServiceMap(expected, ".1")
+	provider := mapParameterProvider{&serviceMap}
+	actual := GetServiceFromProvider(&provider)
+	s.Equal(expected, *actual)
+}
+
+// Suite
+
+func TestRunUnitTestSuite(t *testing.T) {
+	suite.Run(t, new(TypesTestSuite))
+}
+
+// Util
+
+func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map[string]string {
+	return map[string]string{
+		"aclName":               expected.AclName,
+		"addReqHeader":          strings.Join(expected.AddReqHeader, ","),
+		"addResHeader":          strings.Join(expected.AddResHeader, ","),
+		"backendExtra":          expected.BackendExtra,
+		"delReqHeader":          strings.Join(expected.DelReqHeader, ","),
+		"delResHeader":          strings.Join(expected.DelResHeader, ","),
+		"distribute":            strconv.FormatBool(expected.Distribute),
+		"httpsOnly":             strconv.FormatBool(expected.HttpsOnly),
+		"httpsPort":             strconv.Itoa(expected.HttpsPort),
+		"isDefaultBackend":      strconv.FormatBool(expected.IsDefaultBackend),
+		"outboundHostname":      expected.OutboundHostname,
+		"pathType":              expected.PathType,
+		"redirectWhenHttpProto": strconv.FormatBool(expected.RedirectWhenHttpProto),
+		"reqPathReplace":        expected.ReqPathReplace,
+		"reqPathSearch":         expected.ReqPathSearch,
+		"serviceCert":           expected.ServiceCert,
+		"serviceColor":          expected.ServiceColor,
+		"serviceDomain":         strings.Join(expected.ServiceDomain, ","),
+		"serviceDomainMatchAll": strconv.FormatBool(expected.ServiceDomainMatchAll),
+		"serviceName":           expected.ServiceName,
+		"setReqHeader":          strings.Join(expected.SetReqHeader, ","),
+		"setResHeader":          strings.Join(expected.SetResHeader, ","),
+		"sslVerifyNone":         strconv.FormatBool(expected.SslVerifyNone),
+		"templateBePath":        expected.TemplateBePath,
+		"templateFePath":        expected.TemplateFePath,
+		"timeoutServer":         expected.TimeoutServer,
+		"timeoutTunnel":         expected.TimeoutTunnel,
+		"users":                 "user1:pass1,user2:pass2",
+		"usersPassEncrypted":    "true",
+		"xForwardedProto":       strconv.FormatBool(expected.XForwardedProto),
+		// ServiceDest
+		"port" + indexSuffix:            expected.ServiceDest[0].Port,
+		"reqMode" + indexSuffix:         expected.ServiceDest[0].ReqMode,
+		"servicePath" + indexSuffix:     strings.Join(expected.ServiceDest[0].ServicePath, ","),
+		"userAgent" + indexSuffix:       strings.Join(expected.ServiceDest[0].UserAgent.Value, ","),
+		"verifyClientSsl" + indexSuffix: strconv.FormatBool(expected.ServiceDest[0].VerifyClientSsl),
+	}
+}
+
+func (s *TypesTestSuite) getExpectedService() Service {
+	return Service{
 		AclName:               "aclName",
 		AddReqHeader:          []string{"add-header-1", "add-header-2"},
 		AddResHeader:          []string{"add-header-1", "add-header-2"},
-		ConsulTemplateFePath:  "consulTemplateFePath",
-		ConsulTemplateBePath:  "consulTemplateBePath",
+		BackendExtra:          "additonal backend config",
 		DelReqHeader:          []string{"del-header-1", "del-header-2"},
 		DelResHeader:          []string{"del-header-1", "del-header-2"},
 		Distribute:            true,
@@ -185,13 +250,18 @@ func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 		ReqPathSearch:         "reqPathSearch",
 		ServiceCert:           "serviceCert",
 		ServiceColor:          "serviceColor",
-		ServiceDest:           []ServiceDest{{ServicePath: []string{"/"}, Port: "1234", ReqMode: "reqMode"}},
+		ServiceDest: []ServiceDest{{
+			ServicePath:     []string{"/"},
+			Port:            "1234",
+			ReqMode:         "reqMode",
+			UserAgent:       UserAgent{Value: []string{"agent-1", "agent-2/replace-with_"}, AclName: "agent_1_agent_2_replace_with_"},
+			VerifyClientSsl: true,
+		}},
 		ServiceDomain:         []string{"domain1", "domain2"},
 		ServiceDomainMatchAll: true,
 		ServiceName:           "serviceName",
 		SetReqHeader:          []string{"set-header-1", "set-header-2"},
 		SetResHeader:          []string{"set-header-1", "set-header-2"},
-		SkipCheck:             true,
 		SslVerifyNone:         true,
 		TemplateBePath:        "templateBePath",
 		TemplateFePath:        "templateFePath",
@@ -201,49 +271,4 @@ func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 		Users: []User{{Username: "user1", Password: "pass1", PassEncrypted: true},
 			{Username: "user2", Password: "pass2", PassEncrypted: true}},
 	}
-	serviceMap := map[string]string{
-		"serviceName":           expected.ServiceName,
-		"users":                 "user1:pass1,user2:pass2",
-		"usersPassEncrypted":    "true",
-		"aclName":               expected.AclName,
-		"serviceColor":          expected.ServiceColor,
-		"serviceCert":           expected.ServiceCert,
-		"outboundHostname":      expected.OutboundHostname,
-		"consulTemplateFePath":  expected.ConsulTemplateFePath,
-		"consulTemplateBePath":  expected.ConsulTemplateBePath,
-		"pathType":              expected.PathType,
-		"reqPathSearch":         expected.ReqPathSearch,
-		"reqPathReplace":        expected.ReqPathReplace,
-		"templateFePath":        expected.TemplateFePath,
-		"templateBePath":        expected.TemplateBePath,
-		"timeoutServer":         expected.TimeoutServer,
-		"timeoutTunnel":         expected.TimeoutTunnel,
-		"reqMode":               expected.ServiceDest[0].ReqMode,
-		"httpsOnly":             strconv.FormatBool(expected.HttpsOnly),
-		"xForwardedProto":       strconv.FormatBool(expected.XForwardedProto),
-		"redirectWhenHttpProto": strconv.FormatBool(expected.RedirectWhenHttpProto),
-		"httpsPort":             strconv.Itoa(expected.HttpsPort),
-		"serviceDomain":         strings.Join(expected.ServiceDomain, ","),
-		"skipCheck":             strconv.FormatBool(expected.SkipCheck),
-		"distribute":            strconv.FormatBool(expected.Distribute),
-		"sslVerifyNone":         strconv.FormatBool(expected.SslVerifyNone),
-		"serviceDomainMatchAll": strconv.FormatBool(expected.ServiceDomainMatchAll),
-		"addReqHeader":          strings.Join(expected.AddReqHeader, ","),
-		"addResHeader":          strings.Join(expected.AddResHeader, ","),
-		"setReqHeader":          strings.Join(expected.SetReqHeader, ","),
-		"setResHeader":          strings.Join(expected.SetResHeader, ","),
-		"delReqHeader":          strings.Join(expected.DelReqHeader, ","),
-		"delResHeader":          strings.Join(expected.DelResHeader, ","),
-		"port":                  expected.ServiceDest[0].Port,
-		"servicePath":           strings.Join(expected.ServiceDest[0].ServicePath, ","),
-		"isDefaultBackend":      strconv.FormatBool(expected.IsDefaultBackend),
-	}
-	actual := GetServiceFromMap(&serviceMap)
-	s.Equal(expected, *actual)
-}
-
-// Suite
-
-func TestRunUnitTestSuite(t *testing.T) {
-	suite.Run(t, new(TypesTestSuite))
 }
