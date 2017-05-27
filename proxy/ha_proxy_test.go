@@ -957,8 +957,8 @@ frontend service_1234
     mode tcp
     tcp-request inspect-delay 5s
     tcp-request content accept if { req_ssl_hello_type 1 }
-    acl sni_my-service-14321
-    use_backend my-service-1-be4321 if sni_my-service-14321%s`,
+    acl sni_my-service-14321-1
+    use_backend my-service-1-be4321 if sni_my-service-14321-1%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -997,8 +997,8 @@ frontend service_443
     mode tcp
     tcp-request inspect-delay 5s
     tcp-request content accept if { req_ssl_hello_type 1 }
-    acl sni_my-service-14321
-    use_backend my-service-1-be4321 if sni_my-service-14321%s`,
+    acl sni_my-service-14321-1
+    use_backend my-service-1-be4321 if sni_my-service-14321-1%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1009,6 +1009,57 @@ frontend service_443
 	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
 	data.Services["my-service-1"] = Service{
 		ServiceName: "my-service-1",
+		ServiceDest: []ServiceDest{
+			{SrcPort: 443, Port: "4321", ReqMode: "sni"},
+		},
+	}
+
+	p.CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndMultipleSNI443() {
+	defaultPortsOrig := os.Getenv("DEFAULT_PORTS")
+	defer func() { os.Setenv("DEFAULT_PORTS", defaultPortsOrig) }()
+	os.Setenv("DEFAULT_PORTS", "80")
+	var actualData string
+	tmpl := strings.Replace(
+		s.TemplateContent,
+		"\n    bind *:443",
+		"",
+		-1)
+	expectedData := fmt.Sprintf(
+		`%s
+
+frontend service_443
+    bind *:443
+    mode tcp
+    tcp-request inspect-delay 5s
+    tcp-request content accept if { req_ssl_hello_type 1 }
+    acl sni_my-service-11111-1
+    use_backend my-service-1-be1111 if sni_my-service-11111-1
+    acl sni_my-service-11112-2
+    use_backend my-service-1-be1112 if sni_my-service-11112-2
+    acl sni_my-service-24321-1
+    use_backend my-service-2-be4321 if sni_my-service-24321-1%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	data.Services["my-service-1"] = Service{
+		ServiceName: "my-service-1",
+		ServiceDest: []ServiceDest{
+			{SrcPort: 443, Port: "1111", ReqMode: "sni"},
+			{SrcPort: 443, Port: "1112", ReqMode: "sni"},
+		},
+	}
+	data.Services["my-service-2"] = Service{
+		ServiceName: "my-service-2",
 		ServiceDest: []ServiceDest{
 			{SrcPort: 443, Port: "4321", ReqMode: "sni"},
 		},
