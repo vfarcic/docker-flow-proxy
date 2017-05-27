@@ -53,25 +53,34 @@ docker image build -t $DOCKER_HUB_USER/docker-flow-proxy .
 #### Setup
 
 ```bash
-export HOST_IP=[...] # Change to the IP of your host
+# Change to the IP of your host
+export HOST_IP=[...]
 ```
 
 #### Unit Tests
 
 ```bash
-docker-compose -f docker-compose-test.yml run --rm unit
+docker-compose \
+    -f docker-compose-test.yml \
+    run --rm unit
 ```
 
 #### Staging (Integration) Tests
 
 ```bash
-export DOCKER_HUB_USER=[...] # Change to your user in hub.docker.com
+# Change to your user in hub.docker.com
+export DOCKER_HUB_USER=[...]
 
-docker image build -t $DOCKER_HUB_USER/docker-flow-proxy:beta .
+docker image build \
+    -t $DOCKER_HUB_USER/docker-flow-proxy:beta \
+    .
 
-docker image push $DOCKER_HUB_USER/docker-flow-proxy:beta
+docker image push \
+    $DOCKER_HUB_USER/docker-flow-proxy:beta
 
-docker-compose -f docker-compose-test.yml run --rm staging-swarm
+docker-compose \
+    -f docker-compose-test.yml \
+    run --rm staging-swarm
 ```
 
 ##### Locally simulating CI

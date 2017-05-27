@@ -12,7 +12,7 @@ RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 RUN mkdir -p /cfg/tmpl /consul_templates /templates /certs /logs
 
 ENV CERTS="" \
-    CFG_TEMPLATE_PATH="/cfg/haproxy.cfg" \
+    CFG_TEMPLATE_PATH="/cfg/tmpl/haproxy.tmpl" \
     CHECK_RESOLVERS=false \
     CONNECTION_MODE="http-keep-alive" \
     CONSUL_ADDRESS="" \

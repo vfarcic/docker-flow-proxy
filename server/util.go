@@ -18,7 +18,7 @@ var lookupHost = net.LookupHost
 
 var decoder = schema.NewDecoder()
 
-var SendDistributeRequests = func(req *http.Request, port, proxyServiceName string) (status int, err error) {
+var sendDistributeRequests = func(req *http.Request, port, proxyServiceName string) (status int, err error) {
 	values := req.URL.Query()
 	values.Set("distribute", "false")
 	req.URL.RawQuery = values.Encode()

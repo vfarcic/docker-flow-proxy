@@ -17,21 +17,21 @@ const serviceTemplateBeFilename = "service-formatted-be.ctmpl"
 
 var mu = &sync.Mutex{}
 
-// Methods that should be created for reconfigure actions
+// Reconfigurable defines mandatory interface
 type Reconfigurable interface {
 	Execute(reloadAfter bool) error
 	GetData() (BaseReconfigure, proxy.Service)
 	GetTemplates() (front, back string, err error)
 }
 
-// Data structure that holds reconfigure data
+// Reconfigure structure holds data required to reconfigure the proxy
 type Reconfigure struct {
 	BaseReconfigure
 	proxy.Service
 	Mode string `short:"m" long:"mode" env:"MODE" description:"If set to 'swarm', proxy will operate assuming that Docker service from v1.12+ is used."`
 }
 
-// Base structure
+// BaseReconfigure contains base data required to reconfigure the proxy
 type BaseReconfigure struct {
 	ConsulAddresses []string
 	ConfigsPath     string `short:"c" long:"configs-path" default:"/cfg" description:"The path to the configurations directory"`
@@ -39,12 +39,9 @@ type BaseReconfigure struct {
 	TemplatesPath   string `short:"t" long:"templates-path" default:"/cfg/tmpl" description:"The path to the templates directory"`
 }
 
-// Singleton instance
-var ReconfigureInstance Reconfigure
+var reconfigureInstance Reconfigure
 
-/*
-Creates new instance of the Reconfigurable interface
-*/
+// NewReconfigure creates new instance of the Reconfigurable interface
 var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, mode string) Reconfigurable {
 	return &Reconfigure{
 		BaseReconfigure: baseData,
@@ -53,6 +50,7 @@ var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, m
 	}
 }
 
+// Execute creates a new configuration and reloads the proxy
 func (m *Reconfigure) Execute(reloadAfter bool) error {
 	mu.Lock()
 	defer mu.Unlock()
@@ -93,8 +91,51 @@ func (m *Reconfigure) Execute(reloadAfter bool) error {
 	return nil
 }
 
+// GetData returns structure with reconfiguration data and the service
 func (m *Reconfigure) GetData() (BaseReconfigure, proxy.Service) {
 	return m.BaseReconfigure, m.Service
+}
+
+// GetTemplates returns frontend and backend templates
+func (m *Reconfigure) GetTemplates() (front, back string, err error) {
+	sr := &m.Service
+	if value, err := strconv.ParseBool(os.Getenv("CHECK_RESOLVERS")); err == nil {
+		sr.CheckResolvers = value
+	}
+	for i := range sr.ServiceDest {
+		if len(sr.ServiceDest[i].ReqMode) == 0 {
+			sr.ServiceDest[i].ReqMode = "http"
+		}
+	}
+	if len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0 { // TODO: Deprecated (Consul). Remove it.
+		front, err = m.getConsulTemplateFromFile(sr.ConsulTemplateFePath)
+		if err != nil {
+			return "", "", err
+		}
+		back, err = m.getConsulTemplateFromFile(sr.ConsulTemplateBePath)
+		if err != nil {
+			return "", "", err
+		}
+	} else {
+		m.formatData(sr)
+		if len(sr.TemplateFePath) > 0 {
+			feTmpl, err := readTemplateFile(sr.TemplateFePath)
+			if err != nil {
+				return "", "", err
+			}
+			front = m.parseFrontTemplate(string(feTmpl), sr)
+		}
+		if len(sr.TemplateBePath) > 0 {
+			beTmpl, err := readTemplateFile(sr.TemplateBePath)
+			if err != nil {
+				return "", "", err
+			}
+			back = m.parseBackTemplate(string(beTmpl), "", sr)
+		} else {
+			back = m.parseBackTemplate(proxy.GetBackTemplate(sr, m.Mode), m.getUsersList(sr), sr)
+		}
+	}
+	return front, back, nil
 }
 
 func (m *Reconfigure) createConfigs() error {
@@ -153,47 +194,6 @@ func (m *Reconfigure) putToConsul(addresses []string, sr proxy.Service, instance
 		return err
 	}
 	return nil
-}
-
-func (m *Reconfigure) GetTemplates() (front, back string, err error) {
-	sr := &m.Service
-	if value, err := strconv.ParseBool(os.Getenv("CHECK_RESOLVERS")); err == nil {
-		sr.CheckResolvers = value
-	}
-	for i := range sr.ServiceDest {
-		if len(sr.ServiceDest[i].ReqMode) == 0 {
-			sr.ServiceDest[i].ReqMode = "http"
-		}
-	}
-	if len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0 { // TODO: Deprecated (Consul). Remove it.
-		front, err = m.getConsulTemplateFromFile(sr.ConsulTemplateFePath)
-		if err != nil {
-			return "", "", err
-		}
-		back, err = m.getConsulTemplateFromFile(sr.ConsulTemplateBePath)
-		if err != nil {
-			return "", "", err
-		}
-	} else {
-		m.formatData(sr)
-		if len(sr.TemplateFePath) > 0 {
-			feTmpl, err := readTemplateFile(sr.TemplateFePath)
-			if err != nil {
-				return "", "", err
-			}
-			front = m.parseFrontTemplate(string(feTmpl), sr)
-		}
-		if len(sr.TemplateBePath) > 0 {
-			beTmpl, err := readTemplateFile(sr.TemplateBePath)
-			if err != nil {
-				return "", "", err
-			}
-			back = m.parseBackTemplate(string(beTmpl), "", sr)
-		} else {
-			back = m.parseBackTemplate(proxy.GetBackTemplate(sr, m.Mode), m.getUsersList(sr), sr)
-		}
-	}
-	return front, back, nil
 }
 
 // TODO: Move to ha_proxy.go

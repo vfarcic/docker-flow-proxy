@@ -38,6 +38,14 @@ type ServerTestSuite struct {
 	sd                 proxy.ServiceDest
 }
 
+func TestServerUnitTestSuite(t *testing.T) {
+	s := new(ServerTestSuite)
+	retryIntervalOrig := os.Getenv("RELOAD_INTERVAL")
+	defer func() { os.Setenv("RELOAD_INTERVAL", retryIntervalOrig) }()
+	os.Setenv("RELOAD_INTERVAL", "1")
+	suite.Run(t, s)
+}
+
 func (s *ServerTestSuite) SetupTest() {
 	s.sd = proxy.ServiceDest{
 		ServicePath: []string{"/path/to/my/service/api", "/path/to/my/other/service/api"},
@@ -192,22 +200,11 @@ func (s *ServerTestSuite) Test_Execute_InvokesReconfigureExecuteForEachServiceDe
 	s.Equal(2, called)
 }
 
-// TODO: Extract common code from Test_Execute_InvokesReloadAllServicesWithListenerAddress, Test_Execute_RetriesContactingSwarmListenerAddress_WhenError, and Test_Execute_RepeatsContactingSwarmListenerAddress
 func (s *ServerTestSuite) Test_Execute_InvokesReloadAllServicesWithListenerAddress() {
 	expectedListenerAddress := "swarm-listener"
-	reloadFromRegistryCalled := false
 	actualListenerAddressChan := make(chan string)
-	retryIntervalOrig := os.Getenv("RELOAD_INTERVAL")
-	defer func() { os.Setenv("RELOAD_INTERVAL", retryIntervalOrig) }()
-	os.Setenv("RELOAD_INTERVAL", "1")
-	defer MockReconfigure(ReconfigureMock{
-		ExecuteMock: func(reloadAfter bool) error {
-			return nil
-		},
-	})()
 	defer MockFetch(FetchMock{
 		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
-			reloadFromRegistryCalled = true
 			return nil
 		},
 		ReloadConfigMock: func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
@@ -234,9 +231,6 @@ func (s *ServerTestSuite) Test_Execute_InvokesReloadAllServicesWithListenerAddre
 func (s *ServerTestSuite) Test_Execute_RetriesContactingSwarmListenerAddress_WhenError() {
 	expectedListenerAddress := "swarm-listener"
 	actualListenerAddressChan := make(chan string)
-	retryIntervalOrig := os.Getenv("RELOAD_INTERVAL")
-	defer func() { os.Setenv("RELOAD_INTERVAL", retryIntervalOrig) }()
-	os.Setenv("RELOAD_INTERVAL", "1")
 	callNum := 0
 	defer MockFetch(FetchMock{
 		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
@@ -279,9 +273,6 @@ func (s *ServerTestSuite) Test_Execute_RepeatsContactingSwarmListenerAddress() {
 	os.Setenv("REPEAT_RELOAD", "true")
 	expectedListenerAddress := "swarm-listener"
 	actualListenerAddressChan := make(chan string)
-	retryIntervalOrig := os.Getenv("RELOAD_INTERVAL")
-	defer func() { os.Setenv("RELOAD_INTERVAL", retryIntervalOrig) }()
-	os.Setenv("RELOAD_INTERVAL", "1")
 	callNum := 0
 	defer MockFetch(FetchMock{
 		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
@@ -465,13 +456,6 @@ func (s *ServerTestSuite) Test_ConfigHandler_ReturnsStatus500_WhenReadFileFails(
 	srv.ConfigHandler(s.ResponseWriter, req)
 
 	s.ResponseWriter.AssertCalled(s.T(), "WriteHeader", 500)
-}
-
-// Suite
-
-func TestServerUnitTestSuite(t *testing.T) {
-	s := new(ServerTestSuite)
-	suite.Run(t, s)
 }
 
 // Mock

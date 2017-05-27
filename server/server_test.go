@@ -137,9 +137,9 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_WritesErrorHeader_WhenReconfig
 	addr := "/v1/docker-flow-proxy/reconfigure?serviceName=my-service&distribute=true&servicePath=/demo"
 	req, _ := http.NewRequest("GET", addr, nil)
 	rw := getResponseWriterMock()
-	sendDistributeRequestsOrig := SendDistributeRequests
-	defer func() { SendDistributeRequests = sendDistributeRequestsOrig }()
-	SendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
+	sendDistributeRequestsOrig := sendDistributeRequests
+	defer func() { sendDistributeRequests = sendDistributeRequestsOrig }()
+	sendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
 		return 0, fmt.Errorf("This is an error")
 	}
 
@@ -154,9 +154,9 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_WritesStatusOK_WhenReconfigure
 	addr := "/v1/docker-flow-proxy/reconfigure?serviceName=my-service&distribute=true&servicePath=/demo"
 	req, _ := http.NewRequest("GET", addr, nil)
 	rw := getResponseWriterMock()
-	sendDistributeRequestsOrig := SendDistributeRequests
-	defer func() { SendDistributeRequests = sendDistributeRequestsOrig }()
-	SendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
+	sendDistributeRequestsOrig := sendDistributeRequests
+	defer func() { sendDistributeRequests = sendDistributeRequestsOrig }()
+	sendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
 		return 0, nil
 	}
 

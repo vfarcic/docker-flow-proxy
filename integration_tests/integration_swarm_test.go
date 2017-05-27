@@ -116,6 +116,18 @@ func (s IntegrationSwarmTestSuite) Test_Compression() {
 	}
 }
 
+func (s IntegrationSwarmTestSuite) Test_AddHeaders() {
+	s.reconfigureGoDemo("&addResHeader=my-res-header%20my-res-value")
+
+	resp, err := http.Get(fmt.Sprintf("http://%s/demo/hello", s.hostIP))
+
+	s.NoError(err)
+	if resp != nil {
+		s.Equal(200, resp.StatusCode, s.getProxyConf())
+		s.Contains(resp.Header["My-Res-Header"], "my-res-value", s.getProxyConf())
+	}
+}
+
 func (s IntegrationSwarmTestSuite) Test_UserAgent() {
 	defer func() { s.reconfigureGoDemo("") }()
 	s.reconfigureGoDemo("&userAgent=amiga,amstrad")
@@ -239,14 +251,52 @@ func (s IntegrationSwarmTestSuite) Test_Scale() {
 }
 
 func (s IntegrationSwarmTestSuite) Test_RewritePaths() {
+
+	// With reqPathReplace
+
 	url := fmt.Sprintf(
 		"http://%s:8080/v1/docker-flow-proxy/reconfigure?serviceName=go-demo&servicePath=/something&port=8080&reqPathSearch=/something/&reqPathReplace=/demo/",
 		s.hostIP,
 	)
-	http.Get(url)
+	resp, err := http.Get(url)
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf())
 
 	url = fmt.Sprintf("http://%s/something/hello", s.hostIP)
-	resp, err := http.Get(url)
+	resp, err = http.Get(url)
+
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf())
+
+	// With empty reqPathReplace
+
+	url = fmt.Sprintf(
+		"http://%s:8080/v1/docker-flow-proxy/reconfigure?serviceName=go-demo&servicePath=/something&port=8080&reqPathSearch=/something&reqPathReplace=",
+		s.hostIP,
+	)
+	resp, err = http.Get(url)
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf())
+
+	url = fmt.Sprintf("http://%s/something/demo/hello", s.hostIP)
+	resp, err = http.Get(url)
+
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf())
+
+	// Without reqPathReplace
+
+	url = fmt.Sprintf(
+		"http://%s:8080/v1/docker-flow-proxy/reconfigure?serviceName=go-demo&servicePath=/something&port=8080&reqPathSearch=/something",
+		s.hostIP,
+	)
+	_, err = http.Get(url)
+	s.NoError(err)
+
+	url = fmt.Sprintf("http://%s/something/demo/hello", s.hostIP)
+	resp, err = http.Get(url)
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf())
 
 	s.NoError(err)
 	s.Equal(200, resp.StatusCode, s.getProxyConf())
@@ -316,7 +366,11 @@ func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
 		s.reconfigureGoDemo("")
 	}()
 
+	// Add authorization
+
 	s.reconfigureGoDemo("&users=admin:password")
+
+	// Proxy returns 401 when user/pass is NOT provided
 
 	resp, err := s.sendHelloRequest()
 
@@ -326,6 +380,8 @@ func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
 		s.Equal(401, resp.StatusCode, s.getProxyConf())
 	}
 
+	// Proxy returns 200 when user/pass is provided
+
 	url := fmt.Sprintf("http://%s/demo/hello", s.hostIP)
 	req, err := http.NewRequest("GET", url, nil)
 	req.SetBasicAuth("admin", "password")
@@ -334,6 +390,21 @@ func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
 
 	s.NoError(err)
 	s.Equal(200, resp.StatusCode, s.getProxyConf())
+
+	// Add ignoreAuthorization
+
+	params := fmt.Sprintf("serviceName=go-demo&servicePath.1=/demo&port.1=8080&users=admin:password&ignoreAuthorization.1=true")
+	s.reconfigureService(params)
+
+	// Proxy returns 200 when user/pass is NOT provided
+
+	resp, err = s.sendHelloRequest()
+
+	if err != nil {
+		s.Fail(err.Error())
+	} else {
+		s.Equal(200, resp.StatusCode, s.getProxyConf())
+	}
 }
 
 func (s IntegrationSwarmTestSuite) Test_XTcp() {

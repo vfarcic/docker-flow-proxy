@@ -88,7 +88,7 @@ func (m HaProxy) GetCerts() map[string]string {
 func (m HaProxy) RunCmd(extraArgs []string) error {
 	args := []string{
 		"-f",
-		os.Getenv("CFG_TEMPLATE_PATH"),
+		"/cfg/haproxy.cfg",
 		"-D",
 		"-p",
 		"/var/run/haproxy.pid",
@@ -154,7 +154,11 @@ func (m HaProxy) RemoveService(service string) {
 
 func (m HaProxy) getConfigs() (string, error) {
 	contentArr := []string{}
-	configsFiles := []string{"haproxy.tmpl"}
+	tmplPath := "haproxy.tmpl"
+	if len(os.Getenv("CFG_TEMPLATE_PATH")) > 0 {
+		tmplPath = os.Getenv("CFG_TEMPLATE_PATH")
+	}
+	configsFiles := []string{tmplPath}
 	configs, err := readConfigsDir(m.templatesPath)
 	if err != nil {
 		return "", fmt.Errorf("Could not read the directory %s\n%s", m.templatesPath, err.Error())
@@ -170,7 +174,11 @@ func (m HaProxy) getConfigs() (string, error) {
 		}
 	}
 	for _, file := range configsFiles {
-		templateBytes, err := readConfigsFile(fmt.Sprintf("%s/%s", m.templatesPath, file))
+		path := fmt.Sprintf("%s/%s", m.templatesPath, file)
+		if strings.HasPrefix(file, "/") {
+			path = file
+		}
+		templateBytes, err := readConfigsFile(path)
 		if err != nil {
 			return "", fmt.Errorf("Could not read the file %s\n%s", file, err.Error())
 		}

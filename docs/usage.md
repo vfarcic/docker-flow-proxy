@@ -22,10 +22,11 @@ The following query parameters can be used to send a *reconfigure* request to *D
 |delReqHeader   |Additional headers that will be deleted in the request before forwarding it to the service. Multiple headers should be separated with comma (`,`). Please consult [Delete a header in the request](https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-request) for more info.<br>Example: `X-Forwarded-For,Cookie`| |
 |delResHeader   |Additional headers that will be deleted in the response before forwarding it to the client. Multiple headers should be separated with comma (`,`). Please consult [Delete a header in the response](https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-response) for more info.<br>Example: `X-Varnish,X-Cache`| |
 |httpsPort      |The internal HTTPS port of a service that should be reconfigured. The port is used only in the `swarm` mode. If not specified, the `port` parameter will be used instead.<br>Example: `443`| |
-|isDefaultBackend  | If true, the service will be set to the default_backend rule, meaning it will catch all requests not matching any other rules.<br>Example: `true`| |
+|ignoreAuthorization|If set to true, the service destination will not require authorization. The parameter must be prefixed with the index of the service destion that should be excluded from authorization.<br>Example: true|false|
+|isDefaultBackend  |If set to true, the service will be set to the default_backend rule, meaning it will catch all requests not matching any other rules.<br>Example: `true`|false|
 |port           |The internal port of a service that should be reconfigured. The port is used only in the `swarm` mode. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `port.1`, `port.2`, and so on). This field is **mandatory** when running in `swarm` or `service` mode.<br>Example: `8080`| |
 |reqMode        |The request mode. The proxy should be able to work with any mode supported by HAProxy. However, actively supported and tested modes are `http`, `tcp`, and `sni`. The `sni` mode implies TCP with an SNI-based routing. The parameter can be prefixed with an index thus allowing definition of multiple modes for a single service (e.g. `http`, `tcp`, and so on).<br>Example: `tcp`|http|
-|reqPathReplace |A regular expression to apply the modification. If specified, `reqPathSearch` needs to be set as well.<br>Example: `/demo/`| |
+|reqPathReplace |A regular expression to apply the modification.<br>Example: `/demo/`| |
 |reqPathSearch  |A regular expression to search the content to be replaced. If specified, `reqPathReplace` needs to be set as well.<br>Example: `/something/`| |
 |serviceDomain  |The domain of the service. If set, the proxy will allow access only to requests coming to that domain. **This parameter cannot be used with TCP.** This parameter is **mandatory** if `servicePath` is not specified.<br>Example: ecme.com| |
 |serviceDomainMatchAll|Whether to include subdomains and FDQN domains in the match. If set to false, and, for example, `serviceDomain` is set to `acme.com`, `something.acme.com` would not be considered a match unless this parameter is set to `true`. If this option is used, it is recommended to put any subdomains higher in the list using `aclName`.<br>Example: `true`|false|
@@ -37,7 +38,7 @@ The following query parameters can be used to send a *reconfigure* request to *D
 |timeoutTunnel  |The tunnel timeout in seconds.<br>Example: `3600`                                            |3600   |
 |xForwardedProto|Whether to add "X-Forwarded-Proto https" header.<br>Example: `true`                          |false  |
 
-Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, and `ReqMode` parameters. In that case, `srcPort` is required. Defining multiple destinations is useful in cases when a service exposes multiple ports with different paths and functions.
+Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization` or `ReqMode` parameters. In that case, `srcPort` is required.
 
 ### HTTP Mode HTTP Query Parameters
 
@@ -61,7 +62,7 @@ The following query parameters can be used only when `reqMode` is set to `http` 
 |usersPassEncrypted|Indicates whether passwords provided by `users` or `usersSecret` contain encrypted data. Passwords can be encrypted with the command `mkpasswd -m sha-512 password1`.<br>Example: `true`|false|
 |verifyClientSsl|Whether to verify client SSL and, if it is not valid, deny request and return 403 Forbidden status code. SSL is validated against the `ca-file` specified through the environment variable `CA_FILE`.<br>Example: true|false|
 
-Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, and `ReqMode` parameters. In that case, `srcPort` is required. Defining multiple destinations is useful in cases when a service exposes multiple ports with different paths and functions.
+Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization`, or `ReqMode` parameters. In that case, `srcPort` is required.
 
 ### TCP Mode HTTP Query Parameters
 

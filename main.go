@@ -2,6 +2,7 @@ package main
 
 import (
 	"./logging"
+	"log"
 	"os"
 	"strings"
 	"log"

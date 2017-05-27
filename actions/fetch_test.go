@@ -21,7 +21,7 @@ type FetchTestSuite struct {
 	ConsulTemplateBe  string
 	ConfigsPath       string
 	TemplatesPath     string
-	fetch             Fetch
+	fetch             fetch
 	Server            *httptest.Server
 	PutPathResponse   string
 	ConsulRequestBody proxy.Service
@@ -47,7 +47,7 @@ backend myService-be
     server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
     {{end}}`
 	s.ConsulAddress = s.Server.URL
-	s.fetch = Fetch{
+	s.fetch = fetch{
 		BaseReconfigure: BaseReconfigure{
 			ConsulAddresses: []string{s.ConsulAddress},
 			TemplatesPath:   s.TemplatesPath,
