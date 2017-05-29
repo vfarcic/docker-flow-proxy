@@ -293,18 +293,35 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenModeIsSwarmAndU
 		{Username: "user-2", Password: "pass-2"},
 	}
 	s.reconfigure.Mode = "swarm"
-	s.reconfigure.Service.ServiceDest[0].Port = "1234"
+	s.reconfigure.HttpsPort = 3333
+	sd := []proxy.ServiceDest{
+		{Port: "1111"},
+		{Port: "2222", IgnoreAuthorization: true},
+	}
+	s.reconfigure.Service.ServiceDest = sd
 	expected := `userlist myServiceUsers
     user user-1 insecure-password pass-1
     user user-2 insecure-password pass-2
 
 
-backend myService-be1234
+backend myService-be1111
     mode http
-    server myService myService:1234
+    server myService myService:1111
     acl myServiceUsersAcl http_auth(myServiceUsers)
     http-request auth realm myServiceRealm if !myServiceUsersAcl
-    http-request del-header Authorization`
+    http-request del-header Authorization
+backend myService-be2222
+    mode http
+    server myService myService:2222
+backend https-myService-be1111
+    mode http
+    server myService myService:3333
+    acl myServiceUsersAcl http_auth(myServiceUsers)
+    http-request auth realm myServiceRealm if !myServiceUsersAcl
+    http-request del-header Authorization
+backend https-myService-be2222
+    mode http
+    server myService myService:3333`
 
 	_, actual, _ := s.reconfigure.GetTemplates()
 
@@ -316,7 +333,6 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpsPort_WhenPresent() {
 backend myService-be1234
     mode http
     server myService myService:1234
-
 backend https-myService-be1234
     mode http
     server myService myService:4321`
@@ -396,27 +412,6 @@ backend myService-be5555
 
 	s.Equal("", actualFront)
 	s.Equal(expectedBack, actualBack)
-}
-
-// TODO: Deprecated (dec. 2016).
-func (s ReconfigureTestSuite) Test_GetTemplates_AddsReqRep_WhenReqRepSearchAndReqRepReplaceArePresent() {
-	s.reconfigure.ReqRepSearch = "this"
-	s.reconfigure.ReqRepReplace = "that"
-	expected := fmt.Sprintf(`
-backend myService-be
-    mode http
-    reqrep %s     %s
-    {{range $i, $e := service "%s" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}
-    {{end}}`,
-		s.reconfigure.ReqRepSearch,
-		s.reconfigure.ReqRepReplace,
-		s.reconfigure.ServiceName,
-	)
-
-	_, backend, _ := s.reconfigure.GetTemplates()
-
-	s.Equal(expected, backend)
 }
 
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpRequestSetPath_WhenReqPathSearchAndReqPathReplaceArePresent() {

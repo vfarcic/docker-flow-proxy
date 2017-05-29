@@ -147,7 +147,7 @@ func (m *Cert) sendDistributeRequests(w http.ResponseWriter, req *http.Request) 
 	if err != nil {
 		port = "8080"
 	}
-	status, err := SendDistributeRequests(req, port, m.ProxyServiceName)
+	status, err := sendDistributeRequests(req, port, m.ProxyServiceName)
 	if err != nil {
 		return m.writeError(w, err)
 	} else if status >= 300 {

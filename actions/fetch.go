@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// Fetchable defines interface that fetches information from other sources
 type Fetchable interface {
 	// TODO: It's deprecated (Consul). Remove it.
 	ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error
@@ -20,27 +21,29 @@ type Fetchable interface {
 	// If listenerAddr is nil, unreachable or any other problem error is returned.
 	ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr string) error
 }
-type Fetch struct {
+type fetch struct {
 	BaseReconfigure
 	Mode string `short:"m" long:"mode" env:"MODE" description:"If set to 'swarm', proxy will operate assuming that Docker service from v1.12+ is used."`
 }
 
+// NewFetch returns instance of the Fetchable object
 var NewFetch = func(baseData BaseReconfigure, mode string) Fetchable {
-	return &Fetch{
+	return &fetch{
 		BaseReconfigure: baseData,
 		Mode:            mode,
 	}
 }
 
 // TODO: It's deprecated (Consul). Remove it.
-func (m *Fetch) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
+func (m *fetch) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
 	if len(addresses) > 0 {
 		return m.reloadFromRegistry(addresses, instanceName, mode)
 	}
 	return nil
 }
 
-func (m *Fetch) ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr string) error {
+// ReloadConfig recreates proxy configuration with data fetches from Swarm Listener
+func (m *fetch) ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr string) error {
 	if len(listenerAddr) == 0 {
 		return fmt.Errorf("Swarm Listener address is missing %s", listenerAddr)
 	}
@@ -73,11 +76,11 @@ func (m *Fetch) ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr
 	return nil
 }
 
-func (m *Fetch) ReloadClusterConfig(listenerAddr string) error {
+// ReloadClusterConfig sends a request to Swarm Listener that will, in turn, send reconfigure requests for each service
+func (m *fetch) ReloadClusterConfig(listenerAddr string) error {
 	if len(listenerAddr) > 0 {
 		fullAddress := fmt.Sprintf("%s/v1/docker-flow-swarm-listener/notify-services", listenerAddr)
-		resp, err := httpGet(fullAddress)
-		if err != nil {
+		if resp, err := httpGet(fullAddress); err != nil {
 			return err
 		} else if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("Swarm Listener responded with the status code %d", resp.StatusCode)
@@ -87,16 +90,16 @@ func (m *Fetch) ReloadClusterConfig(listenerAddr string) error {
 	return nil
 }
 
-func (m *Fetch) getReconfigure(service *proxy.Service) Reconfigurable {
+func (m *fetch) getReconfigure(service *proxy.Service) Reconfigurable {
 	return NewReconfigure(m.BaseReconfigure, *service, m.Mode)
 }
 
-func (m *Fetch) getReload() Reloader {
+func (m *fetch) getReload() Reloader {
 	return NewReload()
 }
 
 // TODO: It's deprecated (Consul). Remove it.
-func (m *Fetch) reloadFromRegistry(addresses []string, instanceName, mode string) error {
+func (m *fetch) reloadFromRegistry(addresses []string, instanceName, mode string) error {
 	var resp *http.Response
 	var err error
 	logPrintf("Configuring existing services")
@@ -139,7 +142,7 @@ func (m *Fetch) reloadFromRegistry(addresses []string, instanceName, mode string
 }
 
 // TODO: It's deprecated (Consul). Remove it.
-func (m *Fetch) getService(addresses []string, serviceName, instanceName string, c chan proxy.Service) {
+func (m *fetch) getService(addresses []string, serviceName, instanceName string, c chan proxy.Service) {
 	sr := proxy.Service{ServiceName: serviceName}
 
 	path, err := registryInstance.GetServiceAttribute(addresses, serviceName, registry.PATH_KEY, instanceName)
@@ -163,7 +166,7 @@ func (m *Fetch) getService(addresses []string, serviceName, instanceName string,
 }
 
 // TODO: It's deprecated (Consul). Remove it.
-func (m *Fetch) getServiceAttribute(addresses []string, serviceName, key, instanceName string) (string, bool) {
+func (m *fetch) getServiceAttribute(addresses []string, serviceName, key, instanceName string) (string, bool) {
 	for _, address := range addresses {
 		url := fmt.Sprintf("%s/v1/kv/%s/%s/%s?raw", address, instanceName, serviceName, key)
 		resp, err := http.Get(url)

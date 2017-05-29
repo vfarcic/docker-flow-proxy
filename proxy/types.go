@@ -10,6 +10,8 @@ var usersBasePath string = "/run/secrets/dfp_users_%s"
 
 // ServiceDest holds data used to generate proxy configuration. It is extracted as a separate struct since a single service can have multiple combinations.
 type ServiceDest struct {
+	// Whether to ignore authorization for this service destination.
+	IgnoreAuthorization bool
 	// The internal port of a service that should be reconfigured.
 	// The port is used only in the *swarm* mode.
 	Port string
@@ -69,6 +71,8 @@ type Service struct {
 	// The path to the Consul Template representing a snippet of the frontend configuration.
 	// If specified, proxy template will be loaded from the specified file.
 	ConsulTemplateFePath string `split_words:"true"`
+	// Internal use only
+	Debug bool
 	// Additional headers that will be deleted in the request before forwarding it to the service. Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-request for more info.
 	DelReqHeader []string `split_words:"true"`
 	// Additional headers that will be deleted in the response before forwarding it to the client. Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-response for more info.
@@ -90,12 +94,10 @@ type Service struct {
 	// The ACL derivative. Defaults to path_beg.
 	// See https://cbonte.github.io/haproxy-dconv/configuration-1.5.html#7.3.6-path for more info.
 	PathType string `split_words:"true"`
+	// TODO: Remove it. It is a temporary workaround until Consul mode is removed.
+	ProxyMode string
 	// Whether to redirect to https when X-Forwarded-Proto is http
 	RedirectWhenHttpProto bool `split_words:"true"`
-	// Deprecated in favor of ReqPathReplace
-	ReqRepReplace string `split_words:"true"`
-	// Deprecated in favor of ReqPathSearch
-	ReqRepSearch string `split_words:"true"`
 	// A regular expression to apply the modification.
 	// If specified, `reqPathSearch` needs to be set as well.
 	ReqPathReplace string `split_words:"true"`
@@ -132,6 +134,8 @@ type Service struct {
 	TimeoutServer string `split_words:"true"`
 	// The tunnel timeout in seconds
 	TimeoutTunnel string `split_words:"true"`
+	// Internal use only.
+	UseGlobalUsers bool
 	// A comma-separated list of credentials(<user>:<pass>) for HTTP basic auth, which applies only to the service that will be reconfigured.
 	Users []User `split_words:"true"`
 	// Whether to add "X-Forwarded-Proto https" header.
@@ -244,11 +248,13 @@ type ServiceParameterProvider interface {
 	GetString(name string) string
 }
 
+// GetServiceFromMap returns Service struct by extracting request parameters
 func GetServiceFromMap(req *map[string]string) *Service {
 	provider := mapParameterProvider{theMap: req}
 	return GetServiceFromProvider(&provider)
 }
 
+// GetServiceFromProvider returns Service by extracting parameters from ServiceParameterProvider
 func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	sr := new(Service)
 	provider.Fill(sr)
@@ -344,16 +350,15 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 	if len(provider.GetString(fmt.Sprintf("reqMode%s", suffix))) > 0 {
 		reqMode = provider.GetString(fmt.Sprintf("reqMode%s", suffix))
 	}
-	port := provider.GetString(fmt.Sprintf("port%s", suffix))
 	srcPort, _ := strconv.Atoi(provider.GetString(fmt.Sprintf("srcPort%s", suffix)))
-	verifyClientSsl := getBoolParam(provider, fmt.Sprintf("verifyClientSsl%s", suffix))
 	return ServiceDest{
-		Port:            port,
-		ReqMode:         reqMode,
-		SrcPort:         srcPort,
-		ServicePath:     path,
-		VerifyClientSsl: verifyClientSsl,
-		UserAgent:       userAgent,
+		IgnoreAuthorization: getBoolParam(provider, fmt.Sprintf("ignoreAuthorization%s", suffix)),
+		Port:                provider.GetString(fmt.Sprintf("port%s", suffix)),
+		ReqMode:             reqMode,
+		SrcPort:             srcPort,
+		ServicePath:         path,
+		VerifyClientSsl:     getBoolParam(provider, fmt.Sprintf("verifyClientSsl%s", suffix)),
+		UserAgent:           userAgent,
 	}
 
 }

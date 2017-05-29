@@ -22,7 +22,9 @@ services:
         delay: 10s
       resources:
         reservations:
-          memory: 50M
+          memory: 10M
+        limits:
+          memory: 20M
 
   docs:
     image: vfarcic/docker-flow-proxy-docs:${TAG:-latest}
@@ -38,7 +40,9 @@ services:
       replicas: 2
       resources:
         reservations:
-          memory: 50M
+          memory: 5M
+        limits:
+          memory: 10M
 
 networks:
   proxy:

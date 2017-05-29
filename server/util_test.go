@@ -35,7 +35,7 @@ func (s *ServerTestSuite) Test_SendDistributeRequests_InvokesLookupHost() {
 	}
 	req, _ := http.NewRequest("GET", s.ReconfigureUrl, nil)
 
-	SendDistributeRequests(req, "8080", s.ServiceName)
+	sendDistributeRequests(req, "8080", s.ServiceName)
 
 	s.Assert().Equal(fmt.Sprintf("tasks.%s", s.ServiceName), actualHost)
 }
@@ -48,7 +48,7 @@ func (s *ServerTestSuite) Test_SendDistributeRequests_ReturnsError_WhenLookupHos
 	}
 	req, _ := http.NewRequest("GET", s.ReconfigureUrl, nil)
 
-	status, err := SendDistributeRequests(req, "8080", s.ServiceName)
+	status, err := sendDistributeRequests(req, "8080", s.ServiceName)
 
 	s.Assertions.Equal(http.StatusBadRequest, status)
 	s.Assertions.Error(err)
@@ -71,7 +71,7 @@ func (s *ServerTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIp(
 	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.ReconfigureUrl)
 	req, _ := http.NewRequest("GET", addr, nil)
 
-	SendDistributeRequests(req, port, s.ServiceName)
+	sendDistributeRequests(req, port, s.ServiceName)
 
 	s.Assert().Equal(s.BaseUrl, actualPath)
 	s.Assert().Equal("false", actualQuery.Get("distribute"))
@@ -92,7 +92,7 @@ func (s *ServerTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIpW
 	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.ReconfigureUrl)
 	req, _ := http.NewRequest("PUT", addr, nil)
 
-	SendDistributeRequests(req, port, s.ServiceName)
+	sendDistributeRequests(req, port, s.ServiceName)
 
 	s.Assert().Equal("PUT", actualProtocol)
 }
@@ -114,7 +114,7 @@ func (s *ServerTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIpW
 	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.ReconfigureUrl)
 	req, _ := http.NewRequest("PUT", addr, strings.NewReader(expectedBody))
 
-	SendDistributeRequests(req, port, s.ServiceName)
+	sendDistributeRequests(req, port, s.ServiceName)
 
 	s.Assert().Equal(expectedBody, actualBody)
 }
@@ -134,7 +134,7 @@ func (s *ServerTestSuite) Test_SendDistributeRequests_ReturnsError_WhenRequestFa
 	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.ReconfigureUrl)
 	req, _ := http.NewRequest("GET", addr, nil)
 
-	actualStatus, err := SendDistributeRequests(req, port, s.ServiceName)
+	actualStatus, err := sendDistributeRequests(req, port, s.ServiceName)
 
 	s.Assertions.Equal(http.StatusBadRequest, actualStatus)
 	s.Assertions.Error(err)
@@ -148,7 +148,7 @@ func (s *ServerTestSuite) Test_SendDistributeRequests_ReturnsError_WhenProxyIPsA
 	}
 	req, _ := http.NewRequest("GET", s.ReconfigureUrl, nil)
 
-	actualStatus, err := SendDistributeRequests(req, "1234", s.ServiceName)
+	actualStatus, err := sendDistributeRequests(req, "1234", s.ServiceName)
 
 	s.Assertions.Equal(http.StatusBadRequest, actualStatus)
 	s.Assertions.Error(err)

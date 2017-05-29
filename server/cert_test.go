@@ -388,9 +388,9 @@ func (s *CertTestSuite) Test_Put_SendsDistributeRequests_WhenDistruibuteParamIsP
 	)
 	actualServiceName := ""
 	actualPort := ""
-	sendDistributeRequestsOrig := SendDistributeRequests
-	defer func() { SendDistributeRequests = sendDistributeRequestsOrig }()
-	SendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
+	sendDistributeRequestsOrig := sendDistributeRequests
+	defer func() { sendDistributeRequests = sendDistributeRequestsOrig }()
+	sendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
 		actualServiceName = serviceName
 		actualPort = port
 		return 0, nil
@@ -429,9 +429,9 @@ func (s *CertTestSuite) Test_Put_SendsDistributeRequestsToPort8080_WhenPortIsNot
 	)
 	actualServiceName := ""
 	actualPort := ""
-	sendDistributeRequestsOrig := SendDistributeRequests
-	defer func() { SendDistributeRequests = sendDistributeRequestsOrig }()
-	SendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
+	sendDistributeRequestsOrig := sendDistributeRequests
+	defer func() { sendDistributeRequests = sendDistributeRequestsOrig }()
+	sendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
 		actualServiceName = serviceName
 		actualPort = port
 		return 0, nil
@@ -455,9 +455,9 @@ func (s *CertTestSuite) Test_Put_ReturnsError_WhenSendDistributeRequestsReturnsE
 		"http://acme.com/v1/docker-flow-proxy/cert?certName=my-cert.pem&distribute=true",
 		strings.NewReader("cert content"),
 	)
-	sendDistributeRequestsOrig := SendDistributeRequests
-	defer func() { SendDistributeRequests = sendDistributeRequestsOrig }()
-	SendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
+	sendDistributeRequestsOrig := sendDistributeRequests
+	defer func() { sendDistributeRequests = sendDistributeRequestsOrig }()
+	sendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
 		return 0, fmt.Errorf("This is an error")
 	}
 
@@ -478,9 +478,9 @@ func (s *CertTestSuite) Test_Put_ReturnsError_WhenSendDistributeRequestsReturnsN
 		"http://acme.com/v1/docker-flow-proxy/cert?certName=my-cert.pem&distribute=true",
 		strings.NewReader("cert content"),
 	)
-	sendDistributeRequestsOrig := SendDistributeRequests
-	defer func() { SendDistributeRequests = sendDistributeRequestsOrig }()
-	SendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
+	sendDistributeRequestsOrig := sendDistributeRequests
+	defer func() { sendDistributeRequests = sendDistributeRequestsOrig }()
+	sendDistributeRequests = func(req *http.Request, port, serviceName string) (status int, err error) {
 		return 400, nil
 	}
 

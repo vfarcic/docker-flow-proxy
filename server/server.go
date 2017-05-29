@@ -119,7 +119,7 @@ func (m *serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 		if m.isSwarm(m.mode) && !m.hasPort(sr.ServiceDest) {
 			m.writeBadRequest(w, &response, `When MODE is set to "service" or "swarm", the port query is mandatory`)
 		} else if sr.Distribute {
-			if status, err := SendDistributeRequests(req, m.port, m.serviceName); err != nil || status >= 300 {
+			if status, err := sendDistributeRequests(req, m.port, m.serviceName); err != nil || status >= 300 {
 				m.writeInternalServerError(w, &response, err.Error())
 			} else {
 				response.Message = distributed
@@ -218,7 +218,7 @@ func (m *serve) RemoveHandler(w http.ResponseWriter, req *http.Request) {
 		response.Message = "The serviceName query is mandatory"
 		header = http.StatusBadRequest
 	} else if params.Distribute {
-		if status, err := SendDistributeRequests(req, m.port, m.serviceName); err != nil || status >= 300 {
+		if status, err := sendDistributeRequests(req, m.port, m.serviceName); err != nil || status >= 300 {
 			response.Status = "NOK"
 			response.Message = err.Error()
 			header = http.StatusInternalServerError
