@@ -263,10 +263,10 @@ func (m *HaProxy) getCerts() []string {
 	certPaths := m.GetCertPaths()
 	certs := []string{}
 	if len(certPaths) > 0 {
-		certs = append(certs, " ssl")
-		for _, certPath := range certPaths {
-			certs = append(certs, fmt.Sprintf("crt %s", certPath))
-		}
+		certs = append(certs, " ssl crt-list /cfg/crt-list.txt")
+		mu.Lock()
+		defer mu.Unlock()
+		writeFile("/cfg/crt-list.txt", []byte(strings.Join(certPaths, "\n")), 0664)
 	}
 	if len(os.Getenv("CA_FILE")) > 0 {
 		if len(certs) == 0 {

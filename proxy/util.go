@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"sync"
 )
 
 var cmdRunHa = func(args []string) error {
@@ -78,3 +79,5 @@ func replaceNonAlphabetAndNumbers(value []string) string {
 	reg, _ := regexp.Compile("[^A-Za-z0-9]+")
 	return reg.ReplaceAllString(strings.Join(value, "_"), "_")
 }
+
+var mu = &sync.Mutex{}

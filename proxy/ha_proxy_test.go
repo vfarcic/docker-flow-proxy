@@ -1401,6 +1401,8 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCerts() {
 		ReadDir = readDirOrig
 	}()
 	expected := "ssl"
+	expectedCertList := []string{}
+	actualCertList := ""
 	mockedFiles := []os.FileInfo{}
 	for i := 1; i <= 3; i++ {
 		certName := fmt.Sprintf("my-cert-%d", i)
@@ -1415,6 +1417,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCerts() {
 			},
 		}
 		mockedFiles = append(mockedFiles, file)
+		expectedCertList = append(expectedCertList, path)
 	}
 	ReadDir = func(dir string) ([]os.FileInfo, error) {
 		if dir == "/certs" {
@@ -1426,7 +1429,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCerts() {
 	tmpl := strings.Replace(
 		s.TemplateContent,
 		"\n    bind *:80\n    bind *:443",
-		"\n    bind *:80\n    bind *:443 "+expected,
+		"\n    bind *:80\n    bind *:443 ssl crt-list /cfg/crt-list.txt",
 		-1)
 	expectedData := fmt.Sprintf(
 		`%s%s`,
@@ -1434,13 +1437,18 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCerts() {
 		s.ServicesContent,
 	)
 	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		if strings.EqualFold(filename, "/cfg/crt-list.txt") {
+			actualCertList = string(data)
+		}
 		actualData = string(data)
 		return nil
 	}
+	println("111")
 
 	NewHaProxy(s.TemplatesPath, s.ConfigsPath).CreateConfigFromTemplates()
 
 	s.Equal(expectedData, actualData)
+	s.Equal(strings.Join(expectedCertList, "\n"), actualCertList)
 }
 
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCaFile_WhenEnvVarIsSet() {
