@@ -632,6 +632,37 @@ backend %s-be%s
 	s.Equal(expectedData, actualData)
 }
 
+func (s ReconfigureTestSuite) Test_Execute_WritesBeTemplateWithRedirectToHttps_WhenHttpsOnlyIsTrue() {
+	s.reconfigure.Mode = "swarm"
+	s.reconfigure.HttpsOnly = true
+	var actualFilename, actualData string
+	expectedFilename := fmt.Sprintf("%s/%s-be.cfg", s.TemplatesPath, s.ServiceName)
+	expectedData := fmt.Sprintf(
+		`
+backend %s-be%s
+    mode http
+    redirect scheme https if !{ ssl_fc }
+    server %s %s:%s`,
+		s.ServiceName,
+		s.reconfigure.ServiceDest[0].Port,
+		s.ServiceName,
+		s.ServiceName,
+		s.reconfigure.ServiceDest[0].Port,
+	)
+	writeBeTemplateOrig := writeBeTemplate
+	defer func() { writeBeTemplate = writeBeTemplateOrig }()
+	writeBeTemplate = func(filename string, data []byte, perm os.FileMode) error {
+		actualFilename = filename
+		actualData = string(data)
+		return nil
+	}
+
+	s.reconfigure.Execute(true)
+
+	s.Equal(expectedFilename, actualFilename)
+	s.Equal(expectedData, actualData)
+}
+
 func (s ReconfigureTestSuite) Test_Execute_AddsXForwardedProto_WhenTrue() {
 	s.reconfigure.Mode = "swarm"
 	s.reconfigure.XForwardedProto = true

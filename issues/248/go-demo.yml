@@ -1,0 +1,50 @@
+version: '3'
+
+services:
+
+  app1:
+    image: vfarcic/go-demo
+    environment:
+      - DB=db
+    networks:
+      - proxy
+      - default
+    deploy:
+      labels:
+        - com.df.notify=true
+        - com.df.distribute=true
+        - com.df.servicePath=/
+        - com.df.port=8080
+        - com.df.aclName=95-service-5
+#        - com.df.serviceDomainMatchAll=true
+        - com.df.httpsOnly=true
+        - com.df.serviceDomain=svctest.local
+
+  app2:
+    image: vfarcic/go-demo
+    environment:
+      - DB=db
+    ports:
+      - 8082:8080
+    networks:
+      - proxy
+      - default
+    deploy:
+      labels:
+        - com.df.notify=true
+        - com.df.distribute=true
+        - com.df.servicePath=/demo/hello
+        - com.df.port=8080
+        - com.df.aclName=40-service-6
+        - com.df.serviceDomain=a.svctest.local
+
+  db:
+    image: mongo
+    networks:
+      - default
+
+networks:
+  default:
+    external: false
+  proxy:
+    external: true

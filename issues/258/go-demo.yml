@@ -1,20 +1,30 @@
 version: '3'
+
 services:
-  app:
-    image: joelchen/starter-app:latest
-    ports:
-      - 8081:2015
+
+  main:
+    image: vfarcic/go-demo
+    environment:
+      - DB=db
     networks:
       - proxy
+      - default
     deploy:
-      mode: global
       labels:
         - com.df.notify=true
         - com.df.distribute=true
         - com.df.servicePath=/
-        - com.df.reqPathSearch=/.
+        - com.df.port=8080
+        - com.df.reqPathSearch=.
         - com.df.reqPathReplace=,g
-        - com.df.port=2015
+
+  db:
+    image: mongo
+    networks:
+      - default
+
 networks:
+  default:
+    external: false
   proxy:
     external: true

@@ -51,6 +51,9 @@ backend {{$.ServiceName}}-be{{.Port}}
     acl valid_client_cert_{{$.ServiceName}}{{.Port}} ssl_c_used ssl_c_verify 0
     http-request deny unless valid_client_cert_{{$.ServiceName}}{{.Port}}
             {{- end}}
+            {{- if $.HttpsOnly}}
+    redirect scheme https if !{ ssl_fc }
+            {{- end}}
     server {{$.ServiceName}} {{$.Host}}:{{.Port}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
         {{- /* TODO: It's Consul and it's deprecated. Remove it. */}}
         {{- else}}

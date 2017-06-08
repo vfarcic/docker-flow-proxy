@@ -1285,13 +1285,12 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	s.Equal(expectedData, actualData)
 }
 
-func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToHttpsWhenHttpsOnlyIsTrue() {
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToHttps_WhenHttpsOnlyIsTrue() {
 	var actualData string
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
     acl url_my-service1111 path_beg /path
-    redirect scheme https if !{ ssl_fc } url_my-service1111
     use_backend my-service-be1111 if url_my-service1111%s`,
 		tmpl,
 		s.ServicesContent,

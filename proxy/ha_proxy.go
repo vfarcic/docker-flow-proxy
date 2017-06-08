@@ -503,15 +503,6 @@ func (m *HaProxy) getFrontTemplate(s Service) string {
         {{- end}}
     {{- end}}
 {{- end}}
-{{- if not $.RedirectWhenHttpProto}}{{- if $.HttpsOnly}}
-    {{- range .ServiceDest}}
-        {{- if eq .ReqMode "http"}}
-            {{- if ne .Port ""}}
-    redirect scheme https if !{ ssl_fc } url_{{$.AclName}}{{.Port}}{{if $.ServiceDomain}} domain_{{$.AclName}}{{end}}{{.SrcPortAclName}}
-            {{- end}}
-        {{- end}}
-    {{- end}}
-{{- end}}{{- end}}
 {{- range .ServiceDest}}
     {{- if eq .ReqMode "http"}}{{- if ne .Port ""}}
     use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{if $.ServiceDomain}} domain_{{$.AclName}}{{end}}{{.SrcPortAclName}}

@@ -1,17 +1,24 @@
-version: '3.2'
+version: "3"
+
+networks:
+
+  proxy:
+    external: true
+
 services:
 
   proxy:
-    image: vfarcic/docker-flow-proxy
+    image: vfarcic/docker-flow-proxy:beta
     ports:
       - 80:80
+      - 443:443
+      - 8080:8080
     networks:
       - proxy
     environment:
       - LISTENER_ADDRESS=swarm-listener
+      - DEBUG=true
       - MODE=swarm
-    deploy:
-      replicas: 2
 
   swarm-listener:
     image: vfarcic/docker-flow-swarm-listener
@@ -25,7 +32,3 @@ services:
     deploy:
       placement:
         constraints: [node.role == manager]
-
-networks:
-  proxy:
-    external: true
