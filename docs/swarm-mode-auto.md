@@ -84,6 +84,9 @@ docker service create --name proxy \
 
 We opened the ports *80* and *443*. External requests will be routed through them towards destination services. The proxy is attached to the *proxy* network and has the mode set to *swarm*. The proxy must belong to the same network as the listener. They will exchange information whenever a service is created or removed.
 
+!!! info
+	If you call the service something other than *proxy*, like in the example above, you have to pass the environment variable `SERVICE_NAME` on creation. The value of `SERVICE_NAME` has to be the same as the name of the service.
+
 Let's deploy the demo service. It consists of two containers; *mongo* is the database and *vfarcic/go-demo* is the actual service that uses it. They will communicate with each other through the *go-demo* network. Since we want to expose only *vfarcic/go-demo* to the "outside" world and keep the database "private", only the *vfarcic/go-demo* container will attach itself to the *proxy* network.
 
 ```bash
