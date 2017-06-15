@@ -330,12 +330,12 @@ func getServiceDestList(sr *Service, provider ServiceParameterProvider) []Servic
 		}
 		sdList = append(sdList, ServiceDest{ReqMode: reqMode})
 	}
-	for i := range sdList {
-		if len(sdList[i].ServiceDomain) > 0 {
-			if len(sdList[i].ServiceDomain) == 0 {
-				sdList[i].ServiceDomain = sdList[i].ServiceDomain
+	for i, sd := range sdList {
+		if len(sd.ServiceDomain) > 0 {
+			if len(sd.ServiceDomain) == 0 {
+				sdList[i].ServiceDomain = sd.ServiceDomain
 			}
-			if len(sdList[i].ServicePath) == 0 {
+			if len(sd.ServicePath) == 0 {
 				sdList[i].ServicePath = []string{"/"}
 			}
 		}

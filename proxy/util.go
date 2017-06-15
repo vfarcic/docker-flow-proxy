@@ -67,6 +67,7 @@ func IsValidReconf(service *Service) (statusCode int, msg string) {
 	hasPath := len(service.ServiceDest[0].ServicePath) > 0
 	hasSrcPort := service.ServiceDest[0].SrcPort > 0
 	hasPort := len(service.ServiceDest[0].Port) > 0
+//	hasDomain := len(service.ServiceDest[0].ServiceDomain) > 0
 	hasDomain := len(service.ServiceDomain) > 0
 	if strings.EqualFold(reqMode, "http") {
 		if !hasPath && !hasDomain && len(service.ConsulTemplateFePath) == 0 {
