@@ -321,8 +321,9 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesPutCertWithDomainName_W
 
 func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesReconfigureExecute_WhenConsulTemplatePathIsPresent() {
 	sd := proxy.ServiceDest{
-		ServicePath: []string{},
-		ReqMode:     "http",
+		ServicePath:   []string{},
+		ReqMode:       "http",
+		ServiceDomain: []string{},
 	}
 	pathFe := "/path/to/consul/fe/template"
 	pathBe := "/path/to/consul/be/template"
@@ -601,9 +602,10 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		ServiceCert:           "serviceCert",
 		ServiceColor:          "serviceColor",
 		ServiceDest: []proxy.ServiceDest{{
-			ServicePath: []string{"/"},
-			Port:        "1234",
-			ReqMode:     "reqMode",
+			ServiceDomain: []string{"domain1", "domain2"},
+			ServicePath:   []string{"/"},
+			Port:          "1234",
+			ReqMode:       "reqMode",
 		}},
 		ServiceDomain:         []string{"domain1", "domain2"},
 		ServiceDomainMatchAll: true,
@@ -678,7 +680,12 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_SetsServicePathToSlash_WhenDoma
 		ServiceDomain: []string{"domain1", "domain2"},
 		ServiceName:   "serviceName",
 		ServiceDest: []proxy.ServiceDest{
-			{ServicePath: []string{"/"}, Port: "1234", ReqMode: "http"},
+			{
+				ServiceDomain: []string{"domain1", "domain2"},
+				ServicePath: []string{"/"},
+				Port: "1234",
+				ReqMode: "http",
+			},
 		},
 	}
 	addr := fmt.Sprintf(

@@ -253,6 +253,7 @@ func (s *TypesTestSuite) getExpectedService() Service {
 		ServiceColor:          "serviceColor",
 		ServiceDest: []ServiceDest{{
 			IgnoreAuthorization: true,
+			ServiceDomain:       []string{"domain1", "domain2"},
 			ServicePath:         []string{"/"},
 			Port:                "1234",
 			ReqMode:             "reqMode",
