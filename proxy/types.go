@@ -149,6 +149,7 @@ type Service struct {
 	ServiceColor        string
 	ServicePort         string
 	AclCondition        string
+	// TODO: Remove
 	DomainFunction      string
 	FullServiceName     string
 	Host                string
@@ -329,10 +330,10 @@ func getServiceDestList(sr *Service, provider ServiceParameterProvider) []Servic
 		}
 		sdList = append(sdList, ServiceDest{ReqMode: reqMode})
 	}
-	if len(sr.ServiceDomain) > 0 {
-		for i := range sdList {
+	for i := range sdList {
+		if len(sdList[i].ServiceDomain) > 0 {
 			if len(sdList[i].ServiceDomain) == 0 {
-				sdList[i].ServiceDomain = sr.ServiceDomain
+				sdList[i].ServiceDomain = sdList[i].ServiceDomain
 			}
 			if len(sdList[i].ServicePath) == 0 {
 				sdList[i].ServicePath = []string{"/"}

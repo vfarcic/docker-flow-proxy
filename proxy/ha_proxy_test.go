@@ -875,15 +875,26 @@ frontend tcpFE_1234
 	data.Services["my-service-1"] = Service{
 		ServiceName: "my-service-1",
 		ServiceDest: []ServiceDest{
-			{SrcPort: 1234, Port: "4321", ReqMode: "tcp"},
+			{
+				SrcPort: 1234,
+				Port: "4321",
+				ReqMode: "tcp",
+				ServiceDomain: []string{"my-domain.com"},
+			},
 		},
 		ServiceDomain: []string{"my-domain.com"},
 	}
 	data.Services["my-service-2"] = Service{
 		ServiceName: "my-service-2",
 		ServiceDest: []ServiceDest{
-			{SrcPort: 1234, Port: "4321", ReqMode: "tcp"},
+			{
+				SrcPort: 1234,
+				Port: "4321",
+				ReqMode: "tcp",
+				ServiceDomain: []string{"my-domain-1.com", "my-domain-2.com"},
+			},
 		},
+		// TODO: Remove
 		ServiceDomain: []string{"my-domain-1.com", "my-domain-2.com"},
 	}
 
@@ -1108,11 +1119,12 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
 	data.Services["my-service"] = Service{
 		ServiceName:   "my-service",
+		// TODO: Remove
 		ServiceDomain: []string{"domain-1", "domain-2"},
 		AclName:       "my-service",
 		PathType:      "path_beg",
 		ServiceDest: []ServiceDest{
-			{Port: "1111", ServicePath: []string{"/path"}},
+			{Port: "1111", ServicePath: []string{"/path"}, ServiceDomain: []string{"domain-1", "domain-2"}},
 		},
 	}
 
@@ -1244,7 +1256,11 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
 	data.Services["my-service"] = Service{
 		ServiceName:   "my-service",
+		// TODO: Remove
 		ServiceDomain: []string{"*domain-1"},
+		ServiceDest: []ServiceDest{
+			{ServiceDomain: []string{"*domain-1"}},
+		},
 	}
 
 	p.CreateConfigFromTemplates()

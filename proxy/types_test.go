@@ -226,6 +226,7 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"ignoreAuthorization" + indexSuffix: strconv.FormatBool(expected.ServiceDest[0].IgnoreAuthorization),
 		"port" + indexSuffix:                expected.ServiceDest[0].Port,
 		"reqMode" + indexSuffix:             expected.ServiceDest[0].ReqMode,
+		"serviceDomain" + indexSuffix:       strings.Join(expected.ServiceDest[0].ServiceDomain, ","),
 		"servicePath" + indexSuffix:         strings.Join(expected.ServiceDest[0].ServicePath, ","),
 		"userAgent" + indexSuffix:           strings.Join(expected.ServiceDest[0].UserAgent.Value, ","),
 		"verifyClientSsl" + indexSuffix:     strconv.FormatBool(expected.ServiceDest[0].VerifyClientSsl),
