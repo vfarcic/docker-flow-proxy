@@ -22,7 +22,7 @@ func getFrontTemplate(s Service) string {
         {{- end}}
     {{- end}}
     {{- if .ServiceDomain}}
-    acl domain_{{$.AclName}} {{$.DomainFunction}}(host) -i{{range .ServiceDomain}} {{.}}{{end}}
+    acl domain_{{$.AclName}}{{.Port}} {{$.DomainFunction}}(host) -i{{range .ServiceDomain}} {{.}}{{end}}
     {{- end}}
 {{- end}}
 {{- if gt $.HttpsPort 0 }}
@@ -34,16 +34,16 @@ func getFrontTemplate(s Service) string {
         {{- if eq .ReqMode "http"}}
             {{- if ne .Port ""}}
     acl is_{{$.AclName}}_http hdr(X-Forwarded-Proto) http
-    redirect scheme https if is_{{$.AclName}}_http url_{{$.AclName}}{{.Port}}{{if .ServiceDomain}} domain_{{$.AclName}}{{end}}{{.SrcPortAclName}}
+    redirect scheme https if is_{{$.AclName}}_http url_{{$.AclName}}{{.Port}}{{if .ServiceDomain}} domain_{{$.AclName}}{{.Port}}{{end}}{{.SrcPortAclName}}
             {{- end}}
         {{- end}}
     {{- end}}
 {{- end}}
 {{- range .ServiceDest}}
     {{- if eq .ReqMode "http"}}{{- if ne .Port ""}}
-    use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{if .ServiceDomain}} domain_{{$.AclName}}{{end}}{{.SrcPortAclName}}
+    use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{if .ServiceDomain}} domain_{{$.AclName}}{{.Port}}{{end}}{{.SrcPortAclName}}
 	    {{- if gt $.HttpsPort 0 }} http_{{$.ServiceName}}
-    use_backend https-{{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{if .ServiceDomain}} domain_{{$.AclName}}{{end}} https_{{$.ServiceName}}
+    use_backend https-{{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{if .ServiceDomain}} domain_{{$.AclName}}{{.Port}}{{end}} https_{{$.ServiceName}}
         {{- end}}
     {{- $length := len .UserAgent.Value}}{{if gt $length 0}} user_agent_{{$.AclName}}_{{.UserAgent.AclName}}{{end}}
         {{- if $.IsDefaultBackend}}
@@ -73,8 +73,8 @@ func getFrontTemplateTcp(servicesByPort map[int]Services) string {
     {{- range $s := .}}
         {{- range $sd := .ServiceDest}}
             {{- if $sd.ServiceDomain}}
-    acl domain_{{$s.AclName}} {{$s.DomainFunction}}(host) -i{{range $sd.ServiceDomain}} {{.}}{{end}}
-    use_backend {{$s.ServiceName}}-be{{$sd.Port}} if domain_{{$s.ServiceName}}
+    acl domain_{{$s.AclName}}{{.Port}} {{$s.DomainFunction}}(host) -i{{range $sd.ServiceDomain}} {{.}}{{end}}
+    use_backend {{$s.ServiceName}}-be{{$sd.Port}} if domain_{{$s.AclName}}{{.Port}}
             {{- end}}
             {{- if not $sd.ServiceDomain}}
     default_backend {{$s.ServiceName}}-be{{$sd.Port}}
@@ -263,20 +263,14 @@ func templateToString(templateString string, data interface{}) string {
 }
 
 func putDomainFunction(s *Service) {
-	// TODO: Remove
 	s.DomainFunction = "hdr"
 	for _, sd := range s.ServiceDest {
-		sd.DomainFunction = "hdr"
 		if s.ServiceDomainMatchAll {
-			sd.DomainFunction = "hdr_dom"
-			// TODO: Remove
 			s.DomainFunction = "hdr_dom"
 		} else {
 			for i, domain := range sd.ServiceDomain {
 				if strings.HasPrefix(domain, "*") {
 					sd.ServiceDomain[i] = strings.Trim(domain, "*")
-					sd.DomainFunction = "hdr_end"
-					// TODO: Remove
 					s.DomainFunction = "hdr_end"
 				}
 			}

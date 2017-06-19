@@ -146,7 +146,6 @@ func (m *fetch) getService(addresses []string, serviceName, instanceName string,
 	sr := proxy.Service{ServiceName: serviceName}
 
 	path, err := registryInstance.GetServiceAttribute(addresses, serviceName, registry.PATH_KEY, instanceName)
-	domain, err := registryInstance.GetServiceAttribute(addresses, serviceName, registry.DOMAIN_KEY, instanceName)
 	port, _ := m.getServiceAttribute(addresses, serviceName, registry.PORT, instanceName)
 	sd := proxy.ServiceDest{
 		ServicePath: strings.Split(path, ","),
@@ -155,7 +154,6 @@ func (m *fetch) getService(addresses []string, serviceName, instanceName string,
 	if err == nil {
 		sr.ServiceDest = []proxy.ServiceDest{sd}
 		sr.ServiceColor, _ = m.getServiceAttribute(addresses, serviceName, registry.COLOR_KEY, instanceName)
-		sr.ServiceDomain = strings.Split(domain, ",")
 		sr.ServiceCert, _ = m.getServiceAttribute(addresses, serviceName, registry.CERT_KEY, instanceName)
 		sr.OutboundHostname, _ = m.getServiceAttribute(addresses, serviceName, registry.HOSTNAME_KEY, instanceName)
 		sr.PathType, _ = m.getServiceAttribute(addresses, serviceName, registry.PATH_TYPE_KEY, instanceName)

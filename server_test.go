@@ -48,15 +48,15 @@ func TestServerUnitTestSuite(t *testing.T) {
 
 func (s *ServerTestSuite) SetupTest() {
 	s.sd = proxy.ServiceDest{
-		ServicePath: []string{"/path/to/my/service/api", "/path/to/my/other/service/api"},
-		ReqMode:     "http",
+		ReqMode:       "http",
+		ServiceDomain: []string{"my-domain.com"},
+		ServicePath:   []string{"/path/to/my/service/api", "/path/to/my/other/service/api"},
 	}
 	s.Service.ServiceDest = []proxy.ServiceDest{s.sd}
 	s.InstanceName = "proxy-test-instance"
 	s.ConsulAddress = "http://1.2.3.4:1234"
 	s.ServiceName = "myService"
 	s.ServiceColor = "pink"
-	s.ServiceDomain = []string{"my-domain.com"}
 	s.OutboundHostname = "machine-123.my-company.com"
 	s.BaseUrl = "/v1/docker-flow-proxy"
 	s.ReconfigureBaseUrl = fmt.Sprintf("%s/reconfigure", s.BaseUrl)
@@ -67,7 +67,7 @@ func (s *ServerTestSuite) SetupTest() {
 		s.ServiceName,
 		s.ServiceColor,
 		strings.Join(s.sd.ServicePath, ","),
-		strings.Join(s.ServiceDomain, ","),
+		strings.Join(s.sd.ServiceDomain, ","),
 		s.OutboundHostname,
 	)
 	s.RemoveUrl = fmt.Sprintf("%s?serviceName=%s", s.RemoveBaseUrl, s.ServiceName)

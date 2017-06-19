@@ -860,10 +860,10 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_GroupsTcpFrontendsByPor
 frontend tcpFE_1234
     bind *:1234
     mode tcp
-    acl domain_my-service-1 hdr(host) -i my-domain.com
-    use_backend my-service-1-be4321 if domain_my-service-1
-    acl domain_my-service-2 hdr(host) -i my-domain-1.com my-domain-2.com
-    use_backend my-service-2-be4321 if domain_my-service-2%s`,
+    acl domain_my-service-14321 hdr(host) -i my-domain.com
+    use_backend my-service-1-be4321 if domain_my-service-14321
+    acl domain_my-service-24321 hdr(host) -i my-domain-1.com my-domain-2.com
+    use_backend my-service-2-be4321 if domain_my-service-24321%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -882,7 +882,6 @@ frontend tcpFE_1234
 				ServiceDomain: []string{"my-domain.com"},
 			},
 		},
-		ServiceDomain: []string{"my-domain.com"},
 	}
 	data.Services["my-service-2"] = Service{
 		ServiceName: "my-service-2",
@@ -894,8 +893,6 @@ frontend tcpFE_1234
 				ServiceDomain: []string{"my-domain-1.com", "my-domain-2.com"},
 			},
 		},
-		// TODO: Remove
-		ServiceDomain: []string{"my-domain-1.com", "my-domain-2.com"},
 	}
 
 	p.CreateConfigFromTemplates()
@@ -1106,9 +1103,12 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service1111 path_beg /path
-    acl domain_my-service hdr(host) -i domain-1 domain-2
-    use_backend my-service-be1111 if url_my-service1111 domain_my-service%s`,
+    acl url_my-service-11111 path_beg /path
+    acl domain_my-service-11111 hdr(host) -i domain-1-1 domain-1-2
+    use_backend my-service-1-be1111 if url_my-service-11111 domain_my-service-11111
+    acl url_my-service-21111 path_beg /path
+    acl domain_my-service-21111 hdr(host) -i domain-2-1 domain-2-2
+    use_backend my-service-2-be1111 if url_my-service-21111 domain_my-service-21111%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1117,14 +1117,58 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 		return nil
 	}
 	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
-	data.Services["my-service"] = Service{
-		ServiceName:   "my-service",
-		// TODO: Remove
-		ServiceDomain: []string{"domain-1", "domain-2"},
-		AclName:       "my-service",
-		PathType:      "path_beg",
+	for i:=1; i <= 2; i++ {
+		name := fmt.Sprintf("my-service-%d", i)
+		domain := fmt.Sprintf("domain-%d", i)
+		data.Services[name] = Service{
+			ServiceName: name,
+			PathType:    "path_beg",
+			ServiceDest: []ServiceDest{
+				{Port: "1111", ServicePath: []string{"/path"}, ServiceDomain: []string{domain + "-1", domain + "-2"}},
+			},
+		}
+	}
+
+	p.CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsDomainsForEachServiceDest() {
+	var actualData string
+	tmpl := s.TemplateContent
+	expectedData := fmt.Sprintf(
+		`%s
+    acl url_my-service1111 path_beg /path
+    acl domain_my-service1111 hdr(host) -i domain-1-1 domain-1-2
+    acl url_my-service2222 path_beg /path
+    acl domain_my-service2222 hdr(host) -i domain-2-1 domain-2-2
+    use_backend my-service-be1111 if url_my-service1111 domain_my-service1111
+    use_backend my-service-be2222 if url_my-service2222 domain_my-service2222%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	name := "my-service"
+	domain := "domain"
+	data.Services[name] = Service{
+		ServiceName: name,
+		PathType:    "path_beg",
 		ServiceDest: []ServiceDest{
-			{Port: "1111", ServicePath: []string{"/path"}, ServiceDomain: []string{"domain-1", "domain-2"}},
+			{
+				Port: "1111",
+				ServicePath: []string{"/path"},
+				ServiceDomain: []string{domain + "-1-1", domain + "-1-2"},
+			}, {
+				SrcPort: 4321,
+				Port: "2222",
+				ServicePath: []string{"/path"},
+				ServiceDomain: []string{domain + "-2-1", domain + "-2-2"},
+			},
 		},
 	}
 
@@ -1214,8 +1258,8 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	expectedData := fmt.Sprintf(
 		`%s
     acl url_my-service1111 path_beg /path
-    acl domain_my-service hdr_dom(host) -i domain-1 domain-2
-    use_backend my-service-be1111 if url_my-service1111 domain_my-service%s`,
+    acl domain_my-service1111 hdr_dom(host) -i domain-1 domain-2
+    use_backend my-service-be1111 if url_my-service1111 domain_my-service1111%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1226,7 +1270,6 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
 	data.Services["my-service"] = Service{
 		ServiceName:           "my-service",
-		ServiceDomain:         []string{"domain-1", "domain-2"},
 		ServiceDomainMatchAll: true,
 		AclName:               "my-service",
 		PathType:              "path_beg",
@@ -1255,9 +1298,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	}
 	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
 	data.Services["my-service"] = Service{
-		ServiceName:   "my-service",
-		// TODO: Remove
-		ServiceDomain: []string{"*domain-1"},
+		ServiceName: "my-service",
 		ServiceDest: []ServiceDest{
 			{ServiceDomain: []string{"*domain-1"}},
 		},
@@ -1837,16 +1878,13 @@ func (s *HaProxyTestSuite) Test_RunCmd_AddsExtraArguments() {
 func (s *HaProxyTestSuite) Test_AddService_AddsService() {
 	s1 := Service{ServiceName: "my-service-1"}
 	s2 := Service{ServiceName: "my-service-2"}
-	s3 := Service{ServiceName: "my-service-2", ServiceDomain: []string{"domain-1", "domain-2"}}
 	p := NewHaProxy("anything", "doesn't").(HaProxy)
 
 	p.AddService(s1)
 	p.AddService(s2)
-	p.AddService(s3)
 
 	s.Len(data.Services, 2)
 	s.Equal(data.Services[s1.ServiceName], s1)
-	s.Equal(data.Services[s3.ServiceName], s3)
 }
 
 // RemoveService
@@ -1854,16 +1892,13 @@ func (s *HaProxyTestSuite) Test_AddService_AddsService() {
 func (s *HaProxyTestSuite) Test_AddService_RemovesService() {
 	s1 := Service{ServiceName: "my-service-1"}
 	s2 := Service{ServiceName: "my-service-2"}
-	s3 := Service{ServiceName: "my-service-2", ServiceDomain: []string{"domain-1", "domain-2"}}
 	p := NewHaProxy("anything", "doesn't").(HaProxy)
 
 	p.AddService(s1)
 	p.AddService(s2)
-	p.AddService(s3)
 	p.RemoveService("my-service-1")
 
 	s.Len(data.Services, 1)
-	s.Equal(data.Services[s3.ServiceName], s3)
 }
 
 // Util

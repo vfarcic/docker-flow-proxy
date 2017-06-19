@@ -36,8 +36,6 @@ type ServiceDest struct {
 	VerifyClientSsl bool
 	// If specified, only requests with the same agent will be forwarded to the backend.
 	UserAgent UserAgent
-	// Internal use only
-	DomainFunction string
 }
 
 // UserAgent holds data used to generate proxy configuration. It is extracted as a separate struct since each user agent needs an ACL identifier. If specified, only requests with the same agent will be forwarded to the backend.
@@ -113,8 +111,6 @@ type Service struct {
 	ReqPathSearch string `split_words:"true"`
 	// Content of the PEM-encoded certificate to be used by the proxy when serving traffic over SSL.
 	ServiceCert string `split_words:"true"`
-	// TODO: Remove
-	ServiceDomain []string `split_words:"true"`
 	// Whether to include subdomains and FDQN domains in the match. If set to false, and, for example, `serviceDomain` is set to `acme.com`, `something.acme.com` would not be considered a match unless this parameter is set to `true`. If this option is used, it is recommended to put any subdomains higher in the list using `aclName`.
 	ServiceDomainMatchAll bool `split_words:"true"`
 	// The name of the service.
@@ -149,7 +145,6 @@ type Service struct {
 	ServiceColor        string
 	ServicePort         string
 	AclCondition        string
-	// TODO: Remove
 	DomainFunction      string
 	FullServiceName     string
 	Host                string
@@ -269,9 +264,6 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	if len(provider.GetString("httpsPort")) > 0 {
 		sr.HttpsPort, _ = strconv.Atoi(provider.GetString("httpsPort"))
 	}
-	if len(provider.GetString("serviceDomain")) > 0 {
-		sr.ServiceDomain = strings.Split(provider.GetString("serviceDomain"), ",")
-	}
 	if len(provider.GetString("addReqHeader")) > 0 {
 		sr.AddReqHeader = strings.Split(provider.GetString("addReqHeader"), ",")
 	} else if len(provider.GetString("addHeader")) > 0 { // TODO: Deprecated since Apr. 2017.
@@ -379,7 +371,7 @@ func getSliceFromString(provider ServiceParameterProvider, key string) []string 
 }
 
 func isServiceDestValid(sd *ServiceDest) bool {
-	return len(sd.ServicePath) > 0 || len(sd.Port) > 0
+	return len(sd.ServicePath) > 0 || len(sd.Port) > 0 || len(sd.ServiceDomain) > 0
 }
 
 func isIndexedServiceDestValid(sd *ServiceDest) bool {

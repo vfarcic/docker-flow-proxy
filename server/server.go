@@ -129,11 +129,11 @@ func (m *serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 			if len(sr.ServiceCert) > 0 {
 				// Replace \n with proper carriage return as new lines are not supported in labels
 				sr.ServiceCert = strings.Replace(sr.ServiceCert, "\\n", "\n", -1)
-				if len(sr.ServiceDomain) > 0 {
-					m.cert.PutCert(sr.ServiceDomain[0], []byte(sr.ServiceCert))
-				} else {
-					m.cert.PutCert(sr.ServiceName, []byte(sr.ServiceCert))
+				certName := sr.ServiceName
+				if len(sr.ServiceDest) > 0 && len(sr.ServiceDest[0].ServiceDomain) > 0 {
+					certName = sr.ServiceDest[0].ServiceDomain[0]
 				}
+				m.cert.PutCert(certName, []byte(sr.ServiceCert))
 			}
 			action := actions.NewReconfigure(m.getBaseReconfigure(), *sr, m.mode)
 			if err := action.Execute(true); err != nil {
@@ -274,13 +274,23 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 	port := os.Getenv(prefix + "_PORT")
 	srcPort, _ := strconv.Atoi(os.Getenv(prefix + "_SRC_PORT"))
 	reqMode := os.Getenv(prefix + "_REQ_MODE")
+	domain := []string{}
+	if len(os.Getenv(prefix+"_SERVICE_DOMAIN")) > 0 {
+		domain = strings.Split(os.Getenv(prefix+"_SERVICE_DOMAIN"), ",")
+	}
 	if len(reqMode) == 0 {
 		reqMode = "http"
 	}
 	if len(path) > 0 || len(port) > 0 {
 		sd = append(
 			sd,
-			proxy.ServiceDest{Port: port, SrcPort: srcPort, ServicePath: path, ReqMode: reqMode},
+			proxy.ServiceDest{
+				Port: port,
+				ReqMode: reqMode,
+				ServiceDomain: domain,
+				ServicePath: path,
+				SrcPort: srcPort,
+			},
 		)
 	}
 	for i := 1; i <= 10; i++ {

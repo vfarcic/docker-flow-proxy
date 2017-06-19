@@ -1020,7 +1020,6 @@ func (s ReconfigureTestSuite) Test_Execute_InvokesHaProxyReload() {
 }
 
 func (s *ReconfigureTestSuite) Test_Execute_PutsDataToConsul() {
-	s.reconfigure.ServiceDomain = s.ServiceDomain
 	s.reconfigure.ConsulTemplateFePath = s.ConsulTemplateFePath
 	s.reconfigure.ConsulTemplateBePath = s.ConsulTemplateBePath
 	mockObj := getRegistrarableMock("")
@@ -1031,7 +1030,6 @@ func (s *ReconfigureTestSuite) Test_Execute_PutsDataToConsul() {
 		ServiceName:          s.ServiceName,
 		ServiceColor:         s.ServiceColor,
 		ServicePath:          s.ServiceDest[0].ServicePath,
-		ServiceDomain:        s.ServiceDomain,
 		OutboundHostname:     s.OutboundHostname,
 		PathType:             s.PathType,
 		ConsulTemplateFePath: s.ConsulTemplateFePath,
@@ -1323,7 +1321,7 @@ func GetTestServer(s proxy.Service, InstanceName string) *httptest.Server {
 			case fmt.Sprintf("/v1/kv/%s/%s/%s", InstanceName, s.ServiceName, registry.COLOR_KEY):
 				w.Write([]byte("orange"))
 			case fmt.Sprintf("/v1/kv/%s/%s/%s", InstanceName, s.ServiceName, registry.DOMAIN_KEY):
-				w.Write([]byte(strings.Join(s.ServiceDomain, ",")))
+				w.Write([]byte(strings.Join(s.ServiceDest[0].ServiceDomain, ",")))
 			case fmt.Sprintf("/v1/kv/%s/%s/%s", InstanceName, s.ServiceName, registry.HOSTNAME_KEY):
 				w.Write([]byte(s.OutboundHostname))
 			case fmt.Sprintf("/v1/kv/%s/%s/%s", InstanceName, s.ServiceName, registry.PATH_TYPE_KEY):

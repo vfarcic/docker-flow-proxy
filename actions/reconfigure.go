@@ -182,7 +182,6 @@ func (m *Reconfigure) putToConsul(addresses []string, sr proxy.Service, instance
 		ServiceName:          sr.ServiceName,
 		ServiceColor:         sr.ServiceColor,
 		ServicePath:          path,
-		ServiceDomain:        sr.ServiceDomain,
 		ServiceCert:          sr.ServiceCert,
 		OutboundHostname:     sr.OutboundHostname,
 		PathType:             sr.PathType,
