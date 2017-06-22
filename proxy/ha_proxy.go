@@ -133,7 +133,7 @@ func (m HaProxy) Reload() error {
 		if err != nil {
 			return fmt.Errorf("Could not read the %s file\n%s", pidPath, err.Error())
 		}
-		cmdArgs := []string{"-sf", string(pid)}
+		cmdArgs := []string{"-st", string(pid)}
 		reloadErr = HaProxy{}.RunCmd(cmdArgs)
 		if reloadErr == nil {
 			logPrintf("Proxy config was reloaded")

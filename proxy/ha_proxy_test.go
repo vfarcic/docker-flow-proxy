@@ -1883,7 +1883,7 @@ func (s *HaProxyTestSuite) Test_Reload_RunsRunCmd() {
 		"-D",
 		"-p",
 		"/var/run/haproxy.pid",
-		"-sf",
+		"-st",
 		s.Pid,
 	}
 
