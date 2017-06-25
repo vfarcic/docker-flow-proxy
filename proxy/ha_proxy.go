@@ -133,7 +133,8 @@ func (m HaProxy) Reload() error {
 		if err != nil {
 			return fmt.Errorf("Could not read the %s file\n%s", pidPath, err.Error())
 		}
-		cmdArgs := []string{"-st", string(pid)}
+		reloadStrategy := m.getReloadStrategy()
+		cmdArgs := []string{reloadStrategy, string(pid)}
 		reloadErr = HaProxy{}.RunCmd(cmdArgs)
 		if reloadErr == nil {
 			logPrintf("Proxy config was reloaded")
@@ -421,4 +422,13 @@ frontend service_{{$sd1.SrcPort}}
     acl sni_{{.AclName}}{{$sd.Port}}-%d{{range $sd.ServicePath}} {{$.PathType}} {{.}}{{end}}{{$sd.SrcPortAcl}}
     use_backend {{$.ServiceName}}-be{{$sd.Port}} if sni_{{$.AclName}}{{$sd.Port}}-%d{{$.AclCondition}}{{$sd.SrcPortAclName}}`, si, si+1, si+1)
 	return templateToString(tmplString, s)
+}
+
+func (m *HaProxy) getReloadStrategy() string {
+	reloadStrategy := "-sf"
+	terminateOnReload := strings.EqualFold(os.Getenv("TERMINATE_ON_RELOAD"), "true")
+	if terminateOnReload {
+		reloadStrategy = "-st"
+	}
+	return reloadStrategy
 }
