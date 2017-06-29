@@ -1,3 +1,12 @@
+FROM golang:1.6 AS build
+ADD . /src
+WORKDIR /src
+RUN go get -d -v -t
+RUN go test --cover ./... --run UnitTest
+RUN go build -v -o docker-flow-proxy
+
+
+
 FROM haproxy:1.7-alpine
 MAINTAINER 	Viktor Farcic <viktor@farcic.com>
 
@@ -39,5 +48,5 @@ CMD ["docker-flow-proxy", "server"]
 COPY errorfiles /errorfiles
 COPY haproxy.cfg /cfg/haproxy.cfg
 COPY haproxy.tmpl /cfg/tmpl/haproxy.tmpl
-COPY docker-flow-proxy /usr/local/bin/docker-flow-proxy
+COPY --from=build /src/docker-flow-proxy /usr/local/bin/docker-flow-proxy
 RUN chmod +x /usr/local/bin/docker-flow-proxy
