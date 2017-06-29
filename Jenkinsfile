@@ -1,6 +1,6 @@
 pipeline {
   agent {
-    label "prod"
+    label "test"
   }
   options {
     buildDiscarder(logRotator(numToKeepStr: '2'))
@@ -19,6 +19,8 @@ pipeline {
           sh "docker login -u $USER -p $PASS"
         }
         sh "docker push vfarcic/docker-flow-proxy:beta"
+        sh "docker image build -t vfarcic/docker-flow-proxy-test -f Dockerfile.test ."
+        sh "docker push vfarcic/docker-flow-proxy-test"
       }
     }
   }
