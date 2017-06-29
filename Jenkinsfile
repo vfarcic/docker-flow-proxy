@@ -9,6 +9,7 @@ pipeline {
     stage("build") {
       steps {
         checkout scm
+        sh "xxx"
         sh "docker image build -t vfarcic/docker-flow-proxy ."
         sh "docker tag vfarcic/docker-flow-proxy vfarcic/docker-flow-proxy:beta"
         withCredentials([usernamePassword(
@@ -61,6 +62,9 @@ pipeline {
     }
   }
   post {
+    always {
+      sh "docker system prune -f"
+    }
     failure {
       slackSend(
         color: "danger",
