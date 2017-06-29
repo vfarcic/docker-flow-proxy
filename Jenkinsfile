@@ -9,7 +9,7 @@ pipeline {
     stage("build") {
       steps {
         checkout scm
-        docker image build -t vfarcic/docker-flow-proxy
+        sh "docker image build -t vfarcic/docker-flow-proxy"
       }
     }
   }
