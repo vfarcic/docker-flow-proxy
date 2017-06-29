@@ -9,7 +9,6 @@ pipeline {
     stage("build") {
       steps {
         checkout scm
-        sh "xxx"
         sh "docker image build -t vfarcic/docker-flow-proxy ."
         sh "docker tag vfarcic/docker-flow-proxy vfarcic/docker-flow-proxy:beta"
         withCredentials([usernamePassword(
@@ -74,6 +73,5 @@ pipeline {
   }
 }
 
-// TODO: Notification to slack
 // TODO: GitHub WebHook
 // TODO: Run `docker system prune -f` periodically
