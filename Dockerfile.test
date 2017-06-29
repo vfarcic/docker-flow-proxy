@@ -13,4 +13,4 @@ COPY . /src
 WORKDIR /src
 RUN chmod +x /src/run-tests.sh
 
-CMD ["/src/run-tests.sh"]
+CMD ["sh", "-c", "/src/run-tests.sh"]

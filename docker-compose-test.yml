@@ -1,4 +1,4 @@
-version: '2'
+version: "2"
 
 
 services:
@@ -18,7 +18,6 @@ services:
     environment:
       - HOST_IP=${HOST_IP}
       - DOCKER_HUB_USER=${DOCKER_HUB_USER}
-    command: sh
 
   docs:
     image: cilerler/mkdocs
