@@ -23,8 +23,12 @@ pipeline {
         sh "docker push vfarcic/docker-flow-proxy-test"
       }
     }
+    stage("test") {
+      sh "docker-compose -f docker-compose-test.yml run --rm staging-swarm"
+    }
   }
 }
 
 // TODO: Notification to slack
 // TODO: GitHub WebHook
+// TODO: Run `docker system prune -f` periodically
