@@ -38,14 +38,34 @@ pipeline {
       }
       steps {
         sh "docker tag vfarcic/docker-flow-proxy vfarcic/docker-flow-proxy:2.${env.BUILD_NUMBER}"
-        // sh "docker push vfarcic/docker-flow-proxy:2.${env.BUILD_NUMBER}"
-        // sh "docker push vfarcic/docker-flow-proxy"
+        sh "docker push vfarcic/docker-flow-proxy:2.${env.BUILD_NUMBER}"
+        sh "docker push vfarcic/docker-flow-proxy"
         sh "docker-compose -f docker-compose-test.yml run --rm docs"
         sh "docker build -t vfarcic/docker-flow-proxy-docs -f Dockerfile.docs ."
         sh "docker tag vfarcic/docker-flow-proxy-docs vfarcic/docker-flow-proxy-docs:2.${env.BUILD_NUMBER}"
         sh "docker push vfarcic/docker-flow-proxy-docs:2.${env.BUILD_NUMBER}"
         sh "docker push vfarcic/docker-flow-proxy-docs"
       }
+    }
+    stage("deploy") {
+      when {
+        branch "master"
+      }
+      agent {
+        label "prod"
+      }
+      steps {
+        sh "docker service update --image vfarcic/docker-flow-proxy:2.${env.BUILD_NUMBER} proxy_proxy"
+        sh "docker service update --image vfarcic/docker-flow-proxy-docs:2.${env.BUILD_NUMBER} proxy_docs"
+      }
+    }
+  }
+  post {
+    failure {
+      slackSend(
+        color: "danger",
+        message: "${env.JOB_NAME} failed: ${env.RUN_DISPLAY_URL}"
+      )
     }
   }
 }
