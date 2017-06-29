@@ -3,7 +3,7 @@ pipeline {
     label "docker"
   }
   options {
-    buildDiscarder(logRotator(numToKeepStr: '2')) }
+    buildDiscarder(logRotator(numToKeepStr: '2'))
   }
   stages {
     stage("build") {
