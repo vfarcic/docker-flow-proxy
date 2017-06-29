@@ -25,8 +25,8 @@ pipeline {
     }
     stage("test") {
       environment {
-        HOST_IP = test.dockerflow.com
-        DOCKER_HUB_USER = vfarcic
+        HOST_IP = "test.dockerflow.com"
+        DOCKER_HUB_USER = "vfarcic"
       }
       steps {
         sh "docker-compose -f docker-compose-test.yml run --rm staging-swarm"
