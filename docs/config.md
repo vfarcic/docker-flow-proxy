@@ -23,7 +23,7 @@ The following environment variables can be used to configure the *Docker Flow Pr
 |DEBUG_ERRORS_ONLY  |If set to `true`, only requests that resulted in an error, timeout, retry, and redispatch will be logged. If a request is HTTP, responses with a status 5xx will be logged too. This variable will take effect only if `DEBUG` is set to `true`.<br>Example: true<br>Default value: `false`|
 |DEBUG_HTTP_FORMAT  |Logging format that will be used with HTTP requests. Please consult [Custom log format](https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4) for more info about the available options.|
 |DEBUG_TCP_FORMAT   |Logging format that will be used with TCP requests. Please consult [Custom log format](https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#8.2.4) for more info about the available options.|
-|DEFAULT_PORTS      |The default ports used by the proxy. Multiple values can be separated with comma (`,`). If a port should be for SSL connections, append it with `:ssl.<br>Default value: `80,443:ssl`|
+|DEFAULT_PORTS      |The default ports used by the proxy. Multiple values can be separated with comma (`,`). If a port should be for SSL connections, append it with `:ssl`.<br>Default value: `80,443:ssl`|
 |EXTRA_FRONTEND     |Value will be added to the default `frontend` configuration. Multiple lines should be separated with comma (*,*).|
 |EXTRA_GLOBAL       |Value will be added to the default `global` configuration. Multiple lines should be separated with comma (*,*).|
 |LISTENER_ADDRESS   |The address of the [Docker Flow: Swarm Listener](https://github.com/vfarcic/docker-flow-swarm-listener) used for automatic proxy configuration.<br>Example: swarm-listener|
