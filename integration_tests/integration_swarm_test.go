@@ -209,7 +209,7 @@ func (s IntegrationSwarmTestSuite) Test_AddHeaders() {
 	}
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_UserAgent() {
+func (s IntegrationSwarmTestSuite) Test_UserAgent() {
 	defer func() { s.reconfigureGoDemo("") }()
 	s.reconfigureGoDemo("&userAgent=amiga,amstrad")
 	url := fmt.Sprintf("http://%s/demo/hello", s.hostIP)
