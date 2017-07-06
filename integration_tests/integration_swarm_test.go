@@ -548,7 +548,7 @@ func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
 //	s.NotEqual("This config is corrupt", config)
 //}
 
-func (s IntegrationSwarmTestSuite) xxxTest_ReconfigureFromEnvVars() {
+func (s IntegrationSwarmTestSuite) Test_ReconfigureFromEnvVars() {
 	defer func() {
 		s.removeServices("proxy-env")
 		time.Sleep(1 * time.Second)
@@ -578,7 +578,7 @@ func (s IntegrationSwarmTestSuite) xxxTest_ReconfigureFromEnvVars() {
 	}
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_ReconfigureWithDefaultBackend() {
+func (s IntegrationSwarmTestSuite) Test_ReconfigureWithDefaultBackend() {
 	params := "serviceName=go-demo&servicePath=/xxx&port=8080&isDefaultBackend=true"
 	s.reconfigureService(params)
 
