@@ -126,7 +126,7 @@ func (s IntegrationSwarmTestSuite) Test_Compression() {
 }
 
 // The attempt to remove zombie processes failed
-//func (s IntegrationSwarmTestSuite) xxxTest_ZombieProcesses() {
+//func (s IntegrationSwarmTestSuite) Test_ZombieProcesses() {
 //	for i:=0; i < 30; i++ {
 //		s.reconfigureGoDemo("")
 //	}
@@ -283,7 +283,7 @@ func (s IntegrationSwarmTestSuite) Test_VerifyClientSsl_DeniesRequest() {
 	}
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_Stats() {
+func (s IntegrationSwarmTestSuite) Test_Stats() {
 	url := fmt.Sprintf("http://%s/admin?stats", s.hostIP)
 
 	resp, err := http.Get(url)
@@ -524,7 +524,7 @@ func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
 
 // Cannot use `docker ps` on multi-node cluster
 // TODO: Refactor
-//func (s IntegrationSwarmTestSuite) xxxTest_Reload() {
+//func (s IntegrationSwarmTestSuite) Test_Reload() {
 //	// Reconfigure
 //	s.reconfigureGoDemo("")
 //	resp, err := s.sendHelloRequest()
@@ -548,7 +548,7 @@ func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
 //	s.NotEqual("This config is corrupt", config)
 //}
 
-func (s IntegrationSwarmTestSuite) xxxTest_ReconfigureFromEnvVars() {
+func (s IntegrationSwarmTestSuite) Test_ReconfigureFromEnvVars() {
 	defer func() {
 		s.removeServices("proxy-env")
 		time.Sleep(1 * time.Second)
