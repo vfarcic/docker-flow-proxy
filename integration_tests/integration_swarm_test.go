@@ -126,7 +126,7 @@ func (s IntegrationSwarmTestSuite) Test_Compression() {
 }
 
 // The attempt to remove zombie processes failed
-//func (s IntegrationSwarmTestSuite) xxxTest_ZombieProcesses() {
+//func (s IntegrationSwarmTestSuite) Test_ZombieProcesses() {
 //	for i:=0; i < 30; i++ {
 //		s.reconfigureGoDemo("")
 //	}
@@ -283,7 +283,7 @@ func (s IntegrationSwarmTestSuite) Test_VerifyClientSsl_DeniesRequest() {
 	}
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_Stats() {
+func (s IntegrationSwarmTestSuite) Test_Stats() {
 	url := fmt.Sprintf("http://%s/admin?stats", s.hostIP)
 
 	resp, err := http.Get(url)
@@ -667,6 +667,7 @@ func (s *IntegrationSwarmTestSuite) reconfigureService(params string) {
 	)
 	resp, err := http.Get(url)
 	if err != nil {
+		println(s.getProxyConf())
 		s.Fail(err.Error())
 	} else {
 		msg := fmt.Sprintf(
@@ -678,7 +679,7 @@ CONFIGURATION:
 			s.getProxyConf())
 		s.Equal(200, resp.StatusCode, msg)
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 }
 
 func (s *IntegrationSwarmTestSuite) reloadService(params string) {
