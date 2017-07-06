@@ -387,7 +387,7 @@ func (s IntegrationSwarmTestSuite) Test_RewritePaths() {
 	s.Equal(200, resp.StatusCode, s.getProxyConf())
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_GlobalAuthentication() {
+func (s IntegrationSwarmTestSuite) Test_GlobalAuthentication() {
 	defer func() {
 		exec.Command("/bin/sh", "-c", `docker service update --env-rm "USERS" proxy`).Output()
 		s.waitForContainers(1, "proxy")
@@ -420,7 +420,7 @@ func (s IntegrationSwarmTestSuite) xxxTest_GlobalAuthentication() {
 	s.Equal(200, statusCode, s.getProxyConf())
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_GlobalAuthenticationWithEncryption() {
+func (s IntegrationSwarmTestSuite) Test_GlobalAuthenticationWithEncryption() {
 	defer func() {
 		exec.Command("/bin/sh", "-c", `docker service update --env-rm "USERS" proxy`).Output()
 		s.waitForContainers(1, "proxy")
