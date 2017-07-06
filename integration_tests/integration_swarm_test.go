@@ -335,7 +335,7 @@ func (s IntegrationSwarmTestSuite) Test_Scale() {
 
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_RewritePaths() {
+func (s IntegrationSwarmTestSuite) Test_RewritePaths() {
 
 	// With reqPathReplace
 
@@ -387,7 +387,7 @@ func (s IntegrationSwarmTestSuite) xxxTest_RewritePaths() {
 	s.Equal(200, resp.StatusCode, s.getProxyConf())
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_GlobalAuthentication() {
+func (s IntegrationSwarmTestSuite) Test_GlobalAuthentication() {
 	defer func() {
 		exec.Command("/bin/sh", "-c", `docker service update --env-rm "USERS" proxy`).Output()
 		s.waitForContainers(1, "proxy")
@@ -420,7 +420,7 @@ func (s IntegrationSwarmTestSuite) xxxTest_GlobalAuthentication() {
 	s.Equal(200, statusCode, s.getProxyConf())
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_GlobalAuthenticationWithEncryption() {
+func (s IntegrationSwarmTestSuite) Test_GlobalAuthenticationWithEncryption() {
 	defer func() {
 		exec.Command("/bin/sh", "-c", `docker service update --env-rm "USERS" proxy`).Output()
 		s.waitForContainers(1, "proxy")
@@ -446,7 +446,7 @@ func (s IntegrationSwarmTestSuite) xxxTest_GlobalAuthenticationWithEncryption() 
 	s.Equal(200, resp.StatusCode, s.getProxyConf())
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_ServiceAuthentication() {
+func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
 	defer func() {
 		s.reconfigureGoDemo("")
 	}()
@@ -493,7 +493,7 @@ func (s IntegrationSwarmTestSuite) xxxTest_ServiceAuthentication() {
 }
 
 // TODO: Figure out what is missing inside a container
-//func (s IntegrationSwarmTestSuite) xxxTest_XTcp() {
+//func (s IntegrationSwarmTestSuite) Test_XTcp() {
 //	defer func() {
 //		s.removeServices("redis")
 //		s.waitForContainers(0, "redis")
@@ -578,7 +578,7 @@ func (s IntegrationSwarmTestSuite) xxxTest_ReconfigureFromEnvVars() {
 	}
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_ReconfigureWithDefaultBackend() {
+func (s IntegrationSwarmTestSuite) Test_ReconfigureWithDefaultBackend() {
 	params := "serviceName=go-demo&servicePath=/xxx&port=8080&isDefaultBackend=true"
 	s.reconfigureService(params)
 
