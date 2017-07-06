@@ -446,7 +446,7 @@ func (s IntegrationSwarmTestSuite) Test_GlobalAuthenticationWithEncryption() {
 	s.Equal(200, resp.StatusCode, s.getProxyConf())
 }
 
-func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
+func (s IntegrationSwarmTestSuite) xxxTest_ServiceAuthentication() {
 	defer func() {
 		s.reconfigureGoDemo("")
 	}()
@@ -493,7 +493,7 @@ func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
 }
 
 // TODO: Figure out what is missing inside a container
-//func (s IntegrationSwarmTestSuite) Test_XTcp() {
+//func (s IntegrationSwarmTestSuite) xxxTest_XTcp() {
 //	defer func() {
 //		s.removeServices("redis")
 //		s.waitForContainers(0, "redis")
@@ -524,7 +524,7 @@ func (s IntegrationSwarmTestSuite) Test_ServiceAuthentication() {
 
 // Cannot use `docker ps` on multi-node cluster
 // TODO: Refactor
-//func (s IntegrationSwarmTestSuite) Test_Reload() {
+//func (s IntegrationSwarmTestSuite) xxxTest_Reload() {
 //	// Reconfigure
 //	s.reconfigureGoDemo("")
 //	resp, err := s.sendHelloRequest()
