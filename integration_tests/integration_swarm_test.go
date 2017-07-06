@@ -247,7 +247,7 @@ func (s IntegrationSwarmTestSuite) Test_UserAgent() {
 	}
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_UserAgent_LastIndexCatchesAllNonMatchedRequests() {
+func (s IntegrationSwarmTestSuite) Test_UserAgent_LastIndexCatchesAllNonMatchedRequests() {
 	defer func() { s.reconfigureGoDemo("") }()
 	service1 := "&servicePath.1=/demo&port.1=1111&userAgent.1=amiga"
 	service2 := "&servicePath.2=/demo&port.2=2222&userAgent.2=amstrad"
@@ -268,7 +268,7 @@ func (s IntegrationSwarmTestSuite) xxxTest_UserAgent_LastIndexCatchesAllNonMatch
 	}
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_VerifyClientSsl_DeniesRequest() {
+func (s IntegrationSwarmTestSuite) Test_VerifyClientSsl_DeniesRequest() {
 	defer func() { s.reconfigureGoDemo("") }()
 	s.reconfigureGoDemo("&verifyClientSsl=true")
 	url := fmt.Sprintf("http://%s/demo/hello", s.hostIP)
