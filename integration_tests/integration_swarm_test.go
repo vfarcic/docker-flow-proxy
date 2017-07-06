@@ -292,7 +292,7 @@ func (s IntegrationSwarmTestSuite) xxxTest_Stats() {
 	s.Equal(200, resp.StatusCode, s.getProxyConf())
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_Remove() {
+func (s IntegrationSwarmTestSuite) Test_Remove() {
 	s.reconfigureGoDemo("")
 
 	url := fmt.Sprintf(
@@ -307,7 +307,7 @@ func (s IntegrationSwarmTestSuite) xxxTest_Remove() {
 	s.Equal(503, resp.StatusCode, s.getProxyConf())
 }
 
-func (s IntegrationSwarmTestSuite) xxxTest_Scale() {
+func (s IntegrationSwarmTestSuite) Test_Scale() {
 	defer func() {
 		exec.Command("/bin/sh", "-c", "docker service scale proxy=1").Output()
 		s.waitForContainers(1, "proxy")
