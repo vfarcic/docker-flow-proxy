@@ -220,6 +220,50 @@ backend myService-be1234
 	s.Equal(expected, actual)
 }
 
+func (s ReconfigureTestSuite) Test_GetTemplates_AddsRequestDeny_WhenNotOneOfAllowedMethods() {
+	s.reconfigure.Mode = "service"
+	s.reconfigure.Service.HttpsPort = 4321
+	s.reconfigure.Service.ServiceDest[0].Port = "1234"
+	s.reconfigure.Service.ServiceDest[0].AllowedMethods = []string{"GET", "DELETE"}
+	expected := `
+backend myService-be1234
+    mode http
+    acl valid_allowed_method method GET DELETE
+    http-request deny unless valid_allowed_method
+    server myService myService:1234
+backend https-myService-be1234
+    mode http
+    acl valid_allowed_method method GET DELETE
+    http-request deny unless valid_allowed_method
+    server myService myService:4321`
+
+	_, actual, _ := s.reconfigure.GetTemplates()
+
+	s.Equal(expected, actual)
+}
+
+func (s ReconfigureTestSuite) Test_GetTemplates_AddsRequestDeny_WhenOneOfDeniedMethods() {
+	s.reconfigure.Mode = "service"
+	s.reconfigure.Service.HttpsPort = 4321
+	s.reconfigure.Service.ServiceDest[0].Port = "1234"
+	s.reconfigure.Service.ServiceDest[0].DeniedMethods = []string{"GET", "DELETE"}
+	expected := `
+backend myService-be1234
+    mode http
+    acl valid_denied_method method GET DELETE
+    http-request deny if valid_denied_method
+    server myService myService:1234
+backend https-myService-be1234
+    mode http
+    acl valid_denied_method method GET DELETE
+    http-request deny if valid_denied_method
+    server myService myService:4321`
+
+	_, actual, _ := s.reconfigure.GetTemplates()
+
+	s.Equal(expected, actual)
+}
+
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsLoggin_WhenDebug() {
 	debugOrig := os.Getenv("DEBUG")
 	defer func() { os.Setenv("DEBUG", debugOrig) }()

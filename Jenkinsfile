@@ -25,10 +25,10 @@ pipeline {
         )]) {
           sh "docker login -u $USER -p $PASS"
         }
-        sh "docker push vfarcic/docker-flow-proxy:beta"
+        sh "docker image push vfarcic/docker-flow-proxy:beta"
         sh "docker image build -t vfarcic/docker-flow-proxy-test -f Dockerfile.test ."
-        sh "docker push vfarcic/docker-flow-proxy-test"
-        sh "docker  image build -t vfarcic/docker-flow-proxy-docs -f Dockerfile.docs ."
+        sh "docker image push vfarcic/docker-flow-proxy-test"
+        sh "docker image build -t vfarcic/docker-flow-proxy-docs -f Dockerfile.docs ."
       }
     }
     stage("test") {
@@ -61,7 +61,6 @@ pipeline {
         label "prod"
       }
       steps {
-        echo "!!!"
         sh "docker service update --image vfarcic/docker-flow-proxy:${currentBuild.displayName} proxy_proxy"
         sh "docker service update --image vfarcic/docker-flow-proxy-docs:${currentBuild.displayName} proxy_docs"
       }

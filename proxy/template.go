@@ -137,6 +137,14 @@ backend {{$.ServiceName}}-be{{.Port}}
     acl valid_client_cert_{{$.ServiceName}}{{.Port}} ssl_c_used ssl_c_verify 0
     http-request deny unless valid_client_cert_{{$.ServiceName}}{{.Port}}
             {{- end}}
+            {{- if .AllowedMethods}}
+    acl valid_allowed_method method{{range .AllowedMethods}} {{.}}{{end}}
+    http-request deny unless valid_allowed_method
+            {{- end}}
+            {{- if .DeniedMethods}}
+    acl valid_denied_method method{{range .DeniedMethods}} {{.}}{{end}}
+    http-request deny if valid_denied_method
+            {{- end}}
             {{- if $.HttpsOnly}}
     redirect scheme https if !{ ssl_fc }
             {{- end}}
@@ -187,6 +195,14 @@ backend https-{{$.ServiceName}}-be{{.Port}}
             {{- if eq .VerifyClientSsl true}}
     acl valid_client_cert_{{$.ServiceName}}{{.Port}} ssl_c_used ssl_c_verify 0
     http-request deny unless valid_client_cert_{{$.ServiceName}}{{.Port}}
+            {{- end}}
+            {{- if .AllowedMethods}}
+    acl valid_allowed_method method{{range .AllowedMethods}} {{.}}{{end}}
+    http-request deny unless valid_allowed_method
+            {{- end}}
+            {{- if .DeniedMethods}}
+    acl valid_denied_method method{{range .DeniedMethods}} {{.}}{{end}}
+    http-request deny if valid_denied_method
             {{- end}}
     server {{$.ServiceName}} {{$.Host}}:{{$.HttpsPort}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
         {{- /* TODO: It's Consul and it's deprecated. Remove it. */}}

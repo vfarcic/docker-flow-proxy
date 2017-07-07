@@ -411,7 +411,7 @@ func (s IntegrationSwarmTestSuite) Test_GlobalAuthentication() {
 
 func (s IntegrationSwarmTestSuite) Test_GlobalAuthenticationWithEncryption() {
 	defer func() {
-		exec.Command("/bin/sh", "-c", `docker service update --env-rm "USERS" proxy`).Output()
+		exec.Command("/bin/sh", "-c", `docker service update --env-rm USERS --env-rm USERS_PASS_ENCRYPTED proxy`).Output()
 		s.waitForContainers(1, "proxy")
 	}()
 	_, err := exec.Command("/bin/sh", "-c", `docker service update --env-add "USERS_PASS_ENCRYPTED=true" --env-add "USERS=my-user:\$6\$AcrjVWOkQq1vWp\$t55F7Psm3Ujvp8lpqdAwrc5RxWORYBeDV6ji9KoO029ojooj4Pi.JVGwxdicB0Fuu.NSDyGaZt7skHIo3Nayq/" proxy`).Output()
@@ -575,6 +575,36 @@ func (s IntegrationSwarmTestSuite) Test_ReconfigureWithDefaultBackend() {
 
 	s.NoError(err)
 	s.Equal(200, resp.StatusCode, s.getProxyConf())
+}
+
+func (s IntegrationSwarmTestSuite) Test_Methods() {
+
+	// Denied
+
+	s.reconfigureGoDemo("allowedMethods=DELETE")
+
+	resp, err := s.sendHelloRequest()
+
+	s.NoError(err)
+	s.Equal(123, resp.StatusCode, s.getProxyConf())
+
+	// Allowed
+
+	s.reconfigureGoDemo("")
+
+	resp, err = s.sendHelloRequest()
+
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf())
+
+	// Denied
+
+	s.reconfigureGoDemo("deniedMethods=GET")
+
+	resp, err = s.sendHelloRequest()
+
+	s.NoError(err)
+	s.Equal(123, resp.StatusCode, s.getProxyConf())
 }
 
 // Util

@@ -50,6 +50,36 @@ docker image build -t $DOCKER_HUB_USER/docker-flow-proxy .
 
 ### The Complete Cycle (Unit, Build, Staging)
 
+#### Manually
+
+* On your laptop
+
+```bash
+export DOCKER_HUB_USER=[...] # Change to your user in hub.docker.com
+
+docker image build -t $DOCKER_HUB_USER/docker-flow-proxy:beta .
+
+docker image push $DOCKER_HUB_USER/docker-flow-proxy:beta
+
+docker image build -t $DOCKER_HUB_USER/docker-flow-proxy-test -f Dockerfile.test .
+
+docker image push $DOCKER_HUB_USER/docker-flow-proxy-test
+```
+
+* Inside a Swarm cluster
+
+```bash
+export DOCKER_HUB_USER=[...] # Change to your user in hub.docker.com
+
+export HOST_IP=[...] # Change to a domain or an IP of one of Swarm nodes
+
+docker-compose -f docker-compose-test.yml run --rm staging-swarm
+```
+
+#### Through Jenkins
+
 Make a PR and let Jenkins do the work. You can monitor the status from the Jenkins job [Viktor Farcic / docker-flow-proxy](http://jenkins.dockerflow.com/blue/organizations/jenkins/vfarcic%2Fdocker-flow-proxy/activity).
 
 Please [create an issue](https://github.com/vfarcic/docker-flow-proxy/issues) if you'd like to add your repository to the builds.
+
+

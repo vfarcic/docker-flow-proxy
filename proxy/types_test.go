@@ -227,6 +227,8 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"usersPassEncrypted":    "true",
 		"xForwardedProto":       strconv.FormatBool(expected.XForwardedProto),
 		// ServiceDest
+		"allowedMethods" + indexSuffix:      strings.Join(expected.ServiceDest[0].AllowedMethods, ","),
+		"deniedMethods" + indexSuffix:       strings.Join(expected.ServiceDest[0].DeniedMethods, ","),
 		"ignoreAuthorization" + indexSuffix: strconv.FormatBool(expected.ServiceDest[0].IgnoreAuthorization),
 		"port" + indexSuffix:                expected.ServiceDest[0].Port,
 		"reqMode" + indexSuffix:             expected.ServiceDest[0].ReqMode,
@@ -258,6 +260,8 @@ func (s *TypesTestSuite) getExpectedService() Service {
 		ServiceCert:           "serviceCert",
 		ServiceColor:          "serviceColor",
 		ServiceDest: []ServiceDest{{
+			AllowedMethods:      []string{"GET", "DELETE"},
+			DeniedMethods:       []string{"PUT", "POST"},
 			IgnoreAuthorization: true,
 			ServiceDomain:       []string{"domain1", "domain2"},
 			ServiceHeader:       map[string]string{"X-Version": "3", "name": "Viktor"},

@@ -10,6 +10,10 @@ var usersBasePath string = "/run/secrets/dfp_users_%s"
 
 // ServiceDest holds data used to generate proxy configuration. It is extracted as a separate struct since a single service can have multiple combinations.
 type ServiceDest struct {
+	// The list of allowed methods. If specified, a request with a method that is not on the list will be denied.
+	AllowedMethods []string
+	// The list of denied methods. If specified, a request with a method that is on the list will be denied.
+	DeniedMethods []string
 	// Whether to ignore authorization for this service destination.
 	IgnoreAuthorization bool
 	// The internal port of a service that should be reconfigured.
@@ -363,6 +367,8 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 		}
 	}
 	return ServiceDest{
+		AllowedMethods:      getSliceFromString(provider, fmt.Sprintf("allowedMethods%s", suffix)),
+		DeniedMethods:       getSliceFromString(provider, fmt.Sprintf("deniedMethods%s", suffix)),
 		IgnoreAuthorization: getBoolParam(provider, fmt.Sprintf("ignoreAuthorization%s", suffix)),
 		Port:                provider.GetString(fmt.Sprintf("port%s", suffix)),
 		ReqMode:             reqMode,
