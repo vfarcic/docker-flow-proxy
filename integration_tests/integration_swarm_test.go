@@ -581,7 +581,7 @@ func (s IntegrationSwarmTestSuite) Test_Methods() {
 
 	// Denied
 
-	s.reconfigureGoDemo("allowedMethods=DELETE")
+	s.reconfigureGoDemo("&allowedMethods=DELETE")
 
 	resp, err := s.sendHelloRequest()
 
@@ -599,7 +599,7 @@ func (s IntegrationSwarmTestSuite) Test_Methods() {
 
 	// Denied
 
-	s.reconfigureGoDemo("deniedMethods=GET")
+	s.reconfigureGoDemo("&deniedMethods=GET")
 
 	resp, err = s.sendHelloRequest()
 
