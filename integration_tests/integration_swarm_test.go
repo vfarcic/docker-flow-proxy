@@ -579,14 +579,14 @@ func (s IntegrationSwarmTestSuite) Test_ReconfigureWithDefaultBackend() {
 
 func (s IntegrationSwarmTestSuite) Test_Methods() {
 
-	// Denied
+	// Forbidden
 
 	s.reconfigureGoDemo("&allowedMethods=DELETE")
 
 	resp, err := s.sendHelloRequest()
 
 	s.NoError(err)
-	s.Equal(123, resp.StatusCode, s.getProxyConf())
+	s.Equal(403, resp.StatusCode, s.getProxyConf())
 
 	// Allowed
 
@@ -597,14 +597,14 @@ func (s IntegrationSwarmTestSuite) Test_Methods() {
 	s.NoError(err)
 	s.Equal(200, resp.StatusCode, s.getProxyConf())
 
-	// Denied
+	// Forbidden
 
 	s.reconfigureGoDemo("&deniedMethods=GET")
 
 	resp, err = s.sendHelloRequest()
 
 	s.NoError(err)
-	s.Equal(123, resp.StatusCode, s.getProxyConf())
+	s.Equal(403, resp.StatusCode, s.getProxyConf())
 }
 
 // Util
