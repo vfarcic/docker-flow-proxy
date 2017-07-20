@@ -2,48 +2,33 @@ package actions
 
 import (
 	"../proxy"
-	"../registry"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 // Fetchable defines interface that fetches information from other sources
 type Fetchable interface {
-	// TODO: It's deprecated (Consul). Remove it.
-	ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error
 	// Sends request to swarm-listener to request reconfiguration of all proxy instances in Swarm.
 	ReloadClusterConfig(listenerAddr string) error
 	// Reconfigures this instance of proxy based on configuration taken from swarm-listener.
 	// This is synchronous.
 	// If listenerAddr is nil, unreachable or any other problem error is returned.
-	ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr string) error
+	ReloadConfig(baseData BaseReconfigure, listenerAddr string) error
 }
 type fetch struct {
 	BaseReconfigure
-	Mode string `short:"m" long:"mode" env:"MODE" description:"If set to 'swarm', proxy will operate assuming that Docker service from v1.12+ is used."`
 }
 
 // NewFetch returns instance of the Fetchable object
-var NewFetch = func(baseData BaseReconfigure, mode string) Fetchable {
+var NewFetch = func(baseData BaseReconfigure) Fetchable {
 	return &fetch{
 		BaseReconfigure: baseData,
-		Mode:            mode,
 	}
-}
-
-// TODO: It's deprecated (Consul). Remove it.
-func (m *fetch) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
-	if len(addresses) > 0 {
-		return m.reloadFromRegistry(addresses, instanceName, mode)
-	}
-	return nil
 }
 
 // ReloadConfig recreates proxy configuration with data fetches from Swarm Listener
-func (m *fetch) ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr string) error {
+func (m *fetch) ReloadConfig(baseData BaseReconfigure, listenerAddr string) error {
 	if len(listenerAddr) == 0 {
 		return fmt.Errorf("Swarm Listener address is missing %s", listenerAddr)
 	}
@@ -64,7 +49,7 @@ func (m *fetch) ReloadConfig(baseData BaseReconfigure, mode string, listenerAddr
 	for _, s := range services {
 		proxyService := proxy.GetServiceFromMap(&s)
 		if statusCode, _ := proxy.IsValidReconf(proxyService); statusCode == http.StatusOK {
-			reconfigure := NewReconfigure(baseData, *proxyService, mode)
+			reconfigure := NewReconfigure(baseData, *proxyService)
 			reconfigure.Execute(false)
 			needsReload = true
 		}
@@ -91,88 +76,10 @@ func (m *fetch) ReloadClusterConfig(listenerAddr string) error {
 }
 
 func (m *fetch) getReconfigure(service *proxy.Service) Reconfigurable {
-	return NewReconfigure(m.BaseReconfigure, *service, m.Mode)
+	return NewReconfigure(m.BaseReconfigure, *service)
 }
 
 func (m *fetch) getReload() Reloader {
 	return NewReload()
 }
 
-// TODO: It's deprecated (Consul). Remove it.
-func (m *fetch) reloadFromRegistry(addresses []string, instanceName, mode string) error {
-	var resp *http.Response
-	var err error
-	logPrintf("Configuring existing services")
-	found := false
-	for _, address := range addresses {
-		address = strings.ToLower(address)
-		if !strings.HasPrefix(address, "http") {
-			address = fmt.Sprintf("http://%s", address)
-		}
-		servicesUrl := fmt.Sprintf("%s/v1/catalog/services", address)
-		resp, err = http.Get(servicesUrl)
-		if err == nil {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return fmt.Errorf("Could not retrieve the list of services from Consul")
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	c := make(chan proxy.Service)
-	count := 0
-	var data map[string]interface{}
-	json.Unmarshal(body, &data)
-	count = len(data)
-	for key := range data {
-		go m.getService(addresses, key, instanceName, c)
-	}
-	logPrintf("\tFound %d services", count)
-	for i := 0; i < count; i++ {
-		s := <-c
-		if len(s.ServiceDest) > 0 && len(s.ServiceDest[0].ServicePath) > 0 {
-			reconfigure := m.getReconfigure(&s)
-			reconfigure.Execute(false)
-		}
-	}
-	reload := m.getReload()
-	return reload.Execute(true)
-}
-
-// TODO: It's deprecated (Consul). Remove it.
-func (m *fetch) getService(addresses []string, serviceName, instanceName string, c chan proxy.Service) {
-	sr := proxy.Service{ServiceName: serviceName}
-
-	path, err := registryInstance.GetServiceAttribute(addresses, serviceName, registry.PATH_KEY, instanceName)
-	port, _ := m.getServiceAttribute(addresses, serviceName, registry.PORT, instanceName)
-	sd := proxy.ServiceDest{
-		ServicePath: strings.Split(path, ","),
-		Port:        port,
-	}
-	if err == nil {
-		sr.ServiceDest = []proxy.ServiceDest{sd}
-		sr.ServiceColor, _ = m.getServiceAttribute(addresses, serviceName, registry.COLOR_KEY, instanceName)
-		sr.ServiceCert, _ = m.getServiceAttribute(addresses, serviceName, registry.CERT_KEY, instanceName)
-		sr.OutboundHostname, _ = m.getServiceAttribute(addresses, serviceName, registry.HOSTNAME_KEY, instanceName)
-		sr.PathType, _ = m.getServiceAttribute(addresses, serviceName, registry.PATH_TYPE_KEY, instanceName)
-		sr.ConsulTemplateFePath, _ = m.getServiceAttribute(addresses, serviceName, registry.CONSUL_TEMPLATE_FE_PATH_KEY, instanceName)
-		sr.ConsulTemplateBePath, _ = m.getServiceAttribute(addresses, serviceName, registry.CONSUL_TEMPLATE_BE_PATH_KEY, instanceName)
-	}
-	c <- sr
-}
-
-// TODO: It's deprecated (Consul). Remove it.
-func (m *fetch) getServiceAttribute(addresses []string, serviceName, key, instanceName string) (string, bool) {
-	for _, address := range addresses {
-		url := fmt.Sprintf("%s/v1/kv/%s/%s/%s?raw", address, instanceName, serviceName, key)
-		resp, err := http.Get(url)
-		if err == nil && resp.StatusCode == http.StatusOK {
-			defer resp.Body.Close()
-			body, _ := ioutil.ReadAll(resp.Body)
-			return string(body), true
-		}
-	}
-	return "", false
-}

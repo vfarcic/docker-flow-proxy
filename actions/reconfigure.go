@@ -2,13 +2,11 @@ package actions
 
 import (
 	"../proxy"
-	"../registry"
 	"bytes"
 	"fmt"
 	"html/template"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -28,23 +26,20 @@ type Reconfigurable interface {
 type Reconfigure struct {
 	BaseReconfigure
 	proxy.Service
-	Mode string `short:"m" long:"mode" env:"MODE" description:"If set to 'swarm', proxy will operate assuming that Docker service from v1.12+ is used."`
 }
 
 // BaseReconfigure contains base data required to reconfigure the proxy
 type BaseReconfigure struct {
-	ConsulAddresses []string
 	ConfigsPath     string `short:"c" long:"configs-path" default:"/cfg" description:"The path to the configurations directory"`
 	InstanceName    string `long:"proxy-instance-name" env:"PROXY_INSTANCE_NAME" default:"docker-flow" required:"true" description:"The name of the proxy instance."`
 	TemplatesPath   string `short:"t" long:"templates-path" default:"/cfg/tmpl" description:"The path to the templates directory"`
 }
 
 // NewReconfigure creates new instance of the Reconfigurable interface
-var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, mode string) Reconfigurable {
+var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service) Reconfigurable {
 	return &Reconfigure{
 		BaseReconfigure: baseData,
 		Service:         serviceData,
-		Mode:            mode,
 	}
 }
 
@@ -52,16 +47,6 @@ var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, m
 func (m *Reconfigure) Execute(reloadAfter bool) error {
 	mu.Lock()
 	defer mu.Unlock()
-	if isSwarm(m.Mode) && strings.EqualFold(os.Getenv("SKIP_ADDRESS_VALIDATION"), "false") {
-		host := m.ServiceName
-		if len(m.OutboundHostname) > 0 {
-			host = m.OutboundHostname
-		}
-		if _, err := lookupHost(host); err != nil {
-			logPrintf("Could not reach the service %s. Is the service running and connected to the same network as the proxy?", host)
-			return err
-		}
-	}
 	if err := m.createConfigs(); err != nil {
 		return err
 	}
@@ -74,17 +59,6 @@ func (m *Reconfigure) Execute(reloadAfter bool) error {
 			logPrintf(err.Error())
 			proxy.Instance.RemoveService(m.Service.ServiceName)
 			return err
-		}
-		//MW: this happens only when reloadAfter is requested
-		//its little ugly because it should not happen when
-		//reconfiguration is made from consul config
-		//but in that case we never call it with reloadAfter
-		//see Fetch.reloadFromRegistry
-		if len(m.ConsulAddresses) > 0 || !isSwarm(m.Mode) {
-			if err := m.putToConsul(m.ConsulAddresses, m.Service, m.InstanceName); err != nil {
-				logPrintf(err.Error())
-				return err
-			}
 		}
 	}
 	return nil
@@ -131,7 +105,7 @@ func (m *Reconfigure) GetTemplates() (front, back string, err error) {
 			}
 			back = m.parseBackTemplate(string(beTmpl), "", sr)
 		} else {
-			back = m.parseBackTemplate(proxy.GetBackTemplate(sr, m.Mode), m.getUsersList(sr), sr)
+			back = m.parseBackTemplate(proxy.GetBackTemplate(sr), m.getUsersList(sr), sr)
 		}
 	}
 	return front, back, nil
@@ -145,52 +119,13 @@ func (m *Reconfigure) createConfigs() error {
 	if err != nil {
 		return err
 	}
-	if strings.EqualFold(m.Mode, "service") || strings.EqualFold(m.Mode, "swarm") {
-		if len(sr.AclName) == 0 {
-			sr.AclName = sr.ServiceName
-		}
-		destFe := fmt.Sprintf("%s/%s-fe.cfg", templatesPath, sr.AclName)
-		writeFeTemplate(destFe, []byte(feTemplate), 0664)
-		destBe := fmt.Sprintf("%s/%s-be.cfg", templatesPath, sr.AclName)
-		writeBeTemplate(destBe, []byte(beTemplate), 0664)
-	} else {
-		args := registry.CreateConfigsArgs{
-			Addresses:     m.ConsulAddresses,
-			TemplatesPath: templatesPath,
-			FeFile:        serviceTemplateFeFilename,
-			FeTemplate:    feTemplate,
-			BeFile:        serviceTemplateBeFilename,
-			BeTemplate:    beTemplate,
-			ServiceName:   sr.ServiceName,
-		}
-		if err = registryInstance.CreateConfigs(&args); err != nil {
-			return err
-		}
+	if len(sr.AclName) == 0 {
+		sr.AclName = sr.ServiceName
 	}
-	return nil
-}
-
-func (m *Reconfigure) putToConsul(addresses []string, sr proxy.Service, instanceName string) error {
-	path := []string{}
-	port := ""
-	if len(sr.ServiceDest) > 0 {
-		path = sr.ServiceDest[0].ServicePath
-		port = sr.ServiceDest[0].Port
-	}
-	r := registry.Registry{
-		ServiceName:          sr.ServiceName,
-		ServiceColor:         sr.ServiceColor,
-		ServicePath:          path,
-		ServiceCert:          sr.ServiceCert,
-		OutboundHostname:     sr.OutboundHostname,
-		PathType:             sr.PathType,
-		ConsulTemplateFePath: sr.ConsulTemplateFePath,
-		ConsulTemplateBePath: sr.ConsulTemplateBePath,
-		Port:                 port,
-	}
-	if err := registryInstance.PutService(addresses, instanceName, r); err != nil {
-		return err
-	}
+	destFe := fmt.Sprintf("%s/%s-fe.cfg", templatesPath, sr.AclName)
+	writeFeTemplate(destFe, []byte(feTemplate), 0664)
+	destBe := fmt.Sprintf("%s/%s-be.cfg", templatesPath, sr.AclName)
+	writeBeTemplate(destBe, []byte(beTemplate), 0664)
 	return nil
 }
 

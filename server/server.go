@@ -30,7 +30,6 @@ const (
 
 type serve struct {
 	listenerAddress string
-	mode            string
 	port            string
 	serviceName     string
 	configsPath     string
@@ -40,22 +39,19 @@ type serve struct {
 }
 
 // NewServer returns instance of the Server with populated data
-var NewServer = func(listenerAddr, mode, port, serviceName, configsPath, templatesPath string, consulAddresses []string, cert Certer) Server {
+var NewServer = func(listenerAddr, port, serviceName, configsPath, templatesPath string, cert Certer) Server {
 	return &serve{
 		listenerAddress: listenerAddr,
-		mode:            mode,
 		port:            port,
 		serviceName:     serviceName,
 		configsPath:     configsPath,
 		templatesPath:   templatesPath,
-		consulAddresses: consulAddresses,
 		cert:            cert,
 	}
 }
 
 //Response message returns to HTTP clients
 type Response struct {
-	Mode        string
 	Status      string
 	Message     string
 	ServiceName string
@@ -109,14 +105,13 @@ func (m *serve) PingHandler(w http.ResponseWriter, req *http.Request) {
 func (m *serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 	sr := m.GetServiceFromUrl(req)
 	response := Response{
-		Mode:        m.mode,
 		Status:      "OK",
 		ServiceName: sr.ServiceName,
 		Service:     *sr,
 	}
 	statusCode, msg := proxy.IsValidReconf(sr)
 	if statusCode == http.StatusOK {
-		if m.isSwarm(m.mode) && !m.hasPort(sr.ServiceDest) {
+		if !m.hasPort(sr.ServiceDest) {
 			logPrintf(`When MODE is set to "service" or "swarm", the port query is mandatory`)
 			m.writeBadRequest(w, &response, `When MODE is set to "service" or "swarm", the port query is mandatory`)
 		} else if sr.Distribute {
@@ -136,7 +131,7 @@ func (m *serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 				}
 				m.cert.PutCert(certName, []byte(sr.ServiceCert))
 			}
-			action := actions.NewReconfigure(m.getBaseReconfigure(), *sr, m.mode)
+			action := actions.NewReconfigure(m.getBaseReconfigure(), *sr)
 			if err := action.Execute(true); err != nil {
 				m.writeInternalServerError(w, &response, err.Error())
 			} else {
@@ -156,7 +151,6 @@ func (m *serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 func (m *serve) getBaseReconfigure() actions.BaseReconfigure {
 	//MW: What about skipAddressValidation???
 	return actions.BaseReconfigure{
-		ConsulAddresses: m.consulAddresses,
 		ConfigsPath:     m.configsPath,
 		InstanceName:    os.Getenv("PROXY_INSTANCE_NAME"),
 		TemplatesPath:   m.templatesPath,
@@ -179,7 +173,7 @@ func (m *serve) ReloadHandler(w http.ResponseWriter, req *http.Request) {
 	//reload in else, if so ReloadClusterConfig & ReloadServicesFromRegistry
 	//could be enclosed in one method
 	if len(listenerAddr) > 0 {
-		fetch := actions.NewFetch(m.getBaseReconfigure(), m.mode)
+		fetch := actions.NewFetch(m.getBaseReconfigure())
 		if err := fetch.ReloadClusterConfig(listenerAddr); err != nil {
 			logPrintf("Error: ReloadClusterConfig failed: %s", err.Error())
 			m.writeInternalServerError(w, &Response{}, err.Error())
@@ -233,7 +227,6 @@ func (m *serve) RemoveHandler(w http.ResponseWriter, req *http.Request) {
 			m.templatesPath,
 			m.consulAddresses,
 			m.serviceName,
-			m.mode,
 		)
 		action.Execute([]string{})
 	}
@@ -336,10 +329,6 @@ func (m *serve) writeInternalServerError(w http.ResponseWriter, resp *Response, 
 	resp.Status = "NOK"
 	resp.Message = msg
 	w.WriteHeader(http.StatusInternalServerError)
-}
-
-func (m *serve) isSwarm(mode string) bool {
-	return strings.EqualFold("service", m.mode) || strings.EqualFold("swarm", m.mode)
 }
 
 func (m *serve) hasPort(sd []proxy.ServiceDest) bool {

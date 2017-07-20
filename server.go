@@ -21,12 +21,6 @@ type Server interface {
 
 type serve struct {
 	IP string `short:"i" long:"ip" default:"0.0.0.0" env:"IP" description:"IP the server listens to."`
-	// TODO: Remove
-	// The default mode is designed to work with any setup and requires Consul and Registrator.
-	// The swarm mode aims to leverage the benefits that come with Docker Swarm and new networking introduced in the 1.12 release.
-	// The later mode (swarm) does not have any dependency but Docker Engine.
-	// The swarm mode is recommended for all who use Docker Swarm features introduced in v1.12.
-	Mode            string `short:"m" long:"mode" env:"MODE" description:"If set to 'swarm', proxy will operate assuming that Docker service from v1.12+ is used."`
 	ListenerAddress string `short:"l" long:"listener-address" env:"LISTENER_ADDRESS" description:"The address of the Docker Flow: Swarm Listener. The address matches the name of the Swarm service (e.g. swarm-listener)"`
 	Port            string `short:"p" long:"port" default:"8080" env:"PORT" description:"Port the server listens to."`
 	ServiceName     string `short:"n" long:"service-name" default:"proxy" env:"SERVICE_NAME" description:"The name of the proxy service. It is used only when running in 'swarm' mode and must match the '--name' parameter used to launch the service."`
@@ -44,18 +38,15 @@ func (m *serve) Execute(args []string) error {
 		proxy.Instance = proxy.NewHaProxy(m.TemplatesPath, m.ConfigsPath)
 	}
 	logPrintf("Starting HAProxy")
-	m.setConsulAddresses()
 	newRun().Execute([]string{})
 	address := fmt.Sprintf("%s:%s", m.IP, m.Port)
 	cert.Init()
 	var server2 = server.NewServer(
 		m.ListenerAddress,
-		m.Mode,
 		m.Port,
 		m.ServiceName,
 		m.ConfigsPath,
 		m.TemplatesPath,
-		m.ConsulAddresses,
 		cert,
 	)
 	if err := m.reconfigure(server2); err != nil {
@@ -83,21 +74,14 @@ func (m *serve) reconfigure(server server.Server) error {
 	if len(m.ListenerAddress) > 0 {
 		lAddr = fmt.Sprintf("http://%s:8080", m.ListenerAddress)
 	}
-	fetch := actions.NewFetch(m.BaseReconfigure, m.Mode)
-	if err := fetch.ReloadServicesFromRegistry(
-		m.ConsulAddresses,
-		m.InstanceName,
-		m.Mode,
-	); err != nil {
-		return err
-	}
+	fetch := actions.NewFetch(m.BaseReconfigure)
 	if len(lAddr) > 0 {
 		go func() {
 			retryInterval := os.Getenv("RELOAD_INTERVAL")
 			interval, _ := time.ParseDuration(retryInterval + "ms")
 			repeatReload := strings.EqualFold(os.Getenv("REPEAT_RELOAD"), "true")
 			for range time.Tick(interval) {
-				if err := fetch.ReloadConfig(m.BaseReconfigure, m.Mode, lAddr); err != nil {
+				if err := fetch.ReloadConfig(m.BaseReconfigure, lAddr); err != nil {
 					logPrintf(
 						"Error: Fetching config from swarm listener failed: %s. Will retry in %d seconds.",
 						err.Error(),
@@ -114,7 +98,7 @@ func (m *serve) reconfigure(server server.Server) error {
 	services := server.GetServicesFromEnvVars()
 
 	for _, service := range *services {
-		recon := actions.NewReconfigure(m.BaseReconfigure, service, m.Mode)
+		recon := actions.NewReconfigure(m.BaseReconfigure, service)
 		//todo: there could be only one reload after this whole loop
 		recon.Execute(true)
 	}
@@ -134,10 +118,6 @@ func (m *serve) certsHandler(w http.ResponseWriter, req *http.Request) {
 // TODO: Move to server package
 func (m *serve) configHandler(w http.ResponseWriter, req *http.Request) {
 	m.config(w, req)
-}
-
-func (m *serve) isSwarm(mode string) bool {
-	return strings.EqualFold("service", m.Mode) || strings.EqualFold("swarm", m.Mode)
 }
 
 func (m *serve) hasPort(sd []proxy.ServiceDest) bool {
@@ -173,16 +153,4 @@ func (m *serve) config(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
 	w.Write([]byte(out))
-}
-
-func (m *serve) setConsulAddresses() {
-	m.ConsulAddresses = []string{}
-	if len(os.Getenv("CONSUL_ADDRESS")) > 0 {
-		for _, address := range strings.Split(os.Getenv("CONSUL_ADDRESS"), ",") {
-			if !strings.HasPrefix(address, "http") {
-				address = fmt.Sprintf("http://%s", address)
-			}
-			m.ConsulAddresses = append(m.ConsulAddresses, address)
-		}
-	}
 }

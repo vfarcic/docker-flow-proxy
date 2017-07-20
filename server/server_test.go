@@ -151,7 +151,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus200_WhenReqModeIs
 	rw := getResponseWriterMock()
 	newReconfigureOrig := actions.NewReconfigure
 	defer func() { actions.NewReconfigure = newReconfigureOrig }()
-	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
+	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service) actions.Reconfigurable {
 		return ReconfigureMock{
 			ExecuteMock: func(reloadAfter bool) error {
 				return nil
@@ -187,23 +187,12 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus400_WhenReqModeIs
 	rw.AssertCalled(s.T(), "WriteHeader", 400)
 }
 
-func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus400_WhenModeIsServiceAndPortIsNotPresent() {
+func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus400_WhenPortIsNotPresent() {
 	url := "/v1/docker-flow-proxy/reconfigure?serviceName=my-service&serviceColor=orange&servicePath=/demo&serviceDomain=my-domain.com"
 	req, _ := http.NewRequest("GET", url, nil)
 	rw := getResponseWriterMock()
 
-	srv := serve{mode: "service"}
-	srv.ReconfigureHandler(rw, req)
-
-	rw.AssertCalled(s.T(), "WriteHeader", 400)
-}
-
-func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus400_WhenModeIsSwarmAndPortIsNotPresent() {
-	addr := "/v1/docker-flow-proxy/reconfigure?serviceName=my-service&serviceColor=orange&servicePath=/demo&serviceDomain=my-domain.com"
-	req, _ := http.NewRequest("GET", addr, nil)
-	rw := getResponseWriterMock()
-
-	srv := serve{mode: "swARM"}
+	srv := serve{}
 	srv.ReconfigureHandler(rw, req)
 
 	rw.AssertCalled(s.T(), "WriteHeader", 400)
@@ -215,7 +204,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesReconfigureExecute() {
 	invoked := false
 	newReconfigureOrig := actions.NewReconfigure
 	defer func() { actions.NewReconfigure = newReconfigureOrig }()
-	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
+	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service) actions.Reconfigurable {
 		return ReconfigureMock{
 			ExecuteMock: func(reloadAfter bool) error {
 				invoked = true
@@ -224,7 +213,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesReconfigureExecute() {
 		}
 	}
 
-	srv := serve{mode: "swarm"}
+	srv := serve{}
 	srv.ReconfigureHandler(getResponseWriterMock(), req)
 
 	s.True(invoked)
@@ -236,7 +225,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_DoesNotInvokeReconfigureExecut
 	invoked := false
 	newReconfigureOrig := actions.NewReconfigure
 	defer func() { actions.NewReconfigure = newReconfigureOrig }()
-	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
+	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service) actions.Reconfigurable {
 		return ReconfigureMock{
 			ExecuteMock: func(reloadAfter bool) error {
 				invoked = true
@@ -245,7 +234,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_DoesNotInvokeReconfigureExecut
 		}
 	}
 
-	srv := serve{mode: "swarm"}
+	srv := serve{}
 	srv.ReconfigureHandler(getResponseWriterMock(), req)
 
 	s.False(invoked)
@@ -254,7 +243,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_DoesNotInvokeReconfigureExecut
 func (s *ServerTestSuite) Test_ReconfigureHandler_ReturnsStatus500_WhenReconfigureExecuteFails() {
 	newReconfigureOrig := actions.NewReconfigure
 	defer func() { actions.NewReconfigure = newReconfigureOrig }()
-	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
+	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service) actions.Reconfigurable {
 		return ReconfigureMock{
 			ExecuteMock: func(reloadAfter bool) error {
 				return fmt.Errorf("This is an error")
@@ -286,7 +275,6 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesPutCert_WhenServiceCert
 	req, _ := http.NewRequest("GET", addr, nil)
 
 	srv := serve{
-		mode: "swarm",
 		cert: cert,
 	}
 	srv.ReconfigureHandler(getResponseWriterMock(), req)
@@ -310,65 +298,12 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesPutCertWithDomainName_W
 	req, _ := http.NewRequest("GET", addr, nil)
 
 	srv := serve{
-		mode: "swarm",
 		cert: cert,
 	}
 	srv.ReconfigureHandler(getResponseWriterMock(), req)
 
 	s.Equal("my-domain.com", actualCertName)
 	s.Equal(strings.Replace(expectedCert, "\\n", "\n", -1), actualCert)
-}
-
-func (s *ServerTestSuite) Test_ReconfigureHandler_InvokesReconfigureExecute_WhenConsulTemplatePathIsPresent() {
-	sd := proxy.ServiceDest{
-		AllowedMethods: []string{},
-		DeniedMethods:  []string{},
-		ServicePath:    []string{},
-		ReqMode:        "http",
-		ServiceDomain:  []string{},
-		ServiceHeader:  map[string]string{},
-	}
-	pathFe := "/path/to/consul/fe/template"
-	pathBe := "/path/to/consul/be/template"
-	var actualBase actions.BaseReconfigure
-	expectedBase := actions.BaseReconfigure{
-		ConsulAddresses: []string{"http://my-consul.com"},
-	}
-	var actualService proxy.Service
-	expectedService := proxy.Service{
-		ServiceName:          "my-service",
-		ConsulTemplateFePath: pathFe,
-		ConsulTemplateBePath: pathBe,
-		ServiceDest:          []proxy.ServiceDest{sd},
-	}
-	newReconfigureOrig := actions.NewReconfigure
-	defer func() { actions.NewReconfigure = newReconfigureOrig }()
-	invoked := false
-	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
-		actualBase = baseData
-		actualService = serviceData
-		return ReconfigureMock{
-			ExecuteMock: func(reloadAfter bool) error {
-				invoked = true
-				return nil
-			},
-		}
-	}
-	serverImpl := serve{
-		consulAddresses: []string{"http://my-consul.com"},
-	}
-	addr := fmt.Sprintf(
-		"/v1/docker-flow-proxy/reconfigure?serviceName=my-service&consulTemplateFePath=%s&consulTemplateBePath=%s",
-		pathFe,
-		pathBe,
-	)
-	req, _ := http.NewRequest("GET", addr, nil)
-
-	serverImpl.ReconfigureHandler(getResponseWriterMock(), req)
-
-	s.Equal(expectedBase, actualBase)
-	s.Equal(expectedService, actualService)
-	s.True(invoked)
 }
 
 // ReloadHandler
@@ -538,23 +473,20 @@ func (s *ServerTestSuite) Test_RemoveHandler_InvokesRemoveExecute() {
 		ServiceName:     s.serviceName,
 		TemplatesPath:   "",
 		ConfigsPath:     "",
-		ConsulAddresses: []string{"http://1.2.3.4:1234"},
 		InstanceName:    "proxy-test-instance",
 		AclName:         aclName,
 	}
 	actions.NewRemove = func(
 		serviceName, aclName, configsPath, templatesPath string,
 		consulAddresses []string,
-		instanceName, mode string,
+		instanceName string,
 	) actions.Removable {
 		actual = actions.Remove{
 			ServiceName:     serviceName,
 			AclName:         aclName,
 			TemplatesPath:   templatesPath,
 			ConfigsPath:     configsPath,
-			ConsulAddresses: consulAddresses,
 			InstanceName:    instanceName,
-			Mode:            mode,
 		}
 		return mockObj
 	}
@@ -562,8 +494,7 @@ func (s *ServerTestSuite) Test_RemoveHandler_InvokesRemoveExecute() {
 	req, _ := http.NewRequest("GET", url, nil)
 
 	srv := serve{
-		consulAddresses: expected.ConsulAddresses,
-		serviceName:     expected.InstanceName,
+		serviceName: expected.InstanceName,
 	}
 	srv.RemoveHandler(getResponseWriterMock(), req)
 
@@ -994,23 +925,23 @@ func (m ReconfigureMock) GetTemplates() (front, back string, err error) {
 }
 
 type FetchMock struct {
-	ReloadServicesFromRegistryMock func(addresses []string, instanceName, mode string) error
+	ReloadServicesFromRegistryMock func(addresses []string, instanceName string) error
 	ReloadClusterConfigMock        func(listenerAddr string) error
-	ReloadConfigMock               func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error
+	ReloadConfigMock               func(baseData actions.BaseReconfigure, listenerAddr string) error
 }
 
-func (m *FetchMock) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
-	return m.ReloadServicesFromRegistryMock(addresses, instanceName, mode)
+func (m *FetchMock) ReloadServicesFromRegistry(addresses []string, instanceName string) error {
+	return m.ReloadServicesFromRegistryMock(addresses, instanceName)
 }
 func (m FetchMock) ReloadClusterConfig(listenerAddr string) error {
 	return m.ReloadClusterConfigMock(listenerAddr)
 }
-func (m FetchMock) ReloadConfig(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
-	return m.ReloadConfigMock(baseData, mode, listenerAddr)
+func (m FetchMock) ReloadConfig(baseData actions.BaseReconfigure, listenerAddr string) error {
+	return m.ReloadConfigMock(baseData, listenerAddr)
 }
 func MockFetch(mock FetchMock) func() {
 	newFetchOrig := actions.NewFetch
-	actions.NewFetch = func(baseData actions.BaseReconfigure, mode string) actions.Fetchable {
+	actions.NewFetch = func(baseData actions.BaseReconfigure) actions.Fetchable {
 		return &mock
 	}
 	return func() {

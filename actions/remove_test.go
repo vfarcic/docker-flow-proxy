@@ -16,14 +16,10 @@ type RemoveTestSuite struct {
 	ServiceName   string
 	ConfigsPath   string
 	TemplatesPath string
-	ConsulAddress string
 	InstanceName  string
 }
 
 func TestRemoveUnitTestSuite(t *testing.T) {
-	registryInstanceOrig := registryInstance
-	defer func() { registryInstance = registryInstanceOrig }()
-	registryInstance = getRegistrarableMock("")
 	logPrintf = func(format string, v ...interface{}) {}
 	proxyOrig := proxy.Instance
 	defer func() { proxy.Instance = proxyOrig }()
@@ -35,7 +31,6 @@ func (s *RemoveTestSuite) SetupTest() {
 	s.ServiceName = "myService"
 	s.TemplatesPath = "/path/to/templates"
 	s.ConfigsPath = "/path/to/configs"
-	s.ConsulAddress = "http://consul.io"
 	s.InstanceName = "my-proxy-instance"
 	osRemove = func(name string) error {
 		return nil
@@ -44,7 +39,6 @@ func (s *RemoveTestSuite) SetupTest() {
 		ServiceName:     s.ServiceName,
 		ConfigsPath:     s.ConfigsPath,
 		TemplatesPath:   s.TemplatesPath,
-		ConsulAddresses: []string{s.ConsulAddress},
 		InstanceName:    s.InstanceName,
 	}
 }
@@ -124,53 +118,6 @@ func (s RemoveTestSuite) Test_Execute_ReturnsError_WhenHaProxyReloadFails() {
 	mockObj := getProxyMock("CreateConfigFromTemplates")
 	mockObj.On("CreateConfigFromTemplates", mock.Anything, mock.Anything).Return(fmt.Errorf("This is an error"))
 	proxy.Instance = mockObj
-
-	err := s.remove.Execute([]string{})
-
-	s.Error(err)
-}
-
-func (s RemoveTestSuite) Test_Execute_InvokesRegistryDeleteService() {
-	mockObj := getRegistrarableMock("")
-	registryInstanceOrig := registryInstance
-	defer func() { registryInstance = registryInstanceOrig }()
-	registryInstance = mockObj
-
-	s.remove.Execute([]string{})
-
-	mockObj.AssertCalled(s.T(), "DeleteService", []string{s.ConsulAddress}, s.ServiceName, s.InstanceName)
-}
-
-func (s RemoveTestSuite) Test_Execute_DoesNotInvokeRegistryDeleteService_WhenModeIsService() {
-	mockObj := getRegistrarableMock("")
-	s.remove.Mode = "SerVIcE"
-	registryInstanceOrig := registryInstance
-	defer func() { registryInstance = registryInstanceOrig }()
-	registryInstance = mockObj
-
-	s.remove.Execute([]string{})
-
-	mockObj.AssertNotCalled(s.T(), "DeleteService", mock.Anything, mock.Anything, mock.Anything)
-}
-
-func (s RemoveTestSuite) Test_Execute_DoesNotInvokeRegistryDeleteService_WhenModeIsSwarm() {
-	mockObj := getRegistrarableMock("")
-	s.remove.Mode = "swARM"
-	registryInstanceOrig := registryInstance
-	defer func() { registryInstance = registryInstanceOrig }()
-	registryInstance = mockObj
-
-	s.remove.Execute([]string{})
-
-	mockObj.AssertNotCalled(s.T(), "DeleteService", mock.Anything, mock.Anything, mock.Anything)
-}
-
-func (s RemoveTestSuite) Test_Execute_ReturnsError_WhenDeleteRequestToRegistryFails() {
-	mockObj := getRegistrarableMock("DeleteService")
-	mockObj.On("DeleteService", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("This is an error form Consul"))
-	registryInstanceOrig := registryInstance
-	defer func() { registryInstance = registryInstanceOrig }()
-	registryInstance = mockObj
 
 	err := s.remove.Execute([]string{})
 

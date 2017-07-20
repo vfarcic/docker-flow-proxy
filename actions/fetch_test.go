@@ -4,25 +4,19 @@ import (
 	"../proxy"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 )
 
 type FetchTestSuite struct {
 	suite.Suite
 	proxy.Service
-	ConsulAddress     string
-	ConsulTemplateFe  string
-	ConsulTemplateBe  string
 	ConfigsPath       string
 	TemplatesPath     string
 	fetch             fetch
-	Server            *httptest.Server
 	PutPathResponse   string
 	ConsulRequestBody proxy.Service
 	InstanceName      string
@@ -37,19 +31,8 @@ func (s *FetchTestSuite) SetupTest() {
 	s.ConfigsPath = "path/to/configs/dir"
 	s.TemplatesPath = "test_configs/tmpl"
 	s.PathType = "path_beg"
-	s.ConsulTemplateFe = `
-    acl url_myService path_beg path/to/my/service/api path_beg path/to/my/other/service/api
-    use_backend myService-be if url_myService`
-	s.ConsulTemplateBe = `
-backend myService-be
-    mode http
-    {{range $i, $e := service "myService" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}} check
-    {{end}}`
-	s.ConsulAddress = s.Server.URL
 	s.fetch = fetch{
 		BaseReconfigure: BaseReconfigure{
-			ConsulAddresses: []string{s.ConsulAddress},
 			TemplatesPath:   s.TemplatesPath,
 			ConfigsPath:     s.ConfigsPath,
 			InstanceName:    s.InstanceName,
@@ -65,11 +48,6 @@ func TestFetchUnitTestSuite(t *testing.T) {
 	s := new(FetchTestSuite)
 	s.ServiceName = "myService"
 	s.PutPathResponse = "PUT_PATH_OK"
-	s.Server = GetTestServer(s.Service, s.InstanceName)
-	defer s.Server.Close()
-	registryInstanceOrig := registryInstance
-	defer func() { registryInstance = registryInstanceOrig }()
-	registryInstance = getRegistrarableMock("")
 	writeFeTemplateOrig := writeFeTemplate
 	defer func() { writeFeTemplate = writeFeTemplateOrig }()
 	writeFeTemplate = func(filename string, data []byte, perm os.FileMode) error {
@@ -87,70 +65,7 @@ func TestFetchUnitTestSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-// ReloadAllServices
-
-func (s *FetchTestSuite) Test_ReloadAllServices_ReturnsError_WhenFail() {
-	err := s.fetch.ReloadServicesFromRegistry([]string{"this/address/does/not/exist"}, s.InstanceName, "")
-
-	s.Error(err)
-}
-
-func (s *FetchTestSuite) Test_ReloadAllServices_InvokesProxyCreateConfigFromTemplates() {
-	mockObj := getProxyMock("")
-	proxyOrig := proxy.Instance
-	defer func() { proxy.Instance = proxyOrig }()
-	proxy.Instance = mockObj
-
-	s.fetch.ReloadServicesFromRegistry([]string{s.ConsulAddress}, s.InstanceName, "")
-
-	mockObj.AssertCalled(s.T(), "CreateConfigFromTemplates")
-}
-
-func (s *FetchTestSuite) Test_ReloadAllServices_ReturnsError_WhenProxyCreateConfigFromTemplatesFails() {
-	mockObj := getProxyMock("CreateConfigFromTemplates")
-	mockObj.On("CreateConfigFromTemplates", mock.Anything, mock.Anything).Return(fmt.Errorf("This is an error"))
-	proxyOrig := proxy.Instance
-	defer func() { proxy.Instance = proxyOrig }()
-	proxy.Instance = mockObj
-
-	actual := s.fetch.ReloadServicesFromRegistry([]string{s.ConsulAddress}, s.InstanceName, "")
-
-	s.Error(actual)
-}
-
-func (s *FetchTestSuite) Test_ReloadAllServices_InvokesProxyReload() {
-	proxyMock := getProxyMock("")
-	proxyOrig := proxy.Instance
-	defer func() { proxy.Instance = proxyOrig }()
-	proxy.Instance = proxyMock
-
-	s.fetch.ReloadServicesFromRegistry([]string{s.ConsulAddress}, s.InstanceName, "")
-
-	proxyMock.AssertCalled(s.T(), "Reload")
-	proxyMock.AssertCalled(s.T(), "CreateConfigFromTemplates")
-}
-
-func (s *FetchTestSuite) Test_ReloadAllServices_ReturnsError_WhenProxyReloadFails() {
-	mockObj := getProxyMock("Reload")
-	mockObj.On("Reload").Return(fmt.Errorf("This is an error"))
-	proxyOrig := proxy.Instance
-	defer func() { proxy.Instance = proxyOrig }()
-	proxy.Instance = mockObj
-
-	actual := s.fetch.ReloadServicesFromRegistry([]string{s.ConsulAddress}, s.InstanceName, "")
-
-	s.Error(actual)
-}
-
-func (s *FetchTestSuite) Test_ReloadAllServices_AddsHttpIfNotPresent() {
-	proxyOrig := proxy.Instance
-	defer func() { proxy.Instance = proxyOrig }()
-	proxy.Instance = getProxyMock("")
-	address := strings.Replace(s.ConsulAddress, "http://", "", -1)
-	err := s.fetch.ReloadServicesFromRegistry([]string{address}, s.InstanceName, "")
-
-	s.NoError(err)
-}
+// ReloadClusterConfig
 
 func (s *FetchTestSuite) Test_ReloadClusterConfig_SendsARequestToSwarmListener_WhenListenerAddressIsDefined() {
 	actual := ""
@@ -208,7 +123,7 @@ func (s *FetchTestSuite) Test_ReloadConfig_SendsARequestToSwarmListener_WhenList
 	OldNewReconfigure := NewReconfigure
 	defer func() { NewReconfigure = OldNewReconfigure }()
 	reconfigureMock := getReconfigureMock("")
-	NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, mode string) Reconfigurable {
+	NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service) Reconfigurable {
 		usedServiceData = serviceData
 		return reconfigureMock
 	}
@@ -218,7 +133,7 @@ func (s *FetchTestSuite) Test_ReloadConfig_SendsARequestToSwarmListener_WhenList
 	proxyMock := getProxyMock("")
 	proxy.Instance = proxyMock
 
-	err := s.fetch.ReloadConfig(BaseReconfigure{}, "swarm", srv.URL)
+	err := s.fetch.ReloadConfig(BaseReconfigure{}, srv.URL)
 
 	s.Equal("/v1/docker-flow-swarm-listener/get-services", actual)
 	s.NoError(err)
@@ -238,7 +153,7 @@ func (s *FetchTestSuite) Test_ReloadConfig_ReturnsError_WhenSwarmListenerReturns
 	}))
 	defer func() { srv.Close() }()
 
-	err := s.fetch.ReloadConfig(BaseReconfigure{}, "swarm", srv.URL)
+	err := s.fetch.ReloadConfig(BaseReconfigure{}, srv.URL)
 
 	s.Error(err)
 }
@@ -249,7 +164,7 @@ func (s *FetchTestSuite) Test_ReloadConfig_ReturnsError_WhenSwarmListenerStatusI
 	}))
 	defer func() { srv.Close() }()
 
-	err := s.fetch.ReloadConfig(BaseReconfigure{}, "swarm", srv.URL)
+	err := s.fetch.ReloadConfig(BaseReconfigure{}, srv.URL)
 
 	s.Error(err)
 }
@@ -264,7 +179,7 @@ func (s *FetchTestSuite) Test_ReloadConfig_ReturnsError_WhenSwarmListenerFails()
 		return &resp, fmt.Errorf("This is an error")
 	}
 
-	err := s.fetch.ReloadConfig(BaseReconfigure{}, "swarm", "http://google.com")
+	err := s.fetch.ReloadConfig(BaseReconfigure{}, "http://google.com")
 
 	s.Error(err)
 }

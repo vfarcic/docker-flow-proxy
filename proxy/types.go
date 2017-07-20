@@ -107,8 +107,6 @@ type Service struct {
 	// The ACL derivative. Defaults to path_beg.
 	// See https://cbonte.github.io/haproxy-dconv/configuration-1.5.html#7.3.6-path for more info.
 	PathType string `split_words:"true"`
-	// TODO: Remove it. It is a temporary workaround until Consul mode is removed.
-	ProxyMode string
 	// Whether to redirect to https when X-Forwarded-Proto is http
 	RedirectWhenHttpProto bool `split_words:"true"`
 	// A regular expression to apply the modification.

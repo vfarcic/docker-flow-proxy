@@ -96,8 +96,7 @@ func getFrontTemplateTcp(servicesByPort map[int]Services) string {
 // TODO: Create a single string for the template
 // TODO: Unify HTTP and HTTPS into a single string
 // TODO: Move to a file
-func GetBackTemplate(sr *Service, mode string) string {
-	sr.ProxyMode = strings.ToLower(mode)
+func GetBackTemplate(sr *Service) string {
 	for i := range sr.ServiceDest {
 		if strings.EqualFold(sr.ServiceDest[i].ReqMode, "sni") {
 			sr.ServiceDest[i].ReqModeFormatted = "tcp"
@@ -132,45 +131,25 @@ backend {{$.ServiceName}}-be{{.Port}}
         {{- if ne $.ReqPathSearch ""}}
     http-request set-path %[path,regsub({{$.ReqPathSearch}},{{$.ReqPathReplace}})]
         {{- end}}
-        {{- if or (eq $.ProxyMode "service") (eq $.ProxyMode "swarm")}}
-            {{- if eq .VerifyClientSsl true}}
+		{{- if eq .VerifyClientSsl true}}
     acl valid_client_cert_{{$.ServiceName}}{{.Port}} ssl_c_used ssl_c_verify 0
     http-request deny unless valid_client_cert_{{$.ServiceName}}{{.Port}}
-            {{- end}}
-            {{- if .AllowedMethods}}
+		{{- end}}
+		{{- if .AllowedMethods}}
     acl valid_allowed_method method{{range .AllowedMethods}} {{.}}{{end}}
     http-request deny unless valid_allowed_method
-            {{- end}}
-            {{- if .DeniedMethods}}
+		{{- end}}
+		{{- if .DeniedMethods}}
     acl valid_denied_method method{{range .DeniedMethods}} {{.}}{{end}}
     http-request deny if valid_denied_method
-            {{- end}}
-            {{- if .DenyHttp}}
+		{{- end}}
+		{{- if .DenyHttp}}
     http-request deny if !{ ssl_fc }
-            {{- end}}
-            {{- if $.HttpsOnly}}
+		{{- end}}
+		{{- if $.HttpsOnly}}
     redirect scheme https if !{ ssl_fc }
-            {{- end}}
+		{{- end}}
     server {{$.ServiceName}} {{$.Host}}:{{.Port}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
-        {{- /* TODO: It's Consul and it's deprecated. Remove it. */}}
-        {{- else}}
-    {{"{{"}}range $i, $e := service "{{$.FullServiceName}}" "any"{{"}}"}}
-    server {{"{{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}"}}
-    {{"{{end}}"}}
-        {{- end}}
-        {{- if not .IgnoreAuthorization}}
-            {{- if and ($.Users) (not .IgnoreAuthorization)}}
-    acl {{$.ServiceName}}UsersAcl http_auth({{$.ServiceName}}Users)
-    http-request auth realm {{$.ServiceName}}Realm if !{{$.ServiceName}}UsersAcl
-            {{- end}}
-            {{- if $.UseGlobalUsers}}
-    acl defaultUsersAcl http_auth(defaultUsers)
-    http-request auth realm defaultRealm if !defaultUsersAcl
-            {{- end}}
-            {{- if or ($.Users) ($.UseGlobalUsers)}}
-    http-request del-header Authorization
-            {{- end}}
-        {{- end}}
     {{- end}}
     {{- if ne $.BackendExtra ""}}
     {{ $.BackendExtra }}
@@ -194,39 +173,19 @@ backend https-{{$.ServiceName}}-be{{.Port}}
         {{- if ne $.ReqPathSearch ""}}
     http-request set-path %[path,regsub({{$.ReqPathSearch}},{{$.ReqPathReplace}})]
         {{- end}}
-        {{- if or (eq $.ProxyMode "service") (eq $.ProxyMode "swarm")}}
-            {{- if eq .VerifyClientSsl true}}
+		{{- if eq .VerifyClientSsl true}}
     acl valid_client_cert_{{$.ServiceName}}{{.Port}} ssl_c_used ssl_c_verify 0
     http-request deny unless valid_client_cert_{{$.ServiceName}}{{.Port}}
-            {{- end}}
-            {{- if .AllowedMethods}}
+		{{- end}}
+		{{- if .AllowedMethods}}
     acl valid_allowed_method method{{range .AllowedMethods}} {{.}}{{end}}
     http-request deny unless valid_allowed_method
-            {{- end}}
-            {{- if .DeniedMethods}}
+		{{- end}}
+		{{- if .DeniedMethods}}
     acl valid_denied_method method{{range .DeniedMethods}} {{.}}{{end}}
     http-request deny if valid_denied_method
-            {{- end}}
+		{{- end}}
     server {{$.ServiceName}} {{$.Host}}:{{$.HttpsPort}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
-        {{- /* TODO: It's Consul and it's deprecated. Remove it. */}}
-        {{- else}}
-    {{"{{"}}range $i, $e := service "{{$.FullServiceName}}" "any"{{"}}"}}
-    server {{"{{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}"}}
-    {{"{{end}}"}}
-        {{- end}}
-        {{- if not .IgnoreAuthorization}}
-            {{- if $.Users}}
-    acl {{$.ServiceName}}UsersAcl http_auth({{$.ServiceName}}Users)
-    http-request auth realm {{$.ServiceName}}Realm if !{{$.ServiceName}}UsersAcl
-            {{- end}}
-            {{- if $.UseGlobalUsers}}
-    acl defaultUsersAcl http_auth(defaultUsers)
-    http-request auth realm defaultRealm if !defaultUsersAcl
-            {{- end}}
-            {{- if or ($.Users) ($.UseGlobalUsers)}}
-    http-request del-header Authorization
-            {{- end}}
-        {{- end}}
     {{- end}}
     {{- if ne $.BackendExtra ""}}
     {{ $.BackendExtra }}
