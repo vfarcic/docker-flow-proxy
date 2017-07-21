@@ -534,7 +534,6 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		ReqPathReplace:        "reqPathReplace",
 		ReqPathSearch:         "reqPathSearch",
 		ServiceCert:           "serviceCert",
-		ServiceColor:          "serviceColor",
 		ServiceDest: []proxy.ServiceDest{{
 			AllowedMethods: []string{"GET", "DELETE"},
 			DeniedMethods:  []string{"PUT", "POST"},
@@ -558,13 +557,12 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 			{Username: "user2", Password: "pass2", PassEncrypted: true}},
 	}
 	addr := fmt.Sprintf(
-		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceColor=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&isDefaultBackend=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&distribute=%t&sslVerifyNone=%t&serviceDomainAlgo=%s&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&delReqHeader=%s&delResHeader=%s&servicePath=/&port=1234&connectionMode=%s&serviceHeader=X-Version:3,name:Viktor&allowedMethods=GET,DELETE&deniedMethods=PUT,POST",
+		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&isDefaultBackend=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&distribute=%t&sslVerifyNone=%t&serviceDomainAlgo=%s&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&delReqHeader=%s&delResHeader=%s&servicePath=/&port=1234&connectionMode=%s&serviceHeader=X-Version:3,name:Viktor&allowedMethods=GET,DELETE&deniedMethods=PUT,POST",
 		s.BaseUrl,
 		expected.ServiceName,
 		"user1:pass1,user2:pass2",
 		true,
 		expected.AclName,
-		expected.ServiceColor,
 		expected.ServiceCert,
 		expected.OutboundHostname,
 		expected.ConsulTemplateFePath,
@@ -762,7 +760,6 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		os.Unsetenv("DFP_SERVICE_X_FORWARDED_PROTO")
 	}()
 	srv := serve{}
-	println("000")
 	actual := srv.GetServicesFromEnvVars()
 
 	s.Len(*actual, 1)

@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"strings"
 )
 
 const serviceTemplateFeFilename = "service-formatted-fe.ctmpl"
@@ -47,6 +48,16 @@ var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service) R
 func (m *Reconfigure) Execute(reloadAfter bool) error {
 	mu.Lock()
 	defer mu.Unlock()
+	if strings.EqualFold(os.Getenv("SKIP_ADDRESS_VALIDATION"), "false") {
+		host := m.ServiceName
+		if len(m.OutboundHostname) > 0 {
+			host = m.OutboundHostname
+		}
+		if _, err := lookupHost(host); err != nil {
+			logPrintf("Could not reach the service %s. Is the service running and connected to the same network as the proxy?", host)
+			return err
+		}
+	}
 	if err := m.createConfigs(); err != nil {
 		return err
 	}
@@ -138,11 +149,6 @@ func (m *Reconfigure) formatData(sr *proxy.Service) {
 	sr.Host = m.ServiceName
 	if len(m.OutboundHostname) > 0 {
 		sr.Host = m.OutboundHostname
-	}
-	if len(sr.ServiceColor) > 0 {
-		sr.FullServiceName = fmt.Sprintf("%s-%s", sr.ServiceName, sr.ServiceColor)
-	} else {
-		sr.FullServiceName = sr.ServiceName
 	}
 	if len(sr.PathType) == 0 {
 		sr.PathType = "path_beg"

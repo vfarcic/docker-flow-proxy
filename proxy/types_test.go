@@ -238,7 +238,6 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"reqPathReplace":        expected.ReqPathReplace,
 		"reqPathSearch":         expected.ReqPathSearch,
 		"serviceCert":           expected.ServiceCert,
-		"serviceColor":          expected.ServiceColor,
 		"serviceDomainAlgo":     expected.ServiceDomainAlgo,
 		"serviceName":           expected.ServiceName,
 		"setReqHeader":          strings.Join(expected.SetReqHeader, ","),
@@ -284,7 +283,6 @@ func (s *TypesTestSuite) getExpectedService() Service {
 		ReqPathReplace:        "reqPathReplace",
 		ReqPathSearch:         "reqPathSearch",
 		ServiceCert:           "serviceCert",
-		ServiceColor:          "serviceColor",
 		ServiceDomainAlgo:     "hdr_dom",
 		ServiceDest: []ServiceDest{{
 			AllowedMethods:      []string{"GET", "DELETE"},

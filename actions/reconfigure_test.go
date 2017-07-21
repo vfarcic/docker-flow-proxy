@@ -76,19 +76,18 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersEnvIsPrese
 	usersOrig := os.Getenv("USERS")
 	defer func() { os.Setenv("USERS", usersOrig) }()
 	os.Setenv("USERS", "anything")
+	s.reconfigure.Service.ServiceDest[0].Port = "1234"
 	expected := `
-backend myService-be
+backend myService-be1234
     mode http
-    {{range $i, $e := service "myService" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}
-    {{end}}
+    server myService myService:1234
     acl defaultUsersAcl http_auth(defaultUsers)
     http-request auth realm defaultRealm if !defaultUsersAcl
     http-request del-header Authorization`
 
-	_, back, _ := s.reconfigure.GetTemplates()
+	_, actual, _ := s.reconfigure.GetTemplates()
 
-	s.Equal(expected, back)
+	s.Equal(expected, actual)
 }
 
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersIsPresent() {
@@ -96,23 +95,39 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersIsPresent(
 		{Username: "user-1", Password: "pass-1"},
 		{Username: "user-2", Password: "pass-2"},
 	}
+	s.reconfigure.HttpsPort = 3333
+	sd := []proxy.ServiceDest{
+		{Port: "1111"},
+		{Port: "2222", IgnoreAuthorization: true},
+	}
+	s.reconfigure.Service.ServiceDest = sd
 	expected := `userlist myServiceUsers
     user user-1 insecure-password pass-1
     user user-2 insecure-password pass-2
 
 
-backend myService-be
+backend myService-be1111
     mode http
-    {{range $i, $e := service "myService" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}
-    {{end}}
+    server myService myService:1111
     acl myServiceUsersAcl http_auth(myServiceUsers)
     http-request auth realm myServiceRealm if !myServiceUsersAcl
-    http-request del-header Authorization`
+    http-request del-header Authorization
+backend myService-be2222
+    mode http
+    server myService myService:2222
+backend https-myService-be1111
+    mode http
+    server myService myService:3333
+    acl myServiceUsersAcl http_auth(myServiceUsers)
+    http-request auth realm myServiceRealm if !myServiceUsersAcl
+    http-request del-header Authorization
+backend https-myService-be2222
+    mode http
+    server myService myService:3333`
 
-	_, back, _ := s.reconfigure.GetTemplates()
+	_, actual, _ := s.reconfigure.GetTemplates()
 
-	s.Equal(expected, back)
+	s.Equal(expected, actual)
 }
 
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersIsPresentAndPasswordsEncrypted() {
@@ -247,8 +262,8 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddSllVerifyNone_WhenSslVerifyNo
 	s.reconfigure.SslVerifyNone = true
 	expected := `
 backend myService-be1234
-mode http
-server myService myService:1234 ssl verify none`
+    mode http
+    server myService myService:1234 ssl verify none`
 
 	_, actual, _ := s.reconfigure.GetTemplates()
 
@@ -262,64 +277,6 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsFormattedContent_WhenReqM
 backend myService-be1234
     mode tcp
     server myService myService:1234`
-
-	_, actual, _ := s.reconfigure.GetTemplates()
-
-	s.Equal(expected, actual)
-}
-
-func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenModeIsSwarmAndUsersEnvIsPresent() {
-	usersOrig := os.Getenv("USERS")
-	defer func() { os.Setenv("USERS", usersOrig) }()
-	os.Setenv("USERS", "anything")
-	s.reconfigure.Service.ServiceDest[0].Port = "1234"
-	expected := `
-backend myService-be1234
-    mode http
-    server myService myService:1234
-    acl defaultUsersAcl http_auth(defaultUsers)
-    http-request auth realm defaultRealm if !defaultUsersAcl
-    http-request del-header Authorization`
-
-	_, actual, _ := s.reconfigure.GetTemplates()
-
-	s.Equal(expected, actual)
-}
-
-func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenModeIsSwarmAndUsersIsPresent() {
-	s.reconfigure.Users = []proxy.User{
-		{Username: "user-1", Password: "pass-1"},
-		{Username: "user-2", Password: "pass-2"},
-	}
-	s.reconfigure.HttpsPort = 3333
-	sd := []proxy.ServiceDest{
-		{Port: "1111"},
-		{Port: "2222", IgnoreAuthorization: true},
-	}
-	s.reconfigure.Service.ServiceDest = sd
-	expected := `userlist myServiceUsers
-    user user-1 insecure-password pass-1
-    user user-2 insecure-password pass-2
-
-
-backend myService-be1111
-    mode http
-    server myService myService:1111
-    acl myServiceUsersAcl http_auth(myServiceUsers)
-    http-request auth realm myServiceRealm if !myServiceUsersAcl
-    http-request del-header Authorization
-backend myService-be2222
-    mode http
-    server myService myService:2222
-backend https-myService-be1111
-    mode http
-    server myService myService:3333
-    acl myServiceUsersAcl http_auth(myServiceUsers)
-    http-request auth realm myServiceRealm if !myServiceUsersAcl
-    http-request del-header Authorization
-backend https-myService-be2222
-    mode http
-    server myService myService:3333`
 
 	_, actual, _ := s.reconfigure.GetTemplates()
 
@@ -429,29 +386,18 @@ backend myService-be
 
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsBackendExtra() {
 	s.reconfigure.BackendExtra = "Additional backend"
+	s.reconfigure.ServiceDest = []proxy.ServiceDest{proxy.ServiceDest{Port: "1234"}}
 	expected := fmt.Sprintf(`
-backend myService-be
+backend myService-be1234
     mode http
-    {{range $i, $e := service "%s" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}
-    {{end}}
+    server myService myService:1234
     %s`,
-		s.reconfigure.ServiceName,
 		s.reconfigure.BackendExtra,
 	)
 
 	_, backend, _ := s.reconfigure.GetTemplates()
 
 	s.Equal(expected, backend)
-}
-
-func (s ReconfigureTestSuite) Test_GetTemplates_AddsColor() {
-	s.reconfigure.ServiceColor = "black"
-	expected := fmt.Sprintf(`service "%s-%s"`, s.ServiceName, s.reconfigure.ServiceColor)
-
-	_, actual, _ := s.reconfigure.GetTemplates()
-
-	s.Contains(actual, expected)
 }
 
 func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsFileContent_WhenConsulTemplatePathIsSet() {
@@ -918,30 +864,17 @@ func (s ReconfigureTestSuite) Test_Execute_InvokesHaProxyReload() {
 	mock.AssertCalled(s.T(), "Reload")
 }
 
-func (s *ReconfigureTestSuite) Test_Execute_SendsServicePathToConsul() {
-	s.reconfigure.Execute(true)
-
-	s.Equal(s.reconfigure.ServiceColor, s.ConsulRequestBody.ServiceColor)
-}
-
-func (s *ReconfigureTestSuite) Test_Execute_ReturnsError_WhenConsulTemplateFileIsNotAvailable() {
-	readTemplateFileOrig := readTemplateFile
-	defer func() { readTemplateFile = readTemplateFileOrig }()
-	readTemplateFile = func(dirname string) ([]byte, error) {
-		return nil, fmt.Errorf("This is an error")
-	}
-	s.reconfigure.Service.ConsulTemplateFePath = "/path/to/my/consul/fe/template"
-	s.reconfigure.Service.ConsulTemplateBePath = "/path/to/my/consul/be/template"
-
-	err := s.reconfigure.Execute(true)
-
-	s.Error(err)
-}
-
 func (s *ReconfigureTestSuite) Test_Execute_ReturnsError_WhenAddressIsNotAccessible() {
 	s.reconfigure.ServiceName = "this-service-does-not-exist"
-	defer func() { os.Setenv("SKIP_ADDRESS_VALIDATION", "true") }()
+	lookupHostOrig := lookupHost
+	defer func() {
+		os.Setenv("SKIP_ADDRESS_VALIDATION", "true")
+		lookupHost = lookupHostOrig
+	}()
 	os.Setenv("SKIP_ADDRESS_VALIDATION", "false")
+	lookupHost = func(host string) (addrs []string, err error) {
+		return []string{}, fmt.Errorf("This is an error")
+	}
 
 	err := s.reconfigure.Execute(true)
 

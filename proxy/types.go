@@ -148,10 +148,8 @@ type Service struct {
 	Users []User `split_words:"true"`
 	// Whether to add "X-Forwarded-Proto https" header.
 	XForwardedProto     bool `envconfig:"x_forwarded_proto" split_words:"true"`
-	ServiceColor        string
 	ServicePort         string
 	AclCondition        string
-	FullServiceName     string
 	Host                string
 	LookupRetry         int
 	LookupRetryInterval int
