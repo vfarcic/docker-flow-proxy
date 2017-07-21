@@ -34,7 +34,6 @@ type serve struct {
 	serviceName     string
 	configsPath     string
 	templatesPath   string
-	consulAddresses []string
 	cert            Certer
 }
 
@@ -112,7 +111,7 @@ func (m *serve) ReconfigureHandler(w http.ResponseWriter, req *http.Request) {
 	statusCode, msg := proxy.IsValidReconf(sr)
 	if statusCode == http.StatusOK {
 		if !m.hasPort(sr.ServiceDest) {
-			logPrintf(`When MODE is set to "service" or "swarm", the port query is mandatory`)
+			logPrintf(`Port query is mandatory`)
 			m.writeBadRequest(w, &response, `When MODE is set to "service" or "swarm", the port query is mandatory`)
 		} else if sr.Distribute {
 			if status, err := sendDistributeRequests(req, m.port, m.serviceName); err != nil || status >= 300 {
@@ -225,7 +224,6 @@ func (m *serve) RemoveHandler(w http.ResponseWriter, req *http.Request) {
 			params.AclName,
 			m.configsPath,
 			m.templatesPath,
-			m.consulAddresses,
 			m.serviceName,
 		)
 		action.Execute([]string{})

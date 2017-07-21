@@ -18,7 +18,6 @@ type ReconfigureTestSuite struct {
 	TemplatesPath     string
 	reconfigure       Reconfigure
 	PutPathResponse   string
-	ConsulRequestBody proxy.Service
 	InstanceName      string
 }
 
@@ -397,21 +396,6 @@ backend myService-be1234
 	s.Equal(expected, backend)
 }
 
-func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsFileContent_WhenConsulTemplatePathIsSet() {
-	expected := "This is content of a template"
-	readTemplateFileOrig := readTemplateFile
-	defer func() { readTemplateFile = readTemplateFileOrig }()
-	readTemplateFile = func(dirname string) ([]byte, error) {
-		return []byte(expected), nil
-	}
-	s.reconfigure.Service.ConsulTemplateFePath = "/path/to/my/consul/fe/template"
-	s.reconfigure.Service.ConsulTemplateBePath = "/path/to/my/consul/be/template"
-
-	_, actual, _ := s.reconfigure.GetTemplates() //tu było s.Service
-
-	s.Equal(expected, actual)
-}
-
 func (s ReconfigureTestSuite) Test_GetTemplates_ProcessesTemplateFromTemplatePath_WhenSpecified() {
 	expectedFeFile := "/path/to/my/fe/template"
 	expectedBeFile := "/path/to/my/be/template"
@@ -471,20 +455,6 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsError_WhenTemplateBePathI
 	_, _, err := s.reconfigure.GetTemplates() //tu było s.Service
 
 	s.Error(err)
-}
-
-func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsError_WhenConsulTemplateFileIsNotAvailable() {
-	readTemplateFileOrig := readTemplateFile
-	defer func() { readTemplateFile = readTemplateFileOrig }()
-	readTemplateFile = func(filename string) ([]byte, error) {
-		return nil, fmt.Errorf("This is an error")
-	}
-	s.reconfigure.Service.ConsulTemplateFePath = "/path/to/my/consul/fe/template"
-	s.reconfigure.Service.ConsulTemplateBePath = "/path/to/my/consul/be/template"
-
-	_, _, actual := s.reconfigure.GetTemplates() //tu było s.Service
-
-	s.Error(actual)
 }
 
 // Execute

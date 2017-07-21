@@ -70,8 +70,8 @@ func IsValidReconf(service *Service) (statusCode int, msg string) {
 	hasDomain := len(service.ServiceDest[0].ServiceDomain) > 0
 	//	hasDomain := len(service.ServiceDomain) > 0
 	if strings.EqualFold(reqMode, "http") {
-		if !hasPath && !hasDomain && len(service.ConsulTemplateFePath) == 0 {
-			return http.StatusConflict, "When using reqMode http, servicePath or serviceDomain or (consulTemplateFePath and consulTemplateBePath) are mandatory"
+		if !hasPath && !hasDomain {
+			return http.StatusConflict, "When using reqMode http, servicePath or serviceDomain are mandatory"
 		}
 	} else if !hasSrcPort || !hasPort {
 		return http.StatusBadRequest, "When NOT using reqMode http (e.g. tcp), srcPort and port parameters are mandatory."

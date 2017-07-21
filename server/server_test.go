@@ -92,7 +92,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_SetsContentTypeToJSON() {
 func (s *ServerTestSuite) Test_ReconfigureHandler_WritesErrorHeader_WhenReconfigureDistributeIsTrueAndError() {
 	serve := serve{}
 	serve.port = "1234"
-	addr := "/v1/docker-flow-proxy/reconfigure?serviceName=my-service&distribute=true&servicePath=/demo"
+	addr := "/v1/docker-flow-proxy/reconfigure?serviceName=my-service&distribute=true&servicePath=/demo&port=1234"
 	req, _ := http.NewRequest("GET", addr, nil)
 	rw := getResponseWriterMock()
 	sendDistributeRequestsOrig := sendDistributeRequests
@@ -109,7 +109,7 @@ func (s *ServerTestSuite) Test_ReconfigureHandler_WritesErrorHeader_WhenReconfig
 func (s *ServerTestSuite) Test_ReconfigureHandler_WritesStatusOK_WhenReconfigureDistributeIsTrue() {
 	serve := serve{}
 	serve.port = "1234"
-	addr := "/v1/docker-flow-proxy/reconfigure?serviceName=my-service&distribute=true&servicePath=/demo"
+	addr := "/v1/docker-flow-proxy/reconfigure?serviceName=my-service&distribute=true&servicePath=/demo&port=1234"
 	req, _ := http.NewRequest("GET", addr, nil)
 	rw := getResponseWriterMock()
 	sendDistributeRequestsOrig := sendDistributeRequests
@@ -478,7 +478,6 @@ func (s *ServerTestSuite) Test_RemoveHandler_InvokesRemoveExecute() {
 	}
 	actions.NewRemove = func(
 		serviceName, aclName, configsPath, templatesPath string,
-		consulAddresses []string,
 		instanceName string,
 	) actions.Removable {
 		actual = actions.Remove{
@@ -521,8 +520,6 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		AddReqHeader:          []string{"add-header-1", "add-header-2"},
 		AddResHeader:          []string{"add-header-1", "add-header-2"},
 		ConnectionMode:        "my-connection-mode",
-		ConsulTemplateFePath:  "consulTemplateFePath",
-		ConsulTemplateBePath:  "consulTemplateBePath",
 		DelReqHeader:          []string{"add-header-1", "add-header-2"},
 		DelResHeader:          []string{"add-header-1", "add-header-2"},
 		Distribute:            true,
@@ -557,7 +554,7 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 			{Username: "user2", Password: "pass2", PassEncrypted: true}},
 	}
 	addr := fmt.Sprintf(
-		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceCert=%s&outboundHostname=%s&consulTemplateFePath=%s&consulTemplateBePath=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&isDefaultBackend=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&distribute=%t&sslVerifyNone=%t&serviceDomainAlgo=%s&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&delReqHeader=%s&delResHeader=%s&servicePath=/&port=1234&connectionMode=%s&serviceHeader=X-Version:3,name:Viktor&allowedMethods=GET,DELETE&deniedMethods=PUT,POST",
+		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceCert=%s&outboundHostname=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&isDefaultBackend=%t&xForwardedProto=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&distribute=%t&sslVerifyNone=%t&serviceDomainAlgo=%s&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&delReqHeader=%s&delResHeader=%s&servicePath=/&port=1234&connectionMode=%s&serviceHeader=X-Version:3,name:Viktor&allowedMethods=GET,DELETE&deniedMethods=PUT,POST",
 		s.BaseUrl,
 		expected.ServiceName,
 		"user1:pass1,user2:pass2",
@@ -565,8 +562,6 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		expected.AclName,
 		expected.ServiceCert,
 		expected.OutboundHostname,
-		expected.ConsulTemplateFePath,
-		expected.ConsulTemplateBePath,
 		expected.PathType,
 		expected.ReqPathSearch,
 		expected.ReqPathReplace,
@@ -656,8 +651,6 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		AddReqHeader:          []string{"add-header-1", "add-header-2"},
 		AddResHeader:          []string{"add-header-1", "add-header-2"},
 		ConnectionMode:        "my-connection-mode",
-		ConsulTemplateBePath:  "my-ConsulTemplateBePath",
-		ConsulTemplateFePath:  "my-ConsulTemplateFePath",
 		DelReqHeader:          []string{"del-header-1", "del-header-2"},
 		DelResHeader:          []string{"del-header-1", "del-header-2"},
 		Distribute:            true,
@@ -694,8 +687,6 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 	os.Setenv("DFP_SERVICE_ADD_REQ_HEADER", strings.Join(service.AddReqHeader, ","))
 	os.Setenv("DFP_SERVICE_ADD_RES_HEADER", strings.Join(service.AddResHeader, ","))
 	os.Setenv("DFP_SERVICE_CONNECTION_MODE", service.ConnectionMode)
-	os.Setenv("DFP_SERVICE_CONSUL_TEMPLATE_FE_PATH", service.ConsulTemplateFePath)
-	os.Setenv("DFP_SERVICE_CONSUL_TEMPLATE_BE_PATH", service.ConsulTemplateBePath)
 	os.Setenv("DFP_SERVICE_DEL_REQ_HEADER", strings.Join(service.DelReqHeader, ","))
 	os.Setenv("DFP_SERVICE_DEL_RES_HEADER", strings.Join(service.DelResHeader, ","))
 	os.Setenv("DFP_SERVICE_DISTRIBUTE", strconv.FormatBool(service.Distribute))
@@ -729,8 +720,6 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		os.Unsetenv("DFP_SERVICE_ADD_REQ_HEADER")
 		os.Unsetenv("DFP_SERVICE_ADD_RES_HEADER")
 		os.Unsetenv("DFP_SERVICE_CONNECTION_MODE")
-		os.Unsetenv("DFP_SERVICE_CONSUL_TEMPLATE_BE_PATH")
-		os.Unsetenv("DFP_SERVICE_CONSUL_TEMPLATE_FE_PATH")
 		os.Unsetenv("DFP_SERVICE_DEL_REQ_HEADER")
 		os.Unsetenv("DFP_SERVICE_DEL_RES_HEADER")
 		os.Unsetenv("DFP_SERVICE_DISTRIBUTE")

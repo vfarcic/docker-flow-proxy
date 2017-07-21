@@ -76,12 +76,6 @@ type Service struct {
 	// Connection mode is restricted to HTTP mode only.
 	// If specified, connection mode will be applied to the backend section.
 	ConnectionMode string `split_words:"true"`
-	// The path to the Consul Template representing a snippet of the backend configuration.
-	// If set, proxy template will be loaded from the specified file.
-	ConsulTemplateBePath string `split_words:"true"`
-	// The path to the Consul Template representing a snippet of the frontend configuration.
-	// If specified, proxy template will be loaded from the specified file.
-	ConsulTemplateFePath string `split_words:"true"`
 	// Internal use only
 	Debug bool
 	// Internal use only
@@ -120,7 +114,7 @@ type Service struct {
 	// The algorithm that should be applied to domain acl. The default value is `hdr(host)`.
 	ServiceDomainAlgo string
 	// The name of the service.
-	// It must match the name of the Swarm service or the one stored in Consul.
+	// It must match the name of the Swarm service.
 	ServiceName string `split_words:"true"`
 	// Additional headers that will be set to the request before forwarding it to the service. If a specified header exists, it will be replaced with the new one.
 	SetReqHeader []string `split_words:"true"`
@@ -312,7 +306,7 @@ func getServiceDestList(sr *Service, provider ServiceParameterProvider) []Servic
 	sdList := []ServiceDest{}
 	sd := getServiceDest(sr, provider, -1)
 	serviceDomain := []string{}
-	if isServiceDestValid(&sd) || (len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0) {
+	if isServiceDestValid(&sd) {
 		sdList = append(sdList, sd)
 	} else {
 		serviceDomain = sd.ServiceDomain

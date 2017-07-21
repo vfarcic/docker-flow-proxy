@@ -20,7 +20,6 @@ import (
 type ServerTestSuite struct {
 	suite.Suite
 	proxy.Service
-	ConsulAddress      string
 	BaseUrl            string
 	ReconfigureBaseUrl string
 	RemoveBaseUrl      string
@@ -54,7 +53,6 @@ func (s *ServerTestSuite) SetupTest() {
 	}
 	s.Service.ServiceDest = []proxy.ServiceDest{s.sd}
 	s.InstanceName = "proxy-test-instance"
-	s.ConsulAddress = "http://1.2.3.4:1234"
 	s.ServiceName = "myService"
 	s.OutboundHostname = "machine-123.my-company.com"
 	s.BaseUrl = "/v1/docker-flow-proxy"
@@ -243,7 +241,6 @@ func (s *ServerTestSuite) Test_Execute_RepeatsContactingSwarmListenerAddress() {
 	defer func() {
 		os.Unsetenv("LISTENER_ADDRESS")
 	}()
-	os.Setenv("CONSUL_ADDRESS", s.ConsulAddress)
 	serverImpl.ListenerAddress = expectedListenerAddress
 
 	serverImpl.Execute([]string{})

@@ -18,7 +18,6 @@ type FetchTestSuite struct {
 	TemplatesPath     string
 	fetch             fetch
 	PutPathResponse   string
-	ConsulRequestBody proxy.Service
 	InstanceName      string
 }
 

@@ -20,7 +20,7 @@ type Remove struct {
 }
 
 // NewRemove returns singleton based on the Removable interface
-var NewRemove = func(serviceName, aclName, configsPath, templatesPath string, consulAddresses []string, instanceName string) Removable {
+var NewRemove = func(serviceName, aclName, configsPath, templatesPath string, instanceName string) Removable {
 	return &Remove{
 		ServiceName:     serviceName,
 		AclName:         aclName,

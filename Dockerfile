@@ -10,13 +10,6 @@ RUN go build -v -o docker-flow-proxy
 FROM haproxy:1.7-alpine
 MAINTAINER 	Viktor Farcic <viktor@farcic.com>
 
-RUN apk add --no-cache --virtual .build-deps curl unzip && \
-    curl -SL https://releases.hashicorp.com/consul-template/0.13.0/consul-template_0.13.0_linux_amd64.zip -o /usr/local/bin/consul-template.zip && \
-    unzip /usr/local/bin/consul-template.zip -d /usr/local/bin/ && \
-    rm -f /usr/local/bin/consul-template.zip && \
-    chmod +x /usr/local/bin/consul-template && \
-    apk del .build-deps
-
 RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 RUN mkdir -p /cfg/tmpl /consul_templates /templates /certs /logs
 
@@ -25,7 +18,6 @@ ENV CERTS="" \
     CFG_TEMPLATE_PATH="/cfg/tmpl/haproxy.tmpl" \
     CHECK_RESOLVERS=false \
     CONNECTION_MODE="http-keep-alive" \
-    CONSUL_ADDRESS="" \
     DEBUG="false" \
     DEFAULT_PORTS="80,443:ssl" \
     EXTRA_FRONTEND="" \

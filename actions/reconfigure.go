@@ -91,33 +91,22 @@ func (m *Reconfigure) GetTemplates() (front, back string, err error) {
 			sr.ServiceDest[i].ReqMode = "http"
 		}
 	}
-	if len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0 { // TODO: Deprecated (Consul). Remove it.
-		front, err = m.getConsulTemplateFromFile(sr.ConsulTemplateFePath)
+	m.formatData(sr)
+	if len(sr.TemplateFePath) > 0 {
+		feTmpl, err := readTemplateFile(sr.TemplateFePath)
 		if err != nil {
 			return "", "", err
 		}
-		back, err = m.getConsulTemplateFromFile(sr.ConsulTemplateBePath)
+		front = m.parseFrontTemplate(string(feTmpl), sr)
+	}
+	if len(sr.TemplateBePath) > 0 {
+		beTmpl, err := readTemplateFile(sr.TemplateBePath)
 		if err != nil {
 			return "", "", err
 		}
+		back = m.parseBackTemplate(string(beTmpl), "", sr)
 	} else {
-		m.formatData(sr)
-		if len(sr.TemplateFePath) > 0 {
-			feTmpl, err := readTemplateFile(sr.TemplateFePath)
-			if err != nil {
-				return "", "", err
-			}
-			front = m.parseFrontTemplate(string(feTmpl), sr)
-		}
-		if len(sr.TemplateBePath) > 0 {
-			beTmpl, err := readTemplateFile(sr.TemplateBePath)
-			if err != nil {
-				return "", "", err
-			}
-			back = m.parseBackTemplate(string(beTmpl), "", sr)
-		} else {
-			back = m.parseBackTemplate(proxy.GetBackTemplate(sr), m.getUsersList(sr), sr)
-		}
+		back = m.parseBackTemplate(proxy.GetBackTemplate(sr), m.getUsersList(sr), sr)
 	}
 	return front, back, nil
 }
@@ -191,19 +180,6 @@ func (m *Reconfigure) parseBackTemplate(src, usersList string, sr *proxy.Service
 	return bufUsersList.String() + buf.String()
 }
 
-// TODO: Deprecated (Consul). Remove it.
-func (m *Reconfigure) getConsulTemplateFromFile(path string) (string, error) {
-	content, err := readTemplateFile(path)
-	if err != nil {
-		return "", fmt.Errorf("Could not read the file %s\n%s", path, err.Error())
-	}
-	return string(content), nil
-}
-
-// TODO: Deprecated (Consul). Remove it.
 func (m *Reconfigure) hasTemplate() bool {
-	return len(m.ConsulTemplateBePath) != 0 ||
-		len(m.ConsulTemplateFePath) != 0 ||
-		len(m.TemplateBePath) != 0 ||
-		len(m.TemplateFePath) != 0
+	return len(m.TemplateBePath) != 0 || len(m.TemplateFePath) != 0
 }
