@@ -135,16 +135,15 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersIsPresentA
 		{Username: "user-1", Password: "pass-1", PassEncrypted: true},
 		{Username: "user-2", Password: "pass-2", PassEncrypted: false},
 	}
+	s.reconfigure.ServiceDest = []proxy.ServiceDest{proxy.ServiceDest{Port: "1234"}}
 	expected := `userlist myServiceUsers
     user user-1 password pass-1
     user user-2 insecure-password pass-2
 
 
-backend myService-be
+backend myService-be1234
     mode http
-    {{range $i, $e := service "myService" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}
-    {{end}}
+    server myService myService:1234
     acl myServiceUsersAcl http_auth(myServiceUsers)
     http-request auth realm myServiceRealm if !myServiceUsersAcl
     http-request del-header Authorization`
@@ -158,8 +157,8 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsFormattedContent() {
 	s.reconfigure.Service.ServiceDest[0].Port = "1234"
 	expected := `
 backend myService-be1234
-mode http
-server myService myService:1234`
+    mode http
+    server myService myService:1234`
 
 	_, actual, _ := s.reconfigure.GetTemplates()
 
@@ -367,16 +366,14 @@ backend myService-be5555
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpRequestSetPath_WhenReqPathSearchAndReqPathReplaceArePresent() {
 	s.reconfigure.ReqPathSearch = "this"
 	s.reconfigure.ReqPathReplace = "that"
+	s.reconfigure.ServiceDest = []proxy.ServiceDest{proxy.ServiceDest{Port: "1234"}}
 	expected := fmt.Sprintf(`
-backend myService-be
+backend myService-be1234
     mode http
     http-request set-path %%[path,regsub(%s,%s)]
-    {{range $i, $e := service "%s" "any"}}
-    server {{$e.Node}}_{{$i}}_{{$e.Port}} {{$e.Address}}:{{$e.Port}}
-    {{end}}`,
+    server myService myService:1234`,
 		s.reconfigure.ReqPathSearch,
 		s.reconfigure.ReqPathReplace,
-		s.reconfigure.ServiceName,
 	)
 
 	_, backend, _ := s.reconfigure.GetTemplates()

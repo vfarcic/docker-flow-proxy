@@ -150,6 +150,19 @@ backend {{$.ServiceName}}-be{{.Port}}
     redirect scheme https if !{ ssl_fc }
 		{{- end}}
     server {{$.ServiceName}} {{$.Host}}:{{.Port}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
+        {{- if not .IgnoreAuthorization}}
+            {{- if and ($.Users) (not .IgnoreAuthorization)}}
+    acl {{$.ServiceName}}UsersAcl http_auth({{$.ServiceName}}Users)
+    http-request auth realm {{$.ServiceName}}Realm if !{{$.ServiceName}}UsersAcl
+            {{- end}}
+            {{- if $.UseGlobalUsers}}
+    acl defaultUsersAcl http_auth(defaultUsers)
+    http-request auth realm defaultRealm if !defaultUsersAcl
+            {{- end}}
+            {{- if or ($.Users) ($.UseGlobalUsers)}}
+    http-request del-header Authorization
+            {{- end}}
+        {{- end}}
     {{- end}}
     {{- if ne $.BackendExtra ""}}
     {{ $.BackendExtra }}
@@ -186,6 +199,19 @@ backend https-{{$.ServiceName}}-be{{.Port}}
     http-request deny if valid_denied_method
 		{{- end}}
     server {{$.ServiceName}} {{$.Host}}:{{$.HttpsPort}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
+        {{- if not .IgnoreAuthorization}}
+            {{- if $.Users}}
+    acl {{$.ServiceName}}UsersAcl http_auth({{$.ServiceName}}Users)
+    http-request auth realm {{$.ServiceName}}Realm if !{{$.ServiceName}}UsersAcl
+            {{- end}}
+            {{- if $.UseGlobalUsers}}
+    acl defaultUsersAcl http_auth(defaultUsers)
+    http-request auth realm defaultRealm if !defaultUsersAcl
+            {{- end}}
+            {{- if or ($.Users) ($.UseGlobalUsers)}}
+    http-request del-header Authorization
+            {{- end}}
+        {{- end}}
     {{- end}}
     {{- if ne $.BackendExtra ""}}
     {{ $.BackendExtra }}
