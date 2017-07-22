@@ -31,15 +31,15 @@ pipeline {
         sh "docker image build -t vfarcic/docker-flow-proxy-docs -f Dockerfile.docs ."
       }
     }
-    stage("test") {
-      environment {
-        HOST_IP = "build.dockerflow.com"
-        DOCKER_HUB_USER = "vfarcic"
-      }
-      steps {
-        sh "docker-compose -f docker-compose-test.yml run --rm staging-swarm"
-      }
-    }
+//    stage("test") {
+//      environment {
+//        HOST_IP = "build.dockerflow.com"
+//        DOCKER_HUB_USER = "vfarcic"
+//      }
+//      steps {
+//        sh "docker-compose -f docker-compose-test.yml run --rm staging-swarm"
+//      }
+//    }
     stage("release") {
       when {
         branch "master"
@@ -67,9 +67,9 @@ pipeline {
     }
   }
   post {
-    always {
-      sh "docker system prune -f"
-    }
+//    always {
+//      sh "docker system prune -f"
+//    }
     failure {
       slackSend(
         color: "danger",
