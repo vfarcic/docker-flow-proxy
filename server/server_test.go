@@ -625,6 +625,7 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_SetsServicePathToSlash_WhenDoma
 				ServiceDomain:  []string{"domain1", "domain2"},
 				ServiceHeader:  map[string]string{},
 				ServicePath:    []string{"/"},
+				Index:          0,
 			},
 		},
 	}

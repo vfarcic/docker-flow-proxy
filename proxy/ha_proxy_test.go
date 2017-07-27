@@ -647,12 +647,12 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEnd() {
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service-11111 path_beg /path-1 path_beg /path-2 port1111Acl
-    acl url_my-service-12222 path_beg /path-3 port2222Acl
-    use_backend my-service-1-be1111 if url_my-service-11111 my-src-port
-    use_backend my-service-1-be2222 if url_my-service-12222
-    acl url_my-service-23333 path_beg /path-4 port3333Acl
-    use_backend my-service-2-be3333 if url_my-service-23333%s`,
+    acl url_my-service-11111_0 path_beg /path-1 path_beg /path-2 port1111Acl
+    acl url_my-service-12222_1 path_beg /path-3 port2222Acl
+    use_backend my-service-1-be1111_0 if url_my-service-11111_0 my-src-port
+    use_backend my-service-1-be2222_1 if url_my-service-12222_1
+    acl url_my-service-23333_0 path_beg /path-4 port3333Acl
+    use_backend my-service-2-be3333_0 if url_my-service-23333_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -665,15 +665,15 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEnd() {
 		ServiceName: "my-service-1",
 		PathType:    "path_beg",
 		ServiceDest: []ServiceDest{
-			{Port: "1111", ServicePath: []string{"/path-1", "/path-2"}, SrcPortAcl: " port1111Acl", SrcPortAclName: " my-src-port"},
-			{Port: "2222", ServicePath: []string{"/path-3"}, SrcPortAcl: " port2222Acl"},
+			{Port: "1111", ServicePath: []string{"/path-1", "/path-2"}, SrcPortAcl: " port1111Acl", SrcPortAclName: " my-src-port", Index: 0},
+			{Port: "2222", ServicePath: []string{"/path-3"}, SrcPortAcl: " port2222Acl", Index: 1},
 		},
 	}
 	dataInstance.Services["my-service-2"] = Service{
 		ServiceName: "my-service-2",
 		PathType:    "path_beg",
 		ServiceDest: []ServiceDest{
-			{Port: "3333", ServicePath: []string{"/path-4"}, SrcPortAcl: " port3333Acl"},
+			{Port: "3333", ServicePath: []string{"/path-4"}, SrcPortAcl: " port3333Acl", Index: 0},
 		},
 	}
 
@@ -687,12 +687,12 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsSortedContentFrontE
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_acl11111 path_beg /path
-    use_backend my-second-service-be1111 if url_acl11111
-    acl url_acl21111 path_beg /path
-    use_backend my-first-service-be1111 if url_acl21111
-    acl url_the-last-service1111 path_beg /path
-    use_backend the-last-service-be1111 if url_the-last-service1111%s`,
+    acl url_acl11111_0 path_beg /path
+    use_backend my-second-service-be1111_0 if url_acl11111_0
+    acl url_acl21111_0 path_beg /path
+    use_backend my-first-service-be1111_0 if url_acl21111_0
+    acl url_the-last-service1111_0 path_beg /path
+    use_backend the-last-service-be1111_0 if url_the-last-service1111_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -735,14 +735,14 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_PutsServicesWithRootPat
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_01-first-service1111 path_beg /path
-    use_backend 01-first-service-be1111 if url_01-first-service1111
-    acl url_03-third-service1111 path_beg /path
-    use_backend 03-third-service-be1111 if url_03-third-service1111
-    acl url_02-another-root-service1111 path_beg /
-    use_backend 02-another-root-service-be1111 if url_02-another-root-service1111
-    acl url_02-root-service1111 path_beg /
-    use_backend 02-root-service-be1111 if url_02-root-service1111%s`,
+    acl url_01-first-service1111_0 path_beg /path
+    use_backend 01-first-service-be1111_0 if url_01-first-service1111_0
+    acl url_03-third-service1111_0 path_beg /path
+    use_backend 03-third-service-be1111_0 if url_03-third-service1111_0
+    acl url_02-another-root-service1111_0 path_beg /
+    use_backend 02-another-root-service-be1111_0 if url_02-another-root-service1111_0
+    acl url_02-root-service1111_0 path_beg /
+    use_backend 02-root-service-be1111_0 if url_02-root-service1111_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -790,11 +790,11 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_DoesNotPutServicesWithR
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_01-first-service1111 path_beg /
-    acl domain_01-first-service1111 hdr(host) -i my-domain.com
-    use_backend 01-first-service-be1111 if url_01-first-service1111 domain_01-first-service1111
-    acl url_02-second-service1111 path_beg /path
-    use_backend 02-second-service-be1111 if url_02-second-service1111%s`,
+    acl url_01-first-service1111_0 path_beg /
+    acl domain_01-first-service1111_0 hdr(host) -i my-domain.com
+    use_backend 01-first-service-be1111_0 if url_01-first-service1111_0 domain_01-first-service1111_0
+    acl url_02-second-service1111_0 path_beg /path
+    use_backend 02-second-service-be1111_0 if url_02-second-service1111_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -828,14 +828,14 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_PutsServicesWellKnownPa
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_02-another-well-known-service1111 path_beg /.well-known/and/somrthing/else
-    use_backend 02-another-well-known-service-be1111 if url_02-another-well-known-service1111
-    acl url_02-well-known-service1111 path_beg /.well-known
-    use_backend 02-well-known-service-be1111 if url_02-well-known-service1111
-    acl url_01-first-service1111 path_beg /path
-    use_backend 01-first-service-be1111 if url_01-first-service1111
-    acl url_03-third-service1111 path_beg /path
-    use_backend 03-third-service-be1111 if url_03-third-service1111%s`,
+    acl url_02-another-well-known-service1111_0 path_beg /.well-known/and/somrthing/else
+    use_backend 02-another-well-known-service-be1111_0 if url_02-another-well-known-service1111_0
+    acl url_02-well-known-service1111_0 path_beg /.well-known
+    use_backend 02-well-known-service-be1111_0 if url_02-well-known-service1111_0
+    acl url_01-first-service1111_0 path_beg /path
+    use_backend 01-first-service-be1111_0 if url_01-first-service1111_0
+    acl url_03-third-service1111_0 path_beg /path
+    use_backend 03-third-service-be1111_0 if url_03-third-service1111_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -887,7 +887,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndTcp(
 frontend tcpFE_1234
     bind *:1234
     mode tcp
-    default_backend my-service-1-be4321%s`,
+    default_backend my-service-1-be4321_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -913,13 +913,13 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsMultipleFrontends()
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service-12222 path_beg /path
-    use_backend my-service-1-be2222 if url_my-service-12222
+    acl url_my-service-12222_0 path_beg /path
+    use_backend my-service-1-be2222_0 if url_my-service-12222_0
 
 frontend tcpFE_3333
     bind *:3333
     mode tcp
-    default_backend my-service-1-be4444%s`,
+    default_backend my-service-1-be4444_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -950,10 +950,10 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_GroupsTcpFrontendsByPor
 frontend tcpFE_1234
     bind *:1234
     mode tcp
-    acl domain_my-service-14321 hdr(host) -i my-domain.com
-    use_backend my-service-1-be4321 if domain_my-service-14321
-    acl domain_my-service-24321 hdr(host) -i my-domain-1.com my-domain-2.com
-    use_backend my-service-2-be4321 if domain_my-service-24321%s`,
+    acl domain_my-service-14321_4 hdr(host) -i my-domain.com
+    use_backend my-service-1-be4321_4 if domain_my-service-14321_4
+    acl domain_my-service-24321_7 hdr(host) -i my-domain-1.com my-domain-2.com
+    use_backend my-service-2-be4321_7 if domain_my-service-24321_7%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -970,6 +970,7 @@ frontend tcpFE_1234
 				Port:          "4321",
 				ReqMode:       "tcp",
 				ServiceDomain: []string{"my-domain.com"},
+				Index:         4,
 			},
 		},
 	}
@@ -981,6 +982,7 @@ frontend tcpFE_1234
 				Port:          "4321",
 				ReqMode:       "tcp",
 				ServiceDomain: []string{"my-domain-1.com", "my-domain-2.com"},
+				Index:         7,
 			},
 		},
 	}
@@ -1003,7 +1005,7 @@ frontend tcpFE_1234
     mode tcp
     option tcplog
     log global
-    default_backend my-service-1-be4321%s`,
+    default_backend my-service-1-be4321_0%s`,
 		s.getTemplateWithLogs(),
 		s.ServicesContent,
 	)
@@ -1043,7 +1045,7 @@ frontend tcpFE_1234
     option tcplog
     log global
     log-format something-tcp-related
-    default_backend my-service-1-be4321%s`,
+    default_backend my-service-1-be4321_0%s`,
 		s.getTemplateWithLogs(),
 		s.ServicesContent,
 	)
@@ -1076,7 +1078,7 @@ frontend service_1234
     tcp-request inspect-delay 5s
     tcp-request content accept if { req_ssl_hello_type 1 }
     acl sni_my-service-14321-1
-    use_backend my-service-1-be4321 if sni_my-service-14321-1%s`,
+    use_backend my-service-1-be4321_3 if sni_my-service-14321-1%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1088,7 +1090,7 @@ frontend service_1234
 	dataInstance.Services["my-service-1"] = Service{
 		ServiceName: "my-service-1",
 		ServiceDest: []ServiceDest{
-			{SrcPort: 1234, Port: "4321", ReqMode: "sni"},
+			{SrcPort: 1234, Port: "4321", ReqMode: "sni", Index: 3},
 		},
 	}
 
@@ -1116,7 +1118,7 @@ frontend service_443
     tcp-request inspect-delay 5s
     tcp-request content accept if { req_ssl_hello_type 1 }
     acl sni_my-service-14321-1
-    use_backend my-service-1-be4321 if sni_my-service-14321-1%s`,
+    use_backend my-service-1-be4321_0 if sni_my-service-14321-1%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1128,7 +1130,7 @@ frontend service_443
 	dataInstance.Services["my-service-1"] = Service{
 		ServiceName: "my-service-1",
 		ServiceDest: []ServiceDest{
-			{SrcPort: 443, Port: "4321", ReqMode: "sni"},
+			{SrcPort: 443, Port: "4321", ReqMode: "sni", Index: 0},
 		},
 	}
 
@@ -1156,11 +1158,11 @@ frontend service_443
     tcp-request inspect-delay 5s
     tcp-request content accept if { req_ssl_hello_type 1 }
     acl sni_my-service-11111-1
-    use_backend my-service-1-be1111 if sni_my-service-11111-1
+    use_backend my-service-1-be1111_0 if sni_my-service-11111-1
     acl sni_my-service-11112-2
-    use_backend my-service-1-be1112 if sni_my-service-11112-2
+    use_backend my-service-1-be1112_1 if sni_my-service-11112-2
     acl sni_my-service-24321-1
-    use_backend my-service-2-be4321 if sni_my-service-24321-1%s`,
+    use_backend my-service-2-be4321_2 if sni_my-service-24321-1%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1172,14 +1174,14 @@ frontend service_443
 	dataInstance.Services["my-service-1"] = Service{
 		ServiceName: "my-service-1",
 		ServiceDest: []ServiceDest{
-			{SrcPort: 443, Port: "1111", ReqMode: "sni"},
-			{SrcPort: 443, Port: "1112", ReqMode: "sni"},
+			{SrcPort: 443, Port: "1111", ReqMode: "sni", Index: 0},
+			{SrcPort: 443, Port: "1112", ReqMode: "sni", Index: 1},
 		},
 	}
 	dataInstance.Services["my-service-2"] = Service{
 		ServiceName: "my-service-2",
 		ServiceDest: []ServiceDest{
-			{SrcPort: 443, Port: "4321", ReqMode: "sni"},
+			{SrcPort: 443, Port: "4321", ReqMode: "sni", Index: 2},
 		},
 	}
 
@@ -1193,12 +1195,12 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service-11111 path_beg /path
-    acl domain_my-service-11111 hdr(host) -i domain-1-1 domain-1-2
-    use_backend my-service-1-be1111 if url_my-service-11111 domain_my-service-11111
-    acl url_my-service-21111 path_beg /path
-    acl domain_my-service-21111 hdr(host) -i domain-2-1 domain-2-2
-    use_backend my-service-2-be1111 if url_my-service-21111 domain_my-service-21111%s`,
+    acl url_my-service-11111_0 path_beg /path
+    acl domain_my-service-11111_0 hdr(host) -i domain-1-1 domain-1-2
+    use_backend my-service-1-be1111_0 if url_my-service-11111_0 domain_my-service-11111_0
+    acl url_my-service-21111_0 path_beg /path
+    acl domain_my-service-21111_0 hdr(host) -i domain-2-1 domain-2-2
+    use_backend my-service-2-be1111_0 if url_my-service-21111_0 domain_my-service-21111_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1229,12 +1231,12 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsDomainsForEachServi
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service1111 path_beg /path
-    acl domain_my-service1111 hdr(host) -i domain-1-1 domain-1-2
-    acl url_my-service2222 path_beg /path
-    acl domain_my-service2222 hdr(host) -i domain-2-1 domain-2-2
-    use_backend my-service-be1111 if url_my-service1111 domain_my-service1111
-    use_backend my-service-be2222 if url_my-service2222 domain_my-service2222%s`,
+    acl url_my-service1111_1 path_beg /path
+    acl domain_my-service1111_1 hdr(host) -i domain-1-1.com domain-1-2.com
+    acl url_my-service2222_45 path_beg /path
+    acl domain_my-service2222_45 hdr(host) -i domain-2-1.com domain-2-2.com
+    use_backend my-service-be1111_1 if url_my-service1111_1 domain_my-service1111_1
+    use_backend my-service-be2222_45 if url_my-service2222_45 domain_my-service2222_45%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1252,12 +1254,14 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsDomainsForEachServi
 			{
 				Port:          "1111",
 				ServicePath:   []string{"/path"},
-				ServiceDomain: []string{domain + "-1-1", domain + "-1-2"},
+				ServiceDomain: []string{domain + "-1-1.com", domain + "-1-2.com"},
+				Index:         1,
 			}, {
 				SrcPort:       4321,
 				Port:          "2222",
 				ServicePath:   []string{"/path"},
-				ServiceDomain: []string{domain + "-2-1", domain + "-2-2"},
+				ServiceDomain: []string{domain + "-2-1.com", domain + "-2-2.com"},
+				Index:         45,
 			},
 		},
 	}
@@ -1272,14 +1276,14 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndUser
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service1111 path_beg /path
-    acl user_agent_my-service_my-acl-name-1-2 hdr_sub(User-Agent) -i agent-1 agent-2
-    acl url_my-service2222 path_beg /path
-    acl user_agent_my-service_my-acl-name-3 hdr_sub(User-Agent) -i agent-3
-    acl url_my-service3333 path_beg /path
-    use_backend my-service-be1111 if url_my-service1111 user_agent_my-service_my-acl-name-1-2
-    use_backend my-service-be2222 if url_my-service2222 user_agent_my-service_my-acl-name-3
-    use_backend my-service-be3333 if url_my-service3333%s`,
+    acl url_my-service1111_0 path_beg /path
+    acl user_agent_my-service_my-acl-name-1-2_0 hdr_sub(User-Agent) -i agent-1 agent-2
+    acl url_my-service2222_1 path_beg /path
+    acl user_agent_my-service_my-acl-name-3_1 hdr_sub(User-Agent) -i agent-3
+    acl url_my-service3333_2 path_beg /path
+    use_backend my-service-be1111_0 if url_my-service1111_0 user_agent_my-service_my-acl-name-1-2_0
+    use_backend my-service-be2222_1 if url_my-service2222_1 user_agent_my-service_my-acl-name-3_1
+    use_backend my-service-be3333_2 if url_my-service3333_2%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1295,13 +1299,16 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndUser
 			Port:        "1111",
 			ServicePath: []string{"/path"},
 			UserAgent:   UserAgent{Value: []string{"agent-1", "agent-2"}, AclName: "my-acl-name-1-2"},
+			Index:       0,
 		}, {
 			Port:        "2222",
 			ServicePath: []string{"/path"},
 			UserAgent:   UserAgent{Value: []string{"agent-3"}, AclName: "my-acl-name-3"},
+			Index:       1,
 		}, {
 			Port:        "3333",
 			ServicePath: []string{"/path"},
+			Index:       2,
 		}},
 		ServiceName: "my-service",
 	}
@@ -1316,9 +1323,9 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service1111 path_beg /path
-    use_backend my-service-be1111 if url_my-service1111
-    default_backend my-service-be1111%s`,
+    acl url_my-service1111_0 path_beg /path
+    use_backend my-service-be1111_0 if url_my-service1111_0
+    default_backend my-service-be1111_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1347,9 +1354,9 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service1111 path_beg /path
-    acl domain_my-service1111 hdr_dom(xxx) -i domain-1 domain-2
-    use_backend my-service-be1111 if url_my-service1111 domain_my-service1111%s`,
+    acl url_my-service1111_0 path_beg /path
+    acl domain_my-service1111_0 hdr_dom(xxx) -i domain-1 domain-2
+    use_backend my-service-be1111_0 if url_my-service1111_0 domain_my-service1111_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1378,7 +1385,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl domain_my-service hdr_end(host) -i domain-1%s`,
+    acl domain_my-service_0 hdr_end(host) -i domain-1%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1404,11 +1411,11 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service1111 path_beg /path
+    acl url_my-service1111_0 path_beg /path
     acl http_my-service src_port 80
     acl https_my-service src_port 443
-    use_backend my-service-be1111 if url_my-service1111 http_my-service
-    use_backend https-my-service-be1111 if url_my-service1111 https_my-service%s`,
+    use_backend my-service-be1111_0 if url_my-service1111_0 http_my-service
+    use_backend https-my-service-be1111_0 if url_my-service1111_0 https_my-service%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1437,10 +1444,10 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToHttps_WhenRed
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service1111 path_beg /path
+    acl url_my-service1111_0 path_beg /path
     acl is_my-service_http hdr(X-Forwarded-Proto) http
     redirect scheme https if is_my-service_http url_my-service1111
-    use_backend my-service-be1111 if url_my-service1111%s`,
+    use_backend my-service-be1111_0 if url_my-service1111_0%s`,
 		tmpl,
 		s.ServicesContent,
 	)
@@ -1469,10 +1476,10 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_UsesServiceHeader() {
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
-    acl url_my-service1111 path_beg /path
+    acl url_my-service1111_0 path_beg /path
     acl hdr_my-service1111_0 hdr(X-Version) 3
     acl hdr_my-service1111_1 hdr(name) Viktor
-    use_backend my-service-be1111 if url_my-service1111 hdr_my-service1111_0 hdr_my-service1111_1%s`,
+    use_backend my-service-be1111_0 if url_my-service1111_0 hdr_my-service1111_0 hdr_my-service1111_1%s`,
 		tmpl,
 		s.ServicesContent,
 	)

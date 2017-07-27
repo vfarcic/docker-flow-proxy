@@ -46,6 +46,8 @@ type ServiceDest struct {
 	VerifyClientSsl bool
 	// If specified, only requests with the same agent will be forwarded to the backend.
 	UserAgent UserAgent
+	// Internal use only
+	Index int
 }
 
 // UserAgent holds data used to generate proxy configuration. It is extracted as a separate struct since each user agent needs an ACL identifier. If specified, only requests with the same agent will be forwarded to the backend.
@@ -365,6 +367,10 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 			}
 		}
 	}
+	sdIndex := index
+	if sdIndex < 0 {
+		sdIndex = 0
+	}
 	return ServiceDest{
 		AllowedMethods:      getSliceFromString(provider, fmt.Sprintf("allowedMethods%s", suffix)),
 		DeniedMethods:       getSliceFromString(provider, fmt.Sprintf("deniedMethods%s", suffix)),
@@ -379,6 +385,7 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 		SrcPort:             srcPort,
 		VerifyClientSsl:     getBoolParam(provider, fmt.Sprintf("verifyClientSsl%s", suffix)),
 		UserAgent:           userAgent,
+		Index:               sdIndex,
 	}
 }
 

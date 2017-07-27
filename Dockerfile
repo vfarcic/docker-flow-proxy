@@ -11,7 +11,7 @@ FROM haproxy:1.7-alpine
 MAINTAINER 	Viktor Farcic <viktor@farcic.com>
 
 RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
-RUN mkdir -p /cfg/tmpl /consul_templates /templates /certs /logs
+RUN mkdir -p /cfg/tmpl /templates /certs /logs
 
 ENV CERTS="" \
     CAPTURE_REQUEST_HEADER="" \

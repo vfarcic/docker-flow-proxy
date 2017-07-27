@@ -167,6 +167,7 @@ x:X`, false, false)
 
 func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 	expected := s.getExpectedService()
+	expected.ServiceDest[0].Index = 0
 	serviceMap := s.getServiceMap(expected, "")
 	actual := GetServiceFromMap(&serviceMap)
 	s.Equal(expected, *actual)
@@ -192,6 +193,7 @@ func (s *TypesTestSuite) Test_GetServiceFromProvider_MovesServiceDomainToIndexed
 			ServicePath:    []string{"/"},
 			Port:           "1234",
 			ReqMode:        "reqMode",
+			Index:          1,
 		}},
 		ServiceName: "serviceName",
 	}
@@ -218,6 +220,7 @@ func (s *TypesTestSuite) Test_GetServiceFromProvider_MovesHttpsOnlyToIndexedEntr
 			ServicePath:    []string{"/"},
 			Port:           "1234",
 			ReqMode:        "reqMode",
+			Index:          1,
 		}},
 		ServiceName: "serviceName",
 	}
@@ -323,6 +326,7 @@ func (s *TypesTestSuite) getExpectedService() Service {
 			ReqMode:             "reqMode",
 			UserAgent:           UserAgent{Value: []string{"agent-1", "agent-2/replace-with_"}, AclName: "agent_1_agent_2_replace_with_"},
 			VerifyClientSsl:     true,
+			Index:               1,
 		}},
 		ServiceName:     "serviceName",
 		SetReqHeader:    []string{"set-header-1", "set-header-2"},
