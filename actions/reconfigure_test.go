@@ -518,6 +518,38 @@ backend %s-be%s
 	s.Equal(expectedData, actualData)
 }
 
+func (s ReconfigureTestSuite) Test_Execute_WritesServerSession() {
+	s.reconfigure.ServiceName = "my-service"
+	s.reconfigure.ServiceDest[0].Port = "1111"
+	s.reconfigure.HttpsPort = 2222
+	s.reconfigure.Tasks = []string{"1.2.3.4", "4.3.2.1"}
+	s.reconfigure.SessionType = "sticky-server"
+	var actualData string
+	expectedData := `
+backend my-service-be1111
+    mode http
+    balance roundrobin
+    cookie DFP insert indirect nocache
+    server my-service_0 1.2.3.4:1111 check cookie my-service_0
+    server my-service_1 4.3.2.1:1111 check cookie my-service_1
+backend https-my-service-be1111
+    mode http
+    balance roundrobin
+    cookie DFP insert indirect nocache
+    server my-service_0 1.2.3.4:2222 check cookie my-service_0
+    server my-service_1 4.3.2.1:2222 check cookie my-service_1`
+	writeBeTemplateOrig := writeBeTemplate
+	defer func() { writeBeTemplate = writeBeTemplateOrig }()
+	writeBeTemplate = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+
+	s.reconfigure.Execute(true)
+
+	s.Equal(expectedData, actualData)
+}
+
 func (s ReconfigureTestSuite) Test_Execute_AddsXForwardedProto_WhenTrue() {
 	s.reconfigure.XForwardedProto = true
 	var actualFilename, actualData string

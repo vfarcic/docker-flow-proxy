@@ -29,6 +29,8 @@ pipeline {
         sh "docker image build -t vfarcic/docker-flow-proxy-test -f Dockerfile.test ."
         sh "docker image push vfarcic/docker-flow-proxy-test"
         sh "docker image build -t vfarcic/docker-flow-proxy-docs -f Dockerfile.docs ."
+        sh "docker tag vfarcic/docker-flow-proxy vfarcic/docker-flow-proxy:${currentBuild.displayName}"
+        sh "docker tag vfarcic/docker-flow-proxy-docs vfarcic/docker-flow-proxy-docs:${currentBuild.displayName}"
       }
     }
 //    stage("test") {
@@ -45,12 +47,10 @@ pipeline {
         branch "master"
       }
       steps {
-        sh "docker tag vfarcic/docker-flow-proxy vfarcic/docker-flow-proxy:${currentBuild.displayName}"
+        sh "docker push vfarcic/docker-flow-proxy:latest"
         sh "docker push vfarcic/docker-flow-proxy:${currentBuild.displayName}"
-        sh "docker push vfarcic/docker-flow-proxy"
-        sh "docker tag vfarcic/docker-flow-proxy-docs vfarcic/docker-flow-proxy-docs:${currentBuild.displayName}"
+        sh "docker push vfarcic/docker-flow-proxy-docs:latest"
         sh "docker push vfarcic/docker-flow-proxy-docs:${currentBuild.displayName}"
-        sh "docker push vfarcic/docker-flow-proxy-docs"
       }
     }
     stage("deploy") {

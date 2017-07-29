@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"strings"
 )
 
 type FetchTestSuite struct {
@@ -66,7 +67,7 @@ func TestFetchUnitTestSuite(t *testing.T) {
 
 // ReloadClusterConfig
 
-func (s *FetchTestSuite) Test_ReloadClusterConfig_SendsARequestToSwarmListener_WhenListenerAddressIsDefined() {
+func (s *FetchTestSuite) Test_ReloadClusterConfig_SendsRequestToSwarmListener_WhenListenerAddressIsDefined() {
 	actual := ""
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		actual = r.URL.Path
@@ -76,6 +77,24 @@ func (s *FetchTestSuite) Test_ReloadClusterConfig_SendsARequestToSwarmListener_W
 	s.fetch.ReloadClusterConfig(srv.URL)
 
 	s.Equal("/v1/docker-flow-swarm-listener/notify-services", actual)
+}
+
+func (s *FetchTestSuite) Test_ReloadClusterConfig_AddsHttpIfNotAvailable() {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer func() { srv.Close() }()
+	addr := strings.Replace(srv.URL, "http://", "", 1)
+
+	err := s.fetch.ReloadClusterConfig(addr)
+
+	s.NoError(err)
+}
+
+func (s *FetchTestSuite) Test_ReloadClusterConfig_AddsPort() {
+	addr := "swarm-listener"
+
+	err := s.fetch.ReloadClusterConfig(addr)
+
+	s.Contains(err.Error(), ":8080")
 }
 
 func (s *FetchTestSuite) Test_ReloadClusterConfig_ReturnsError_WhenSwarmListenerStatusIsNot200() {

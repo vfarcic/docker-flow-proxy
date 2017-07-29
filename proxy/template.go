@@ -112,7 +112,7 @@ func GetBackTemplate(sr *Service) string {
 	}
 
 	// HTTP
-	tmpl := `{{range .ServiceDest}}
+	tmpl := `{{range $sd := .ServiceDest}}
 backend {{$.ServiceName}}-be{{.Port}}
     mode {{.ReqModeFormatted}}
         {{- if ne $.ConnectionMode ""}}
@@ -149,7 +149,16 @@ backend {{$.ServiceName}}-be{{.Port}}
 		{{- if .HttpsOnly}}
     redirect scheme https if !{ ssl_fc }
 		{{- end}}
-    server {{$.ServiceName}} {{$.Host}}:{{.Port}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
+		{{- if eq $.SessionType "sticky-server"}}
+    balance roundrobin
+    cookie DFP insert indirect nocache
+		{{- end}}
+		{{- range $i, $t := $.Tasks}}
+    server {{$.ServiceName}}_{{$i}} {{$t}}:{{$sd.Port}} check cookie {{$.ServiceName}}_{{$i}}
+		{{- end}}
+		{{- if not $.Tasks}}
+    server {{$.ServiceName}} {{$.Host}}:{{$sd.Port}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
+        {{- end}}
         {{- if not .IgnoreAuthorization}}
             {{- if and ($.Users) (not .IgnoreAuthorization)}}
     acl {{$.ServiceName}}UsersAcl http_auth({{$.ServiceName}}Users)
@@ -167,56 +176,67 @@ backend {{$.ServiceName}}-be{{.Port}}
     {{- if ne $.BackendExtra ""}}
     {{ $.BackendExtra }}
     {{- end}}
-    {{- if gt .HttpsPort 0}}{{range .ServiceDest}}
+    {{- if gt .HttpsPort 0}}
+        {{- range $sd := .ServiceDest}}
 backend https-{{$.ServiceName}}-be{{.Port}}
     mode {{.ReqModeFormatted}}
-        {{- if ne $.ConnectionMode ""}}
+            {{- if ne $.ConnectionMode ""}}
     option {{$.ConnectionMode}}
-        {{- end}}
-        {{- if $.Debug}}
+            {{- end}}
+            {{- if $.Debug}}
     log global
-        {{- end}}`
+            {{- end}}`
 	tmpl += getHeaders(sr)
-	tmpl += `{{- if ne $.TimeoutServer ""}}
+	tmpl += `
+	        {{- if ne $.TimeoutServer ""}}
     timeout server {{$.TimeoutServer}}s
-        {{- end}}
-        {{- if ne $.TimeoutTunnel ""}}
+            {{- end}}
+            {{- if ne $.TimeoutTunnel ""}}
     timeout tunnel {{$.TimeoutTunnel}}s
-        {{- end}}
-        {{- if ne $.ReqPathSearch ""}}
+            {{- end}}
+            {{- if ne $.ReqPathSearch ""}}
     http-request set-path %[path,regsub({{$.ReqPathSearch}},{{$.ReqPathReplace}})]
-        {{- end}}
-		{{- if eq .VerifyClientSsl true}}
+            {{- end}}
+		    {{- if eq .VerifyClientSsl true}}
     acl valid_client_cert_{{$.ServiceName}}{{.Port}} ssl_c_used ssl_c_verify 0
     http-request deny unless valid_client_cert_{{$.ServiceName}}{{.Port}}
-		{{- end}}
-		{{- if .AllowedMethods}}
+		    {{- end}}
+		    {{- if .AllowedMethods}}
     acl valid_allowed_method method{{range .AllowedMethods}} {{.}}{{end}}
     http-request deny unless valid_allowed_method
-		{{- end}}
-		{{- if .DeniedMethods}}
+		    {{- end}}
+		    {{- if .DeniedMethods}}
     acl valid_denied_method method{{range .DeniedMethods}} {{.}}{{end}}
     http-request deny if valid_denied_method
-		{{- end}}
+		    {{- end}}
+		    {{- if eq $.SessionType "sticky-server"}}
+    balance roundrobin
+    cookie DFP insert indirect nocache
+		    {{- end}}
+		    {{- range $i, $t := $.Tasks}}
+    server {{$.ServiceName}}_{{$i}} {{$t}}:{{$.HttpsPort}} check cookie {{$.ServiceName}}_{{$i}}
+		    {{- end}}
+		    {{- if not $.Tasks}}
     server {{$.ServiceName}} {{$.Host}}:{{$.HttpsPort}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
-        {{- if not .IgnoreAuthorization}}
-            {{- if $.Users}}
+            {{- end}}
+            {{- if not .IgnoreAuthorization}}
+                {{- if $.Users}}
     acl {{$.ServiceName}}UsersAcl http_auth({{$.ServiceName}}Users)
     http-request auth realm {{$.ServiceName}}Realm if !{{$.ServiceName}}UsersAcl
-            {{- end}}
-            {{- if $.UseGlobalUsers}}
+                {{- end}}
+                {{- if $.UseGlobalUsers}}
     acl defaultUsersAcl http_auth(defaultUsers)
     http-request auth realm defaultRealm if !defaultUsersAcl
-            {{- end}}
-            {{- if or ($.Users) ($.UseGlobalUsers)}}
+                {{- end}}
+                {{- if or ($.Users) ($.UseGlobalUsers)}}
     http-request del-header Authorization
+                {{- end}}
             {{- end}}
         {{- end}}
-    {{- end}}
-    {{- if ne $.BackendExtra ""}}
+        {{- if ne $.BackendExtra ""}}
     {{ $.BackendExtra }}
-    {{- end}}
-{{- end}}`
+        {{- end}}
+    {{- end}}`
 	return tmpl
 }
 

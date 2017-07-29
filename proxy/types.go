@@ -116,6 +116,8 @@ type Service struct {
 	// The name of the service.
 	// It must match the name of the Swarm service.
 	ServiceName string `split_words:"true"`
+	// Determines the type of sticky sessions. If set to `sticky-server`, session cookie will be set by the proxy. Any other value means that sticky sessions are not used and load balancing is performed by Docker's Overlay network. Please open an issue if you'd like support for other types of sticky sessions.
+	SessionType string `split_words:"true"`
 	// Additional headers that will be set to the request before forwarding it to the service. If a specified header exists, it will be replaced with the new one.
 	SetReqHeader []string `split_words:"true"`
 	// Additional headers that will be set to the response before forwarding it to the client. If a specified header exists, it will be replaced with the new one.
@@ -142,12 +144,14 @@ type Service struct {
 	Users []User `split_words:"true"`
 	// Whether to add "X-Forwarded-Proto https" header.
 	XForwardedProto     bool `envconfig:"x_forwarded_proto" split_words:"true"`
+	// The rest of variables are for internal use only
 	ServicePort         string
 	AclCondition        string
 	Host                string
 	LookupRetry         int
 	LookupRetryInterval int
 	ServiceDest         []ServiceDest
+	Tasks               []string
 }
 
 // Services contains the list of services used inside the proxy
@@ -286,6 +290,9 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	}
 	if len(provider.GetString("delResHeader")) > 0 {
 		sr.DelResHeader = strings.Split(provider.GetString("delResHeader"), ",")
+	}
+	if len(sr.SessionType) > 0 {
+		sr.Tasks, _ = lookupHost("tasks."+sr.ServiceName)
 	}
 	globalUsersString := getSecretOrEnvVar("USERS", "")
 	globalUsersEncrypted := strings.EqualFold(getSecretOrEnvVar("USERS_PASS_ENCRYPTED", ""), "true")

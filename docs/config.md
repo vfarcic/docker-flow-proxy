@@ -28,7 +28,7 @@ The following environment variables can be used to configure the *Docker Flow Pr
 |DO_NOT_RESOLVE_ADDR|Whether not to resolve addresses. If set to `true`, the proxy will NOT fail if the service is not available.<br>**Default value:** `false`|
 |EXTRA_FRONTEND     |Value will be added to the default `frontend` configuration. Multiple lines should be separated with comma (*,*).|
 |EXTRA_GLOBAL       |Value will be added to the default `global` configuration. Multiple lines should be separated with comma (*,*).|
-|LISTENER_ADDRESS   |The address of the [Docker Flow: Swarm Listener](https://github.com/vfarcic/docker-flow-swarm-listener) used for automatic proxy configuration.<br>**Example:** swarm-listener|
+|LISTENER_ADDRESS   |The address of the [Docker Flow: Swarm Listener](https://github.com/vfarcic/docker-flow-swarm-listener) used for automatic proxy configuration.<br>**Example:** `swarm-listener:8080`|
 PROXY_INSTANCE_NAME|The name of the proxy instance. Useful if multiple proxies are running inside a cluster.<br>**Default value:** `docker-flow`|
 |SERVICE_NAME       |The name of the service. It must be the same as the value of the `--name` argument used to create the proxy service. Used only in the *swarm* mode.<br>**Example:** `my-proxy`<br>**Default value:** `proxy`|
 |RELOAD_INTERVAL    |Defines the frequency (in milliseconds) between automatic config reloads from Swarm Listener.<br>**Default value:** `5000`|

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+	"net"
 )
 
 var cmdRunHa = func(args []string) error {
@@ -24,6 +25,7 @@ var cmdRunHa = func(args []string) error {
 var readConfigsFile = ioutil.ReadFile
 var readSecretsFile = ioutil.ReadFile
 var writeFile = ioutil.WriteFile
+var lookupHost = net.LookupHost
 
 // ReadFile overwrites ioutil.ReadFile so that it can be mocked from other packages
 var ReadFile = ioutil.ReadFile

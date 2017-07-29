@@ -178,7 +178,29 @@ func (s *TypesTestSuite) Test_GetServiceFromProvider_ReturnsProxyServiceWithInde
 	expected := s.getExpectedService()
 	serviceMap := s.getServiceMap(expected, ".1")
 	provider := mapParameterProvider{&serviceMap}
+
 	actual := GetServiceFromProvider(&provider)
+
+	s.Equal(expected, *actual)
+}
+
+func (s *TypesTestSuite) Test_GetServiceFromProvider_AddsTasksWhenSessionTypeIsNotEmpty() {
+	expected := s.getExpectedService()
+	expected.SessionType = "sticky-server"
+	expected.Tasks = []string{"1.2.3.4", "4.3.2.1"}
+	serviceMap := s.getServiceMap(expected, ".1")
+	provider := mapParameterProvider{&serviceMap}
+	actualHost := ""
+	lookupHostOrig := lookupHost
+	defer func() { lookupHost = lookupHostOrig }()
+	lookupHost = func(host string) (addrs []string, err error) {
+		actualHost = host
+		return expected.Tasks, nil
+	}
+
+	actual := GetServiceFromProvider(&provider)
+
+	s.Equal("tasks."+expected.ServiceName, actualHost)
 	s.Equal(expected, *actual)
 }
 
@@ -266,6 +288,7 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"serviceCert":           expected.ServiceCert,
 		"serviceDomainAlgo":     expected.ServiceDomainAlgo,
 		"serviceName":           expected.ServiceName,
+		"sessionType":           expected.SessionType,
 		"setReqHeader":          strings.Join(expected.SetReqHeader, ","),
 		"setResHeader":          strings.Join(expected.SetResHeader, ","),
 		"sslVerifyNone":         strconv.FormatBool(expected.SslVerifyNone),

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // Fetchable defines interface that fetches information from other sources
@@ -64,8 +65,14 @@ func (m *fetch) ReloadConfig(baseData BaseReconfigure, listenerAddr string) erro
 // ReloadClusterConfig sends a request to Swarm Listener that will, in turn, send reconfigure requests for each service
 func (m *fetch) ReloadClusterConfig(listenerAddr string) error {
 	if len(listenerAddr) > 0 {
-		fullAddress := fmt.Sprintf("%s/v1/docker-flow-swarm-listener/notify-services", listenerAddr)
-		if resp, err := httpGet(fullAddress); err != nil {
+		if !strings.Contains(listenerAddr, ":") {
+			listenerAddr += ":8080"
+		}
+		if !strings.HasPrefix(listenerAddr, "http://") {
+			listenerAddr = "http://" + listenerAddr
+		}
+		listenerAddr := fmt.Sprintf("%s/v1/docker-flow-swarm-listener/notify-services", listenerAddr)
+		if resp, err := httpGet(listenerAddr); err != nil {
 			return err
 		} else if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("Swarm Listener responded with the status code %d", resp.StatusCode)
