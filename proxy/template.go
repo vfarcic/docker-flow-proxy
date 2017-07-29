@@ -15,14 +15,14 @@ func getFrontTemplate(s Service) string {
 {{- range $sd := .ServiceDest}}
     {{- if eq .ReqMode "http"}}
         {{- if ne .Port ""}}
-    acl url_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{if eq $.PathType ""}}path_beg{{end}}{{if ne $.PathType ""}}{{$.PathType}}{{end}} {{.}}{{end}}{{.SrcPortAcl}}
+    acl url_{{$.AclName}}{{.Port}}_{{.Index}}{{range .ServicePath}} {{if eq $.PathType ""}}path_beg{{end}}{{if ne $.PathType ""}}{{$.PathType}}{{end}} {{.}}{{end}}{{.SrcPortAcl}}
         {{- end}}
         {{- $length := len .UserAgent.Value}}{{if gt $length 0}}
-    acl user_agent_{{$.AclName}}_{{.UserAgent.AclName}} hdr_sub(User-Agent) -i{{range .UserAgent.Value}} {{.}}{{end}}
+    acl user_agent_{{$.AclName}}_{{.UserAgent.AclName}}_{{.Index}} hdr_sub(User-Agent) -i{{range .UserAgent.Value}} {{.}}{{end}}
         {{- end}}
     {{- end}}
     {{- if .ServiceDomain}}
-    acl domain_{{$.AclName}}{{.Port}} {{$.ServiceDomainAlgo}} -i{{range .ServiceDomain}} {{.}}{{end}}
+    acl domain_{{$.AclName}}{{.Port}}_{{.Index}} {{$.ServiceDomainAlgo}} -i{{range .ServiceDomain}} {{.}}{{end}}
     {{- end}}
     {{- if .ServiceHeader}}{{$skIndex := 0}}
         {{- range $key, $value := .ServiceHeader}}
@@ -46,13 +46,13 @@ func getFrontTemplate(s Service) string {
 {{- end}}
 {{- range $sd := .ServiceDest}}
     {{- if eq .ReqMode "http"}}{{- if ne .Port ""}}
-    use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{if .ServiceDomain}} domain_{{$.AclName}}{{.Port}}{{end}}{{if .ServiceHeader}}{{resetIndex}}{{range $key, $value := .ServiceHeader}} hdr_{{$.AclName}}{{$sd.Port}}_{{incIndex}}{{end}}{{end}}{{.SrcPortAclName}}
+    use_backend {{$.ServiceName}}-be{{.Port}}_{{.Index}} if url_{{$.AclName}}{{.Port}}_{{.Index}}{{if .ServiceDomain}} domain_{{$.AclName}}{{.Port}}_{{.Index}}{{end}}{{if .ServiceHeader}}{{resetIndex}}{{range $key, $value := .ServiceHeader}} hdr_{{$.AclName}}{{$sd.Port}}_{{incIndex}}{{end}}{{end}}{{.SrcPortAclName}}
 	    {{- if gt $.HttpsPort 0 }} http_{{$.ServiceName}}
-    use_backend https-{{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{if .ServiceDomain}} domain_{{$.AclName}}{{.Port}}{{end}} https_{{$.ServiceName}}
+    use_backend https-{{$.ServiceName}}-be{{.Port}}_{{.Index}} if url_{{$.AclName}}{{.Port}}_{{.Index}}{{if .ServiceDomain}} domain_{{$.AclName}}{{.Port}}{{.Index}}{{end}} https_{{$.ServiceName}}
         {{- end}}
-    {{- $length := len .UserAgent.Value}}{{if gt $length 0}} user_agent_{{$.AclName}}_{{.UserAgent.AclName}}{{end}}
+    {{- $length := len .UserAgent.Value}}{{if gt $length 0}} user_agent_{{$.AclName}}_{{.UserAgent.AclName}}_{{.Index}}{{end}}
         {{- if $.IsDefaultBackend}}
-    default_backend {{$.ServiceName}}-be{{.Port}}
+    default_backend {{$.ServiceName}}-be{{.Port}}_{{$sd.Index}}
         {{- end}}
     {{- end}}{{- end}}
 {{- end}}`
@@ -78,11 +78,11 @@ func getFrontTemplateTcp(servicesByPort map[int]Services) string {
     {{- range $s := .}}
         {{- range $sd := .ServiceDest}}
             {{- if $sd.ServiceDomain}}
-    acl domain_{{$s.AclName}}{{.Port}} {{$s.ServiceDomainAlgo}} -i{{range $sd.ServiceDomain}} {{.}}{{end}}
-    use_backend {{$s.ServiceName}}-be{{$sd.Port}} if domain_{{$s.AclName}}{{.Port}}
+    acl domain_{{$s.AclName}}{{.Port}}_{{$sd.Index}} {{$s.ServiceDomainAlgo}} -i{{range $sd.ServiceDomain}} {{.}}{{end}}
+    use_backend {{$s.ServiceName}}-be{{$sd.Port}}_{{$sd.Index}} if domain_{{$s.AclName}}{{.Port}}_{{$sd.Index}}
             {{- end}}
             {{- if not $sd.ServiceDomain}}
-    default_backend {{$s.ServiceName}}-be{{$sd.Port}}
+    default_backend {{$s.ServiceName}}-be{{$sd.Port}}_{{$sd.Index}}
             {{- end}}
         {{- end}}
     {{- end}}`
@@ -112,8 +112,8 @@ func GetBackTemplate(sr *Service) string {
 	}
 
 	// HTTP
-	tmpl := `{{range $sd := .ServiceDest}}
-backend {{$.ServiceName}}-be{{.Port}}
+	tmpl := `{{- range $sd := .ServiceDest}}
+backend {{$.ServiceName}}-be{{.Port}}_{{.Index}}
     mode {{.ReqModeFormatted}}
         {{- if ne $.ConnectionMode ""}}
     option {{$.ConnectionMode}}
@@ -178,7 +178,7 @@ backend {{$.ServiceName}}-be{{.Port}}
     {{- end}}
     {{- if gt .HttpsPort 0}}
         {{- range $sd := .ServiceDest}}
-backend https-{{$.ServiceName}}-be{{.Port}}
+backend https-{{$.ServiceName}}-be{{.Port}}_{{.Index}}
     mode {{.ReqModeFormatted}}
             {{- if ne $.ConnectionMode ""}}
     option {{$.ConnectionMode}}

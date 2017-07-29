@@ -148,7 +148,7 @@ func (s IntegrationSwarmTestSuite) Test_Metrics() {
 	body, _ = ioutil.ReadAll(resp.Body)
 
 	// Cannot validate that the metrics are correct but only that some text is returned
-	s.Contains(string(body[:]), "services,FRONTENDxxx")
+	s.Contains(string(body[:]), "services,FRONTEND")
 }
 
 func (s IntegrationSwarmTestSuite) Test_Compression() {
@@ -723,7 +723,7 @@ func (s *IntegrationSwarmTestSuite) waitForContainers(expected int, name string)
 		i = i + 1
 		time.Sleep(1 * time.Second)
 	}
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 }
 
 func (s *IntegrationSwarmTestSuite) createGoDemoService() {
