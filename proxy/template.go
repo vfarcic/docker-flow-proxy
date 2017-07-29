@@ -151,7 +151,7 @@ backend {{$.ServiceName}}-be{{.Port}}
 		{{- end}}
 		{{- if eq $.SessionType "sticky-server"}}
     balance roundrobin
-    cookie DFP insert indirect nocache
+    cookie {{$.ServiceName}} insert indirect nocache
 		{{- end}}
 		{{- range $i, $t := $.Tasks}}
     server {{$.ServiceName}}_{{$i}} {{$t}}:{{$sd.Port}} check cookie {{$.ServiceName}}_{{$i}}
@@ -211,7 +211,7 @@ backend https-{{$.ServiceName}}-be{{.Port}}
 		    {{- end}}
 		    {{- if eq $.SessionType "sticky-server"}}
     balance roundrobin
-    cookie DFP insert indirect nocache
+    cookie {{$.ServiceName}} insert indirect nocache
 		    {{- end}}
 		    {{- range $i, $t := $.Tasks}}
     server {{$.ServiceName}}_{{$i}} {{$t}}:{{$.HttpsPort}} check cookie {{$.ServiceName}}_{{$i}}
