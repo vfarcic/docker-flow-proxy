@@ -178,7 +178,7 @@ The relevant part of the output is as follows.
 ```
 frontend services
     bind *:80
-    bind *:443 ssl crt /certs/xip.io.pem
+    bind *:443 ssl crt-list /cfg/crt-list.txt
     mode http
 
     acl url_go-demo path_beg /demo
@@ -189,7 +189,7 @@ backend go-demo-be
     server go-demo go-demo:8080
 ```
 
-As you can see, the certificate `xip.io.pem` was added to the `*:443` binding and the proxy is ready to serve HTTPS requests.
+The certificate `xip.io.pem` has been added as an entry in /cfg/crt-list.txt to the `*:443` binding. The proxy is ready to serve HTTPS requests.
 
 Let's confirm that HTTPS works.
 

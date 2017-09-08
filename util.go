@@ -1,7 +1,6 @@
 package main
 
 import (
-	"./registry"
 	"io/ioutil"
 	"log"
 	"net"
@@ -16,4 +15,3 @@ var httpWriterSetContentType = func(w http.ResponseWriter, value string) {
 var logPrintf = log.Printf
 
 var lookupHost = net.LookupHost
-var registryInstance registry.Registrarable = registry.Consul{}

@@ -3,6 +3,7 @@
 [![GitHub release](https://img.shields.io/github/release/vfarcic/docker-flow-proxy.svg)]()
 [![license](https://img.shields.io/github/license/vfarcic/docker-flow-proxy.svg)]()
 [![Docker Pulls](https://img.shields.io/docker/pulls/vfarcic/docker-flow-proxy.svg)]()
+[![Go Report Card](https://goreportcard.com/badge/github.com/vfarcic/docker-flow-proxy)](https://goreportcard.com/report/github.com/vfarcic/docker-flow-proxy)
 
 The goal of the *Docker Flow Proxy* project is to provide an easy way to reconfigure proxy every time a new service is deployed, or when a service is scaled. It does not try to "reinvent the wheel", but to leverage the existing leaders and combine them through an easy to use integration. It uses [HAProxy](http://www.haproxy.org/) as a proxy and adds custom logic that allows on-demand reconfiguration.
 

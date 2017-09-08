@@ -33,7 +33,7 @@ func (s LoggingTestSuite) Test_StartLogging_OutputsSyslogToStdOut() {
 
 	go StartLogging()
 
-	for i := 1; i <= 3; i++ {
+	for i := 1; i <= 10; i++ {
 		sysLog, err := syslog.Dial("udp", "127.0.0.1:1514", syslog.LOG_INFO, "testing")
 		if err != nil {
 			log.Fatal(err)

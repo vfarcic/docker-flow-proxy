@@ -50,53 +50,36 @@ docker image build -t $DOCKER_HUB_USER/docker-flow-proxy .
 
 ### The Complete Cycle (Unit, Build, Staging)
 
-#### Setup
+#### Manually
+
+* On your laptop
 
 ```bash
-# Change to the IP of your host
-export HOST_IP=[...]
+export DOCKER_HUB_USER=[...] # Change to your user in hub.docker.com
+
+docker image build -t $DOCKER_HUB_USER/docker-flow-proxy:beta .
+
+docker image push $DOCKER_HUB_USER/docker-flow-proxy:beta
+
+docker image build -t $DOCKER_HUB_USER/docker-flow-proxy-test -f Dockerfile.test .
+
+docker image push $DOCKER_HUB_USER/docker-flow-proxy-test
 ```
 
-#### Unit Tests
+* Inside a Swarm cluster
 
 ```bash
-docker-compose \
-    -f docker-compose-test.yml \
-    run --rm unit
+export DOCKER_HUB_USER=[...] # Change to your user in hub.docker.com
+
+export HOST_IP=[...] # Change to a domain or an IP of one of Swarm nodes
+
+docker-compose -f docker-compose-test.yml run --rm staging-swarm
 ```
 
-#### Staging (Integration) Tests
+#### Through Jenkins
 
-```bash
-# Change to your user in hub.docker.com
-export DOCKER_HUB_USER=[...]
+Make a PR and let Jenkins do the work. You can monitor the status from the Jenkins job [Viktor Farcic / docker-flow-proxy](http://jenkins.dockerflow.com/blue/organizations/jenkins/vfarcic%2Fdocker-flow-proxy/activity).
 
-docker image build \
-    -t $DOCKER_HUB_USER/docker-flow-proxy:beta \
-    .
+Please [create an issue](https://github.com/vfarcic/docker-flow-proxy/issues) if you'd like to add your repository to the builds.
 
-docker image push \
-    $DOCKER_HUB_USER/docker-flow-proxy:beta
 
-docker-compose \
-    -f docker-compose-test.yml \
-    run --rm staging-swarm
-```
-
-##### Locally simulating CI
-
-All above can be executed in same manner as CI is running it before a build using the command that follows.
-
-```bash
-./scripts/local-ci.sh
-```
-
-The script requires:
-
-* DOCKER_HUB_USER environment variable to be set
-* HOST_IP to be set
-* docker logged in to docker hub with $DOCKER_HUB_USER user
-
-### Pull Request
-
-Once the feature is done, create a pull request.

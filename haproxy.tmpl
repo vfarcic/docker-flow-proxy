@@ -38,8 +38,8 @@ defaults
     timeout tunnel  {{.TimeoutTunnel}}s
     timeout http-request {{.TimeoutHttpRequest}}s
     timeout http-keep-alive {{.TimeoutHttpKeepAlive}}s
-{{.Stats}}
 {{.UserList}}
+{{.Stats}}
 frontend services{{.DefaultBinds}}
-    mode http
+    mode {{.DefaultReqMode}}
 {{.ExtraFrontend}}{{.ContentFrontend}}{{.ContentFrontendTcp}}{{.ContentFrontendSNI}}

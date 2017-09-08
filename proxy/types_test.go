@@ -167,6 +167,7 @@ x:X`, false, false)
 
 func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 	expected := s.getExpectedService()
+	expected.ServiceDest[0].Index = 0
 	serviceMap := s.getServiceMap(expected, "")
 	actual := GetServiceFromMap(&serviceMap)
 	s.Equal(expected, *actual)
@@ -177,6 +178,82 @@ func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 func (s *TypesTestSuite) Test_GetServiceFromProvider_ReturnsProxyServiceWithIndexedData() {
 	expected := s.getExpectedService()
 	serviceMap := s.getServiceMap(expected, ".1")
+	provider := mapParameterProvider{&serviceMap}
+
+	actual := GetServiceFromProvider(&provider)
+
+	s.Equal(expected, *actual)
+}
+
+func (s *TypesTestSuite) Test_GetServiceFromProvider_AddsTasksWhenSessionTypeIsNotEmpty() {
+	expected := s.getExpectedService()
+	expected.SessionType = "sticky-server"
+	expected.Tasks = []string{"1.2.3.4", "4.3.2.1"}
+	serviceMap := s.getServiceMap(expected, ".1")
+	provider := mapParameterProvider{&serviceMap}
+	actualHost := ""
+	lookupHostOrig := lookupHost
+	defer func() { lookupHost = lookupHostOrig }()
+	lookupHost = func(host string) (addrs []string, err error) {
+		actualHost = host
+		return expected.Tasks, nil
+	}
+
+	actual := GetServiceFromProvider(&provider)
+
+	s.Equal("tasks."+expected.ServiceName, actualHost)
+	s.Equal(expected, *actual)
+}
+
+func (s *TypesTestSuite) Test_GetServiceFromProvider_MovesServiceDomainToIndexedEntries_WhenPortIsEmpty() {
+	expected := Service{
+		ServiceDest: []ServiceDest{{
+			AllowedMethods: []string{},
+			DeniedMethods:  []string{},
+			ServiceDomain:  []string{"domain1", "domain2"},
+			ServiceHeader:  map[string]string{},
+			ServicePath:    []string{"/"},
+			Port:           "1234",
+			ReqMode:        "reqMode",
+			Index:          1,
+		}},
+		ServiceName: "serviceName",
+	}
+	serviceMap := map[string]string{
+		"serviceDomain": strings.Join(expected.ServiceDest[0].ServiceDomain, ","),
+		"serviceName":   expected.ServiceName,
+		"port.1":        expected.ServiceDest[0].Port,
+		"reqMode.1":     expected.ServiceDest[0].ReqMode,
+		"servicePath.1": strings.Join(expected.ServiceDest[0].ServicePath, ","),
+	}
+	provider := mapParameterProvider{&serviceMap}
+	actual := GetServiceFromProvider(&provider)
+	s.Equal(expected, *actual)
+}
+
+func (s *TypesTestSuite) Test_GetServiceFromProvider_MovesHttpsOnlyToIndexedEntries_WhenEmpty() {
+	expected := Service{
+		ServiceDest: []ServiceDest{{
+			AllowedMethods: []string{},
+			DeniedMethods:  []string{},
+			HttpsOnly:      true,
+			ServiceDomain:  []string{},
+			ServiceHeader:  map[string]string{},
+			ServicePath:    []string{"/"},
+			Port:           "1234",
+			ReqMode:        "reqMode",
+			Index:          1,
+		}},
+		ServiceName: "serviceName",
+	}
+	serviceMap := map[string]string{
+		//		"serviceDomain": strings.Join(expected.ServiceDest[0].ServiceDomain, ","),
+		"httpsOnly":     strconv.FormatBool(expected.ServiceDest[0].HttpsOnly),
+		"serviceName":   expected.ServiceName,
+		"port.1":        expected.ServiceDest[0].Port,
+		"reqMode.1":     expected.ServiceDest[0].ReqMode,
+		"servicePath.1": strings.Join(expected.ServiceDest[0].ServicePath, ","),
+	}
 	provider := mapParameterProvider{&serviceMap}
 	actual := GetServiceFromProvider(&provider)
 	s.Equal(expected, *actual)
@@ -191,6 +268,11 @@ func TestRunUnitTestSuite(t *testing.T) {
 // Util
 
 func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map[string]string {
+	header := ""
+	for key, value := range expected.ServiceDest[0].ServiceHeader {
+		header += key + ":" + value + ","
+	}
+	header = strings.TrimRight(header, ",")
 	return map[string]string{
 		"aclName":               expected.AclName,
 		"addReqHeader":          strings.Join(expected.AddReqHeader, ","),
@@ -199,7 +281,6 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"delReqHeader":          strings.Join(expected.DelReqHeader, ","),
 		"delResHeader":          strings.Join(expected.DelResHeader, ","),
 		"distribute":            strconv.FormatBool(expected.Distribute),
-		"httpsOnly":             strconv.FormatBool(expected.HttpsOnly),
 		"httpsPort":             strconv.Itoa(expected.HttpsPort),
 		"isDefaultBackend":      strconv.FormatBool(expected.IsDefaultBackend),
 		"outboundHostname":      expected.OutboundHostname,
@@ -208,10 +289,9 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"reqPathReplace":        expected.ReqPathReplace,
 		"reqPathSearch":         expected.ReqPathSearch,
 		"serviceCert":           expected.ServiceCert,
-		"serviceColor":          expected.ServiceColor,
-		"serviceDomain":         strings.Join(expected.ServiceDomain, ","),
-		"serviceDomainMatchAll": strconv.FormatBool(expected.ServiceDomainMatchAll),
+		"serviceDomainAlgo":     expected.ServiceDomainAlgo,
 		"serviceName":           expected.ServiceName,
+		"sessionType":           expected.SessionType,
 		"setReqHeader":          strings.Join(expected.SetReqHeader, ","),
 		"setResHeader":          strings.Join(expected.SetResHeader, ","),
 		"sslVerifyNone":         strconv.FormatBool(expected.SslVerifyNone),
@@ -223,9 +303,15 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"usersPassEncrypted":    "true",
 		"xForwardedProto":       strconv.FormatBool(expected.XForwardedProto),
 		// ServiceDest
+		"allowedMethods" + indexSuffix:      strings.Join(expected.ServiceDest[0].AllowedMethods, ","),
+		"deniedMethods" + indexSuffix:       strings.Join(expected.ServiceDest[0].DeniedMethods, ","),
+		"denyHttp" + indexSuffix:            strconv.FormatBool(expected.ServiceDest[0].DenyHttp),
+		"httpsOnly" + indexSuffix:           strconv.FormatBool(expected.ServiceDest[0].HttpsOnly),
 		"ignoreAuthorization" + indexSuffix: strconv.FormatBool(expected.ServiceDest[0].IgnoreAuthorization),
 		"port" + indexSuffix:                expected.ServiceDest[0].Port,
 		"reqMode" + indexSuffix:             expected.ServiceDest[0].ReqMode,
+		"serviceDomain" + indexSuffix:       strings.Join(expected.ServiceDest[0].ServiceDomain, ","),
+		"serviceHeader" + indexSuffix:       header,
 		"servicePath" + indexSuffix:         strings.Join(expected.ServiceDest[0].ServicePath, ","),
 		"userAgent" + indexSuffix:           strings.Join(expected.ServiceDest[0].UserAgent.Value, ","),
 		"verifyClientSsl" + indexSuffix:     strconv.FormatBool(expected.ServiceDest[0].VerifyClientSsl),
@@ -241,7 +327,6 @@ func (s *TypesTestSuite) getExpectedService() Service {
 		DelReqHeader:          []string{"del-header-1", "del-header-2"},
 		DelResHeader:          []string{"del-header-1", "del-header-2"},
 		Distribute:            true,
-		HttpsOnly:             true,
 		HttpsPort:             1234,
 		IsDefaultBackend:      true,
 		OutboundHostname:      "outboundHostname",
@@ -250,26 +335,31 @@ func (s *TypesTestSuite) getExpectedService() Service {
 		ReqPathReplace:        "reqPathReplace",
 		ReqPathSearch:         "reqPathSearch",
 		ServiceCert:           "serviceCert",
-		ServiceColor:          "serviceColor",
+		ServiceDomainAlgo:     "hdr_dom",
 		ServiceDest: []ServiceDest{{
+			AllowedMethods:      []string{"GET", "DELETE"},
+			DeniedMethods:       []string{"PUT", "POST"},
+			DenyHttp:            true,
+			HttpsOnly:           true,
 			IgnoreAuthorization: true,
+			ServiceDomain:       []string{"domain1", "domain2"},
+			ServiceHeader:       map[string]string{"X-Version": "3", "name": "Viktor"},
 			ServicePath:         []string{"/"},
 			Port:                "1234",
 			ReqMode:             "reqMode",
 			UserAgent:           UserAgent{Value: []string{"agent-1", "agent-2/replace-with_"}, AclName: "agent_1_agent_2_replace_with_"},
 			VerifyClientSsl:     true,
+			Index:               1,
 		}},
-		ServiceDomain:         []string{"domain1", "domain2"},
-		ServiceDomainMatchAll: true,
-		ServiceName:           "serviceName",
-		SetReqHeader:          []string{"set-header-1", "set-header-2"},
-		SetResHeader:          []string{"set-header-1", "set-header-2"},
-		SslVerifyNone:         true,
-		TemplateBePath:        "templateBePath",
-		TemplateFePath:        "templateFePath",
-		TimeoutServer:         "timeoutServer",
-		TimeoutTunnel:         "timeoutTunnel",
-		XForwardedProto:       true,
+		ServiceName:     "serviceName",
+		SetReqHeader:    []string{"set-header-1", "set-header-2"},
+		SetResHeader:    []string{"set-header-1", "set-header-2"},
+		SslVerifyNone:   true,
+		TemplateBePath:  "templateBePath",
+		TemplateFePath:  "templateFePath",
+		TimeoutServer:   "timeoutServer",
+		TimeoutTunnel:   "timeoutTunnel",
+		XForwardedProto: true,
 		Users: []User{
 			{Username: "user1", Password: "pass1", PassEncrypted: true},
 			{Username: "user2", Password: "pass2", PassEncrypted: true},

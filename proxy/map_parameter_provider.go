@@ -20,8 +20,8 @@ func (p *mapParameterProvider) Fill(service *Service) {
 			value := ""
 			if len(p.GetString(fieldName)) > 0 {
 				value = p.GetString(fieldName)
-			} else if len(p.GetString(LowerFirst(fieldName))) > 0 {
-				value = p.GetString(LowerFirst(fieldName))
+			} else if len(p.GetString(lowerFirst(fieldName))) > 0 {
+				value = p.GetString(lowerFirst(fieldName))
 			}
 			value = strings.ToLower(value)
 			if strings.EqualFold(value, "true") {

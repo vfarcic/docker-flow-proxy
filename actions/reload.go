@@ -4,13 +4,16 @@ import (
 	"../proxy"
 )
 
+// Reloader defines the interface for reloading HAProxy
 type Reloader interface {
 	Execute(recreate bool) error
 }
 
-type Reload struct{}
+type reload struct{}
 
-func (m *Reload) Execute(recreate bool) error {
+// Execute runs the reload.
+// If `recreate` is set to `true`, configuration will be recreated before the reload.
+func (m *reload) Execute(recreate bool) error {
 	if recreate {
 		if err := proxy.Instance.CreateConfigFromTemplates(); err != nil {
 			logPrintf(err.Error())
@@ -24,6 +27,7 @@ func (m *Reload) Execute(recreate bool) error {
 	return nil
 }
 
+// NewReload returns a new instance of the struct
 var NewReload = func() Reloader {
-	return &Reload{}
+	return &reload{}
 }

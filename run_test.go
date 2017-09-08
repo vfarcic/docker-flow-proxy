@@ -18,7 +18,7 @@ func (s *RunTestSuite) SetupTest() {
 // NewRun
 
 func (s RunTestSuite) Test_NewRun_ReturnsNewStruct() {
-	s.NotNil(NewRun())
+	s.NotNil(newRun())
 }
 
 // Suite

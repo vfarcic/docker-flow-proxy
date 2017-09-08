@@ -1,0 +1,61 @@
+version: "3"
+
+services:
+
+  proxy:
+    image: vfarcic/docker-flow-proxy
+    ports:
+      - 80:80
+      - 8000:8000
+      - 8080:8080
+    networks:
+      - proxy
+    environment:
+      - LISTENER_ADDRESS=swarm-listener
+      - MODE=swarm
+      - BIND_PORTS=8000
+      - REPEAT_RELOAD=true
+    deploy:
+      replicas: 1
+
+  swarm-listener:
+    image: vfarcic/docker-flow-swarm-listener
+    networks:
+      - proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DF_NOTIFY_CREATE_SERVICE_URL=http://proxy:8080/v1/docker-flow-proxy/reconfigure
+      - DF_NOTIFY_REMOVE_SERVICE_URL=http://proxy:8080/v1/docker-flow-proxy/remove
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  docs:
+    image: vfarcic/docker-flow-proxy-docs
+    hostname: proxydocs
+    networks:
+      - proxy
+    deploy:
+      replicas: 1
+      labels:
+        - com.df.notify=true
+        - com.df.distribute=true
+        - com.df.serviceDomain=proxydocs.demo.splunkoxygen.com
+        - com.df.serviceDomainMatchAll=true
+        - com.df.srcPort=80
+        - com.df.servicePath=/
+        - com.df.port=80
+        - com.df.sessionType=sticky-server
+        - com.docker.ucp.access.label=production
+        - com.docker.ucp.access.owner=mwilde
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+
+networks:
+  proxy:
+    external: true

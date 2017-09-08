@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -52,7 +53,7 @@ var sendDistributeRequests = func(req *http.Request, port, proxyServiceName stri
 		}
 	} else {
 		err := fmt.Errorf(
-			"Could not perform DNS %s lookup. If the proxy is not called 'proxy', you must set SERVICE_NAME=<name-of-the-proxy>.",
+			"Could not perform DNS lookup for %s. If the proxy is not called 'proxy', you must set SERVICE_NAME=<name-of-the-proxy> on the proxy service.",
 			dns,
 		)
 		return http.StatusBadRequest, err
@@ -63,3 +64,15 @@ var sendDistributeRequests = func(req *http.Request, port, proxyServiceName stri
 	}
 	return http.StatusOK, err
 }
+
+var getSecretOrEnvVar = func(key, defaultValue string) string {
+	path := fmt.Sprintf("/run/secrets/dfp_%s", strings.ToLower(key))
+	if content, err := readSecretsFile(path); err == nil {
+		return strings.TrimRight(string(content[:]), "\n")
+	}
+	if len(os.Getenv(key)) > 0 {
+		return os.Getenv(key)
+	}
+	return defaultValue
+}
+var readSecretsFile = ioutil.ReadFile

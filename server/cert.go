@@ -17,6 +17,7 @@ import (
 
 var mu = &sync.Mutex{}
 
+// Certer defines the interface that must be implemented by any struct that deals with certificates.
 type Certer interface {
 	Put(w http.ResponseWriter, req *http.Request) (string, error)
 	PutCert(certName string, certContent []byte) (string, error)
@@ -24,26 +25,28 @@ type Certer interface {
 	Init() error
 }
 
-type Cert struct {
+type cert struct {
 	ServicePort      string
 	ProxyServiceName string
 	CertsDir         string
 	CertContent      string
 }
 
+// CertResponse represent a response when a request for certificates is made.
 type CertResponse struct {
 	Status  string
 	Message string
-	Certs   []Cert
+	Certs   []cert
 }
 
-func (m *Cert) GetAll(w http.ResponseWriter, req *http.Request) (CertResponse, error) {
+// GetAll returns all the certificates used by the proxy.
+func (m *cert) GetAll(w http.ResponseWriter, req *http.Request) (CertResponse, error) {
 	pCerts := proxy.Instance.GetCerts()
-	certs := []Cert{}
+	certs := []cert{}
 	for path, content := range pCerts {
 		if !strings.HasPrefix(path, "/run/secrets") {
 			parts := strings.Split(path, "/")
-			cert := Cert{CertContent: content}
+			cert := cert{CertContent: content}
 			nameIndex := len(parts) - 1
 			for index, part := range parts {
 				if index == nameIndex {
@@ -60,11 +63,15 @@ func (m *Cert) GetAll(w http.ResponseWriter, req *http.Request) (CertResponse, e
 	return msg, nil
 }
 
-func (m *Cert) PutCert(certName string, certContent []byte) (string, error) {
+// PutCert write a certificate to a file.
+// If a certificate with the same name already exists, it will be overwritten by the new certificate.
+func (m *cert) PutCert(certName string, certContent []byte) (string, error) {
 	return m.writeFile(certName, certContent)
 }
 
-func (m *Cert) Put(w http.ResponseWriter, req *http.Request) (string, error) {
+// Put adds a certificate to the proxy.
+// If a certificate with the same name already exists, it will be overwritten by the new certificate.
+func (m *cert) Put(w http.ResponseWriter, req *http.Request) (string, error) {
 	distribute, _ := strconv.ParseBool(req.URL.Query().Get("distribute"))
 	if distribute {
 		return "", m.sendDistributeRequests(w, req)
@@ -90,20 +97,23 @@ func (m *Cert) Put(w http.ResponseWriter, req *http.Request) (string, error) {
 	return path, nil
 }
 
-func (m *Cert) Init() error {
+// Init should be executed when the proxy starts.
+// It retrieves the list of all certificates from one of the other proxy replicas.
+func (m *cert) Init() error {
 	dns := fmt.Sprintf("tasks.%s", m.ProxyServiceName)
 	client := &http.Client{}
 	ips, err := lookupHost(dns)
 	if err != nil {
 		return err
 	}
-	certs := []Cert{}
+	certs := []cert{}
 	for _, ip := range ips {
 		hostPort := ip
 		if !strings.Contains(ip, ":") { // TODO: Test
 			hostPort = net.JoinHostPort(ip, m.ServicePort)
 		}
 		addr := fmt.Sprintf("http://%s/v1/docker-flow-proxy/certs", hostPort)
+		logPrintf("Getting certs from %s", addr)
 		req, _ := http.NewRequest("GET", addr, nil)
 		if resp, err := client.Do(req); err == nil {
 			defer resp.Body.Close()
@@ -115,6 +125,7 @@ func (m *Cert) Init() error {
 			}
 		}
 	}
+	logPrintf("Found %d certs", len(certs))
 	if len(certs) > 0 {
 		for _, cert := range certs {
 			m.writeFile(cert.ProxyServiceName, []byte(cert.CertContent))
@@ -125,7 +136,7 @@ func (m *Cert) Init() error {
 	return nil
 }
 
-func (m *Cert) getCertFromRequest(w http.ResponseWriter, req *http.Request) (certName string, certContent []byte, err error) {
+func (m *cert) getCertFromRequest(w http.ResponseWriter, req *http.Request) (certName string, certContent []byte, err error) {
 	certName = req.URL.Query().Get("certName")
 	if len(certName) == 0 { // TODO: Test
 		err := fmt.Errorf("Query parameter certName is mandatory")
@@ -142,7 +153,7 @@ func (m *Cert) getCertFromRequest(w http.ResponseWriter, req *http.Request) (cer
 	return certName, certContent, nil
 }
 
-func (m *Cert) sendDistributeRequests(w http.ResponseWriter, req *http.Request) error {
+func (m *cert) sendDistributeRequests(w http.ResponseWriter, req *http.Request) error {
 	_, port, err := net.SplitHostPort(req.URL.Host)
 	if err != nil {
 		port = "8080"
@@ -157,7 +168,7 @@ func (m *Cert) sendDistributeRequests(w http.ResponseWriter, req *http.Request) 
 	return nil
 }
 
-func (m *Cert) writeFile(certName string, certContent []byte) (path string, err error) {
+func (m *cert) writeFile(certName string, certContent []byte) (path string, err error) {
 	mu.Lock()
 	defer mu.Unlock()
 	f, err := os.Create(fmt.Sprintf("%s/%s", m.CertsDir, certName))
@@ -169,14 +180,14 @@ func (m *Cert) writeFile(certName string, certContent []byte) (path string, err 
 	return path, nil
 }
 
-func (m *Cert) writeOK(w http.ResponseWriter, msg interface{}) {
+func (m *cert) writeOK(w http.ResponseWriter, msg interface{}) {
 	httpWriterSetContentType(w, "application/json")
 	w.WriteHeader(http.StatusOK)
 	js, _ := json.Marshal(msg)
 	w.Write(js)
 }
 
-func (m *Cert) writeError(w http.ResponseWriter, err error) error {
+func (m *cert) writeError(w http.ResponseWriter, err error) error {
 	w.WriteHeader(http.StatusBadRequest)
 	js, _ := json.Marshal(CertResponse{
 		Status:  "NOK",
@@ -186,8 +197,9 @@ func (m *Cert) writeError(w http.ResponseWriter, err error) error {
 	return err
 }
 
-func NewCert(certsDir string) *Cert {
-	return &Cert{
+// NewCert returns an instance of `cert` struct with pre-populated variables.
+func NewCert(certsDir string) *cert {
+	return &cert{
 		CertsDir:         certsDir,
 		ProxyServiceName: os.Getenv("SERVICE_NAME"),
 		ServicePort:      "8080",

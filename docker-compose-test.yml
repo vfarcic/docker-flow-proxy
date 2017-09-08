@@ -1,103 +1,22 @@
-version: '2'
+version: "2"
 
 
 services:
 
-  unit:
-    image: golang:1.6
-    volumes:
-      - .:/usr/src/myapp
-      - /tmp/go:/go
-    working_dir: /usr/src/myapp
-    command: sh -c "go get -d -v -t && go test --cover ./... --run UnitTest && go build -v -o docker-flow-proxy"
-
-  staging-dep:
-    image: ${DOCKER_HUB_USER}/docker-flow-proxy
-    environment:
-      - CONSUL_ADDRESS=consul:8500
-      - PROXY_INSTANCE_NAME=proxy-test-instance
-      - USERS=user1:pass1,user2:pass2
-      - STATS_USER=stats
-      - STATS_PASS=pass
-    ports:
-      - 80:80
-      - 443:443
-      - 8080:8080
-    volumes:
-      - ./test_configs/:/test_configs/
-    depends_on:
-      - staging-service-proxy
-      - consul
-      - registrator
-      - app-1
-
-  staging-service-proxy:
-    image: ${DOCKER_HUB_USER}/docker-flow-proxy
-    environment:
-      - PROXY_INSTANCE_NAME=proxy-service-test-instance
-      - MODE=swarm
-    ports:
-      - 9000:80
-      - 9080:8080
-    volumes:
-      - ./test_configs/:/test_configs/
-
-  staging:
-    image: vfarcic/docker-flow-proxy-test
-    volumes:
-      - .:/usr/src/myapp
-      - /tmp/go:/go
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - DOCKER_IP=${HOST_IP}
-      - CONSUL_IP=${HOST_IP}
-    working_dir: /usr/src/myapp
-    command: bash -c "go get -d -v -t && go test --run IntegrationTest ./..."
-
   staging-swarm:
     image: vfarcic/docker-flow-proxy-test
     volumes:
-      - .:/usr/src/myapp
-      - /tmp/go:/go
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - HOST_IP=${HOST_IP}
       - DOCKER_HUB_USER=${DOCKER_HUB_USER}
-    working_dir: /usr/src/myapp
-    command: bash -c "go get -d -v -t && go test -v --run IntegrationSwarmTest ./..."
 
-  production:
-    extends:
-      service: staging
-
-  consul:
-    image: progrium/consul
-    ports:
-      - 8500:8500
-      - 8301:8301
-      - 8300:8300
-    command: -server -bootstrap
-
-  registrator:
-    image: gliderlabs/registrator
+  staging-swarm-local:
+    image: vfarcic/docker-flow-proxy-test
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock
-    command: -ip app-1 -internal consul://consul:8500
-    depends_on:
-      - consul
-
-  app-1:
-    image: vfarcic/docker-flow-proxy
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/src
     environment:
-      CONSUL_ADDRESS: consul:8500
-      SERVICE_8080_NAME: test-service
-    ports:
-      - 8080
-    depends_on:
-      - consul
-
-  docs:
-    image: cilerler/mkdocs
-    volumes:
-      - .:/docs
-    command: bash -c "pip install pygments && pip install pymdown-extensions && mkdocs build"
+      - HOST_IP=${HOST_IP}
+      - DOCKER_HUB_USER=${DOCKER_HUB_USER}
+    command: ["sh", "-c", "chmod +x /src/run-tests.sh && /src/run-tests.sh"]

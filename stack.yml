@@ -1,4 +1,4 @@
-version: "3.1"
+version: "3.2"
 
 services:
 
@@ -11,11 +11,17 @@ services:
       - proxy
     environment:
       - LISTENER_ADDRESS=swarm-listener
-      - MODE=swarm
-      - CONNECTION_MODE=http-keep-alive
+      - STATS_USER=none
+      - STATS_PASS=none
     secrets:
       - dfp_users_vfarcic
     deploy:
+      labels:
+        - com.df.notify=true
+        - com.df.distribute=true
+        - com.df.alertName=memlimit
+        - com.df.alertIf=@service_mem_limit:0.8
+        - com.df.alertFor=30s
       replicas: 2
       update_config:
         parallelism: 1
@@ -35,14 +41,40 @@ services:
         - com.df.distribute=true
         - com.df.notify=true
         - com.df.port=80
-        - com.df.serviceDomain=proxy.dockerflow.com,dockerflow.com
+        - com.df.serviceDomain=proxy.dockerflow.com
         - com.df.servicePath=/
+        - com.df.alertName=memlimit
+        - com.df.alertIf=@service_mem_limit:0.8
+        - com.df.alertFor=30s
       replicas: 2
       resources:
         reservations:
           memory: 5M
         limits:
           memory: 10M
+
+  letsencrypt:
+    image: hamburml/docker-flow-letsencrypt:latest
+    networks:
+      - proxy
+    environment:
+      - DOMAIN_1=("dockerflow.com" "proxy.dockerflow.com" "swarmlistener.dockerflow.com" "monitor.dockerflow.com" "jenkins.dockerflow.com")
+      - CERTBOT_EMAIL=viktor@farcic.com
+      - PROXY_ADDRESS=proxy
+      - CERTBOT_CRON_RENEW=("0 3 * * *" "0 15 * * *")
+    volumes:
+      - lets-encrypt:/etc/letsencrypt
+    deploy:
+      labels:
+        - com.df.servicePath=/.well-known/acme-challenge
+        - com.df.notify=true
+        - com.df.distribute=true
+        - com.df.port=80
+      resources:
+        reservations:
+          memory: 20M
+        limits:
+          memory: 30M
 
 networks:
   proxy:
@@ -51,3 +83,8 @@ networks:
 secrets:
   dfp_users_vfarcic:
     external: true
+
+volumes:
+  lets-encrypt:
+    driver: cloudstor:aws
+    external: false

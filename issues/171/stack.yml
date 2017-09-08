@@ -1,17 +1,18 @@
-version: '3.2'
+version: "3.1"
+
 services:
 
   proxy:
-    image: vfarcic/docker-flow-proxy
+    image: vfarcic/docker-flow-proxy:issue-171
     ports:
       - 80:80
+      - 443:443
+      - 8080:8080 # New
     networks:
       - proxy
     environment:
       - LISTENER_ADDRESS=swarm-listener
-      - MODE=swarm
-    deploy:
-      replicas: 2
+      - REPEAT_RELOAD=true # New
 
   swarm-listener:
     image: vfarcic/docker-flow-swarm-listener
@@ -25,6 +26,27 @@ services:
     deploy:
       placement:
         constraints: [node.role == manager]
+
+  go-demo-api:
+    image: vfarcic/go-demo
+    environment:
+      - DB=go-demo-db
+    networks:
+      - proxy
+      - default
+    deploy:
+      replicas: 3
+      labels:
+        - com.df.notify=true
+        - com.df.distribute=true
+        - com.df.servicePath=/demo
+        - com.df.port=8080
+        - com.df.sessionType=sticky-server # New
+
+  go-demo-db:
+    image: mongo
+    networks:
+      - default
 
 networks:
   proxy:

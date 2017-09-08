@@ -1,14 +1,15 @@
 package proxy
 
-var ProxyInstance Proxy = HaProxy{}
+var proxyInstance proxy = HaProxy{}
 
+// Data contains the information about all the services
 type Data struct {
 	Services map[string]Service
 }
 
-var data = Data{}
+var dataInstance = Data{}
 
-type Proxy interface {
+type proxy interface {
 	RunCmd(extraArgs []string) error
 	CreateConfigFromTemplates() error
 	ReadConfig() (string, error)
@@ -17,4 +18,5 @@ type Proxy interface {
 	GetCerts() map[string]string
 	AddService(service Service)
 	RemoveService(service string)
+	GetServices() map[string]Service
 }

@@ -1,4 +1,4 @@
-# Running Docker Flow Proxy In Swarm Mode With Manual Reconfiguration
+# Running Docker Flow Proxy With Manual Reconfiguration
 
 *Docker Flow Proxy* running in the *swarm* mode is designed to leverage the features introduced in Docker v1.12.
 

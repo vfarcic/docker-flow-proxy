@@ -18,6 +18,7 @@ import (
 
 type CertTestSuite struct {
 	suite.Suite
+	serviceName string
 }
 
 func (s *CertTestSuite) SetupTest() {
@@ -34,6 +35,7 @@ func TestCertUnitTestSuite(t *testing.T) {
 	logPrintf = func(format string, v ...interface{}) {}
 
 	s := new(CertTestSuite)
+	s.serviceName = "my-fancy-service"
 	suite.Run(t, s)
 }
 
@@ -74,11 +76,11 @@ func (s *CertTestSuite) Test_GetAll_WritesHeaderStatus200() {
 }
 
 func (s *CertTestSuite) Test_GetAll_WritesReturnsCert() {
-	certs := []Cert{}
+	certs := []cert{}
 	proxyCerts := map[string]string{}
 	name := "my-service"
 	path := fmt.Sprintf("/my/certs/dir/%s", name)
-	cert := Cert{
+	cert := cert{
 		ProxyServiceName: name,
 		CertsDir:         "/my/certs/dir",
 		CertContent:      "Content of the cert",
@@ -111,7 +113,7 @@ func (s *CertTestSuite) Test_GetAll_WritesReturnsCert() {
 
 // Init
 
-func (s *ServerTestSuite) Test_Init_InvokesLookupHost() {
+func (s *CertTestSuite) Test_Init_InvokesLookupHost() {
 	var actualHost string
 	lookupHostOrig := lookupHost
 	defer func() { lookupHost = lookupHostOrig }()
@@ -120,14 +122,14 @@ func (s *ServerTestSuite) Test_Init_InvokesLookupHost() {
 		return []string{}, nil
 	}
 	c := NewCert("../certs")
-	c.ProxyServiceName = s.ServiceName
+	c.ProxyServiceName = s.serviceName
 
 	c.Init()
 
-	s.Assert().Equal(fmt.Sprintf("tasks.%s", s.ServiceName), actualHost)
+	s.Assert().Equal(fmt.Sprintf("tasks.%s", s.serviceName), actualHost)
 }
 
-func (s *ServerTestSuite) Test_Init_ReturnsError_WhenLookupHostFails() {
+func (s *CertTestSuite) Test_Init_ReturnsError_WhenLookupHostFails() {
 	lookupHostOrig := lookupHost
 	defer func() { lookupHost = lookupHostOrig }()
 	lookupHost = func(host string) (addrs []string, err error) {
@@ -140,7 +142,7 @@ func (s *ServerTestSuite) Test_Init_ReturnsError_WhenLookupHostFails() {
 	s.Assertions.Error(err)
 }
 
-func (s *ServerTestSuite) Test_Init_SendsHttpRequestForEachIp() {
+func (s *CertTestSuite) Test_Init_SendsHttpRequestForEachIp() {
 	var actualPath string
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		actualPath = r.URL.Path
@@ -160,28 +162,28 @@ func (s *ServerTestSuite) Test_Init_SendsHttpRequestForEachIp() {
 	proxy.Instance = proxyMock
 
 	c := NewCert("../certs")
-	c.ProxyServiceName = s.ServiceName
+	c.ProxyServiceName = s.serviceName
 
 	c.Init()
 
 	s.Assert().Equal("/v1/docker-flow-proxy/certs", actualPath)
 }
 
-func (s *ServerTestSuite) Test_Init_DoesNotFail_WhenRequestFails() {
+func (s *CertTestSuite) Test_Init_DoesNotFail_WhenRequestFails() {
 	lookupHostOrig := lookupHost
 	defer func() { lookupHost = lookupHostOrig }()
 	lookupHost = func(host string) (addrs []string, err error) {
 		return []string{"unknown-address"}, nil
 	}
 	c := NewCert("../certs")
-	c.ProxyServiceName = s.ServiceName
+	c.ProxyServiceName = s.serviceName
 
 	err := c.Init()
 
 	s.NoError(err)
 }
 
-func (s *ServerTestSuite) Test_Init_WritesCertToFile() {
+func (s *CertTestSuite) Test_Init_WritesCertToFile() {
 	testServer := s.getCertGetAllMockServer(1, 3)
 	defer func() { testServer.Close() }()
 	tsAddr := strings.Replace(testServer.URL, "http://", "", -1)
@@ -196,7 +198,7 @@ func (s *ServerTestSuite) Test_Init_WritesCertToFile() {
 	c := NewCert("../certs")
 	path := fmt.Sprintf("%s/%s", c.CertsDir, "my-cert-3.pem")
 	os.Remove(path)
-	c.ProxyServiceName = s.ServiceName
+	c.ProxyServiceName = s.serviceName
 	proxyOrig := proxy.Instance
 	defer func() { proxy.Instance = proxyOrig }()
 	proxyMock := getProxyMock("")
@@ -210,7 +212,7 @@ func (s *ServerTestSuite) Test_Init_WritesCertToFile() {
 	s.Equal("Content of my-cert-3.pem", string(actual))
 }
 
-func (s *ServerTestSuite) Test_Init_InvokesProxyCreateConfigFromTemplates() {
+func (s *CertTestSuite) Test_Init_InvokesProxyCreateConfigFromTemplates() {
 	testServer := s.getCertGetAllMockServer(1, 3)
 	defer func() { testServer.Close() }()
 	tsAddr := strings.Replace(testServer.URL, "http://", "", -1)
@@ -222,7 +224,7 @@ func (s *ServerTestSuite) Test_Init_InvokesProxyCreateConfigFromTemplates() {
 		return []string{hostPort}, nil
 	}
 	c := NewCert("../certs")
-	c.ProxyServiceName = s.ServiceName
+	c.ProxyServiceName = s.serviceName
 	c.ServicePort = port
 	proxyOrig := proxy.Instance
 	defer func() { proxy.Instance = proxyOrig }()
@@ -234,7 +236,7 @@ func (s *ServerTestSuite) Test_Init_InvokesProxyCreateConfigFromTemplates() {
 	proxyMock.AssertCalled(s.T(), "CreateConfigFromTemplates")
 }
 
-func (s *ServerTestSuite) Test_Init_InvokesProxyReload() {
+func (s *CertTestSuite) Test_Init_InvokesProxyReload() {
 	testServer := s.getCertGetAllMockServer(1, 3)
 	defer func() { testServer.Close() }()
 	tsAddr := strings.Replace(testServer.URL, "http://", "", -1)
@@ -246,7 +248,7 @@ func (s *ServerTestSuite) Test_Init_InvokesProxyReload() {
 		return []string{hostPort}, nil
 	}
 	c := NewCert("../certs")
-	c.ProxyServiceName = s.ServiceName
+	c.ProxyServiceName = s.serviceName
 	c.ServicePort = port
 	proxyOrig := proxy.Instance
 	defer func() { proxy.Instance = proxyOrig }()
@@ -258,7 +260,7 @@ func (s *ServerTestSuite) Test_Init_InvokesProxyReload() {
 	proxyMock.AssertCalled(s.T(), "Reload")
 }
 
-func (s *ServerTestSuite) Test_Init_WritesCertToFile_WhenItComesFromTheBiggestResponse() {
+func (s *CertTestSuite) Test_Init_WritesCertToFile_WhenItComesFromTheBiggestResponse() {
 	testServer1 := s.getCertGetAllMockServer(1, 2)
 	testServer2 := s.getCertGetAllMockServer(3, 5)
 	defer func() {
@@ -281,7 +283,7 @@ func (s *ServerTestSuite) Test_Init_WritesCertToFile_WhenItComesFromTheBiggestRe
 	os.Remove(path2)
 	path3 := fmt.Sprintf("%s/%s", c.CertsDir, "my-cert-3.pem")
 	os.Remove(path3)
-	c.ProxyServiceName = s.ServiceName
+	c.ProxyServiceName = s.serviceName
 	proxyOrig := proxy.Instance
 	defer func() { proxy.Instance = proxyOrig }()
 	proxyMock := getProxyMock("")
@@ -296,11 +298,11 @@ func (s *ServerTestSuite) Test_Init_WritesCertToFile_WhenItComesFromTheBiggestRe
 	s.NoError(err)
 }
 
-func (s *ServerTestSuite) getCertGetAllMockServer(from, to int) *httptest.Server {
+func (s *CertTestSuite) getCertGetAllMockServer(from, to int) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		certs := []Cert{}
+		certs := []cert{}
 		for i := from; i <= to; i++ {
-			cert := Cert{
+			cert := cert{
 				ProxyServiceName: fmt.Sprintf("my-cert-%d.pem", i),
 				CertContent:      fmt.Sprintf("Content of my-cert-%d.pem", i),
 			}
@@ -720,6 +722,11 @@ func (m *ProxyMock) RemoveService(service string) {
 	m.Called(service)
 }
 
+func (m *ProxyMock) GetServices() map[string]proxy.Service {
+	params := m.Called()
+	return params.Get(0).(map[string]proxy.Service)
+}
+
 func (m *ProxyMock) GetCertPaths() []string {
 	params := m.Called()
 	return params.Get(0).([]string)
@@ -750,6 +757,9 @@ func getProxyMock(skipMethod string) *ProxyMock {
 	}
 	if skipMethod != "RemoveService" {
 		mockObj.On("RemoveService", mock.Anything)
+	}
+	if skipMethod != "GetServices" {
+		mockObj.On("GetServices").Return(map[string]proxy.Service{})
 	}
 	if skipMethod != "GetCertPaths" {
 		mockObj.On("GetCertPaths")

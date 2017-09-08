@@ -20,7 +20,6 @@ import (
 type ServerTestSuite struct {
 	suite.Suite
 	proxy.Service
-	ConsulAddress      string
 	BaseUrl            string
 	ReconfigureBaseUrl string
 	RemoveBaseUrl      string
@@ -48,26 +47,23 @@ func TestServerUnitTestSuite(t *testing.T) {
 
 func (s *ServerTestSuite) SetupTest() {
 	s.sd = proxy.ServiceDest{
-		ServicePath: []string{"/path/to/my/service/api", "/path/to/my/other/service/api"},
-		ReqMode:     "http",
+		ReqMode:       "http",
+		ServiceDomain: []string{"my-domain.com"},
+		ServicePath:   []string{"/path/to/my/service/api", "/path/to/my/other/service/api"},
 	}
 	s.Service.ServiceDest = []proxy.ServiceDest{s.sd}
 	s.InstanceName = "proxy-test-instance"
-	s.ConsulAddress = "http://1.2.3.4:1234"
 	s.ServiceName = "myService"
-	s.ServiceColor = "pink"
-	s.ServiceDomain = []string{"my-domain.com"}
 	s.OutboundHostname = "machine-123.my-company.com"
 	s.BaseUrl = "/v1/docker-flow-proxy"
 	s.ReconfigureBaseUrl = fmt.Sprintf("%s/reconfigure", s.BaseUrl)
 	s.RemoveBaseUrl = fmt.Sprintf("%s/remove", s.BaseUrl)
 	s.ReconfigureUrl = fmt.Sprintf(
-		"%s?serviceName=%s&serviceColor=%s&servicePath=%s&serviceDomain=%s&outboundHostname=%s",
+		"%s?serviceName=%s&servicePath=%s&serviceDomain=%s&outboundHostname=%s",
 		s.ReconfigureBaseUrl,
 		s.ServiceName,
-		s.ServiceColor,
 		strings.Join(s.sd.ServicePath, ","),
-		strings.Join(s.ServiceDomain, ","),
+		strings.Join(s.sd.ServiceDomain, ","),
 		s.OutboundHostname,
 	)
 	s.RemoveUrl = fmt.Sprintf("%s?serviceName=%s", s.RemoveBaseUrl, s.ServiceName)
@@ -80,10 +76,9 @@ func (s *ServerTestSuite) SetupTest() {
 	httpListenAndServe = func(addr string, handler http.Handler) error {
 		return nil
 	}
-	serverImpl = Serve{
+	serverImpl = serve{
 		BaseReconfigure: actions.BaseReconfigure{
-			ConsulAddresses: []string{s.ConsulAddress},
-			InstanceName:    s.InstanceName,
+			InstanceName: s.InstanceName,
 		},
 	}
 	logPrintfOrig := logPrintf
@@ -94,7 +89,7 @@ func (s *ServerTestSuite) SetupTest() {
 // Execute
 
 func (s *ServerTestSuite) Test_Execute_InvokesHTTPListenAndServe() {
-	serverImpl := Serve{
+	serverImpl := serve{
 		IP:   "myIp",
 		Port: "1234",
 	}
@@ -126,12 +121,12 @@ func (s *ServerTestSuite) Test_Execute_ReturnsError_WhenHTTPListenAndServeFails(
 }
 
 func (s *ServerTestSuite) Test_Execute_InvokesRunExecute() {
-	orig := NewRun
+	orig := newRun
 	defer func() {
-		NewRun = orig
+		newRun = orig
 	}()
 	mockObj := getRunMock("")
-	NewRun = func() runner {
+	newRun = func() runner {
 		return mockObj
 	}
 
@@ -157,38 +152,12 @@ func (s *ServerTestSuite) Test_Execute_InvokesCertInit() {
 	s.True(invoked)
 }
 
-func (s *ServerTestSuite) Test_Execute_InvokesReloadAllServices() {
-	actualAddresses := []string{}
-	actualInstanceName := ""
-	defer MockFetch(FetchMock{
-		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
-			actualAddresses = addresses
-			actualInstanceName = instanceName
-			return nil
-		},
-	})()
-
-	consulAddressesOrig := []string{s.ConsulAddress}
-	defer func() {
-		os.Unsetenv("CONSUL_ADDRESS")
-		serverImpl.ConsulAddresses = consulAddressesOrig
-	}()
-	os.Setenv("CONSUL_ADDRESS", s.ConsulAddress)
-
-	serverImpl.Execute([]string{})
-
-	s.Equal([]string{s.ConsulAddress}, actualAddresses)
-	s.Equal(s.InstanceName, actualInstanceName)
-}
-
 func (s *ServerTestSuite) Test_Execute_InvokesReconfigureExecuteForEachServiceDefinedInEnvVars() {
 	called := 0
 	defer MockServer(ServerMock{
 		GetServicesFromEnvVarsMock: func() *[]proxy.Service { return &[]proxy.Service{{}, {}} },
 	})()
-	defer MockFetch(FetchMock{
-		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error { return nil },
-	})()
+	defer MockFetch(FetchMock{})()
 	defer MockReconfigure(ReconfigureMock{
 		ExecuteMock: func(reloadAfter bool) error {
 			called++
@@ -204,21 +173,11 @@ func (s *ServerTestSuite) Test_Execute_InvokesReloadAllServicesWithListenerAddre
 	expectedListenerAddress := "swarm-listener"
 	actualListenerAddressChan := make(chan string)
 	defer MockFetch(FetchMock{
-		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
-			return nil
-		},
-		ReloadConfigMock: func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
+		ReloadConfigMock: func(baseData actions.BaseReconfigure, listenerAddr string) error {
 			actualListenerAddressChan <- listenerAddr
 			return nil
 		},
 	})()
-	consulAddressesOrig := []string{s.ConsulAddress}
-	defer func() {
-		os.Unsetenv("CONSUL_ADDRESS")
-		os.Unsetenv("LISTENER_ADDRESS")
-		serverImpl.ConsulAddresses = consulAddressesOrig
-	}()
-	os.Setenv("CONSUL_ADDRESS", s.ConsulAddress)
 	serverImpl.ListenerAddress = expectedListenerAddress
 
 	serverImpl.Execute([]string{})
@@ -233,10 +192,7 @@ func (s *ServerTestSuite) Test_Execute_RetriesContactingSwarmListenerAddress_Whe
 	actualListenerAddressChan := make(chan string)
 	callNum := 0
 	defer MockFetch(FetchMock{
-		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
-			return nil
-		},
-		ReloadConfigMock: func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
+		ReloadConfigMock: func(baseData actions.BaseReconfigure, listenerAddr string) error {
 			callNum = callNum + 1
 			actualListenerAddressChan <- fmt.Sprintf("%s-%d", listenerAddr, callNum)
 			if callNum == 2 {
@@ -246,13 +202,9 @@ func (s *ServerTestSuite) Test_Execute_RetriesContactingSwarmListenerAddress_Whe
 			return fmt.Errorf("On iteration %d", callNum)
 		},
 	})()
-	consulAddressesOrig := []string{s.ConsulAddress}
 	defer func() {
-		os.Unsetenv("CONSUL_ADDRESS")
 		os.Unsetenv("LISTENER_ADDRESS")
-		serverImpl.ConsulAddresses = consulAddressesOrig
 	}()
-	os.Setenv("CONSUL_ADDRESS", s.ConsulAddress)
 	serverImpl.ListenerAddress = expectedListenerAddress
 
 	serverImpl.Execute([]string{})
@@ -275,10 +227,7 @@ func (s *ServerTestSuite) Test_Execute_RepeatsContactingSwarmListenerAddress() {
 	actualListenerAddressChan := make(chan string)
 	callNum := 0
 	defer MockFetch(FetchMock{
-		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
-			return nil
-		},
-		ReloadConfigMock: func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
+		ReloadConfigMock: func(baseData actions.BaseReconfigure, listenerAddr string) error {
 			callNum = callNum + 1
 			if callNum <= 2 {
 				actualListenerAddressChan <- fmt.Sprintf("%s-%d", listenerAddr, callNum)
@@ -289,13 +238,9 @@ func (s *ServerTestSuite) Test_Execute_RepeatsContactingSwarmListenerAddress() {
 			return nil
 		},
 	})()
-	consulAddressesOrig := []string{s.ConsulAddress}
 	defer func() {
-		os.Unsetenv("CONSUL_ADDRESS")
 		os.Unsetenv("LISTENER_ADDRESS")
-		serverImpl.ConsulAddresses = consulAddressesOrig
 	}()
-	os.Setenv("CONSUL_ADDRESS", s.ConsulAddress)
 	serverImpl.ListenerAddress = expectedListenerAddress
 
 	serverImpl.Execute([]string{})
@@ -309,69 +254,6 @@ func (s *ServerTestSuite) Test_Execute_RepeatsContactingSwarmListenerAddress() {
 
 	s.Equal(fmt.Sprintf("http://%s:8080-1", expectedListenerAddress), actualListenerAddress1)
 	s.Equal(fmt.Sprintf("http://%s:8080-2", expectedListenerAddress), actualListenerAddress2)
-}
-
-func (s *ServerTestSuite) Test_Execute_ReturnsError_WhenReloadAllServicesFails() {
-	defer MockFetch(FetchMock{
-		ReloadServicesFromRegistryMock: func(addresses []string, instanceName, mode string) error {
-			return fmt.Errorf("This is an error")
-		},
-	})()
-	actual := serverImpl.Execute([]string{})
-	s.Error(actual)
-}
-
-func (s *ServerTestSuite) Test_Execute_SetsConsulAddressesToEmptySlice_WhenEnvVarIsNotset() {
-	srv := Serve{}
-
-	srv.Execute([]string{})
-
-	s.Equal([]string{}, srv.ConsulAddresses)
-}
-
-func (s *ServerTestSuite) Test_Execute_SetsConsulAddresses() {
-	expected := "http://my-consul"
-	consulAddressesOrig := serverImpl.ConsulAddresses
-	defer func() {
-		os.Unsetenv("CONSUL_ADDRESS")
-		serverImpl.ConsulAddresses = consulAddressesOrig
-	}()
-	os.Setenv("CONSUL_ADDRESS", expected)
-	srv := Serve{}
-
-	srv.Execute([]string{})
-
-	s.Equal([]string{expected}, srv.ConsulAddresses)
-}
-
-func (s *ServerTestSuite) Test_Execute_SetsMultipleConsulAddresseses() {
-	expected := []string{"http://my-consul-1", "http://my-consul-2"}
-	consulAddressesOrig := serverImpl.ConsulAddresses
-	defer func() {
-		os.Unsetenv("CONSUL_ADDRESS")
-		serverImpl.ConsulAddresses = consulAddressesOrig
-	}()
-	os.Setenv("CONSUL_ADDRESS", strings.Join(expected, ","))
-	srv := Serve{}
-
-	srv.Execute([]string{})
-
-	s.Equal(expected, srv.ConsulAddresses)
-}
-
-func (s *ServerTestSuite) Test_Execute_AddsHttpToConsulAddresses() {
-	expected := []string{"http://my-consul-1", "http://my-consul-2"}
-	consulAddressesOrig := serverImpl.ConsulAddresses
-	defer func() {
-		os.Unsetenv("CONSUL_ADDRESS")
-		serverImpl.ConsulAddresses = consulAddressesOrig
-	}()
-	os.Setenv("CONSUL_ADDRESS", "my-consul-1,my-consul-2")
-	srv := Serve{}
-
-	srv.Execute([]string{})
-
-	s.Equal(expected, srv.ConsulAddresses)
 }
 
 // CertPutHandler
@@ -388,8 +270,8 @@ func (s *ServerTestSuite) Test_CertPutHandler_InvokesCertPut_WhenUrlIsCert() {
 	}
 	req, _ := http.NewRequest("PUT", s.CertUrl, nil)
 
-	srv := Serve{}
-	srv.CertPutHandler(s.ResponseWriter, req)
+	srv := serve{}
+	srv.certPutHandler(s.ResponseWriter, req)
 
 	s.Assert().True(invoked)
 }
@@ -408,54 +290,10 @@ func (s *ServerTestSuite) Test_CertsHandler_InvokesCertGetAll_WhenUrlIsCerts() {
 	}
 	req, _ := http.NewRequest("GET", s.CertsUrl, nil)
 
-	srv := Serve{}
-	srv.CertsHandler(s.ResponseWriter, req)
+	srv := serve{}
+	srv.certsHandler(s.ResponseWriter, req)
 
 	s.Assert().True(invoked)
-}
-
-// ServeHTTP > Config
-
-func (s *ServerTestSuite) Test_ConfigHandler_SetsContentTypeToText_WhenUrlIsConfig() {
-	var actual string
-	httpWriterSetContentType = func(w http.ResponseWriter, value string) {
-		actual = value
-	}
-	req, _ := http.NewRequest("GET", s.ConfigUrl, nil)
-
-	srv := Serve{}
-	srv.ConfigHandler(s.ResponseWriter, req)
-
-	s.Equal("text/html", actual)
-}
-
-func (s *ServerTestSuite) Test_ConfigHandler_ReturnsConfig_WhenUrlIsConfig() {
-	expected := "some text"
-	readFileOrig := proxy.ReadFile
-	defer func() { proxy.ReadFile = readFileOrig }()
-	proxy.ReadFile = func(filename string) ([]byte, error) {
-		return []byte(expected), nil
-	}
-
-	req, _ := http.NewRequest("GET", s.ConfigUrl, nil)
-	srv := Serve{}
-	srv.ConfigHandler(s.ResponseWriter, req)
-
-	s.ResponseWriter.AssertCalled(s.T(), "Write", []byte(expected))
-}
-
-func (s *ServerTestSuite) Test_ConfigHandler_ReturnsStatus500_WhenReadFileFails() {
-	readFileOrig := readFile
-	defer func() { readFile = readFileOrig }()
-	readFile = func(filename string) ([]byte, error) {
-		return []byte(""), fmt.Errorf("This is an error")
-	}
-
-	req, _ := http.NewRequest("GET", s.ConfigUrl, nil)
-	srv := Serve{}
-	srv.ConfigHandler(s.ResponseWriter, req)
-
-	s.ResponseWriter.AssertCalled(s.T(), "WriteHeader", 500)
 }
 
 // Mock
@@ -522,7 +360,7 @@ type ServerMock struct {
 
 func MockServer(mock ServerMock) func() {
 	newServerOrig := server.NewServer
-	server.NewServer = func(listenerAddr, mode, port, serviceName, configsPath, templatesPath string, consulAddresses []string, cert server.Certer) server.Server {
+	server.NewServer = func(listenerAddr, port, serviceName, configsPath, templatesPath string, cert server.Certer) server.Server {
 		return mock
 	}
 	return func() { server.NewServer = newServerOrig }
@@ -585,7 +423,7 @@ type ReconfigureMock struct {
 
 func MockReconfigure(mock ReconfigureMock) func() {
 	newReconfigureOrig := actions.NewReconfigure
-	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service, mode string) actions.Reconfigurable {
+	actions.NewReconfigure = func(baseData actions.BaseReconfigure, serviceData proxy.Service) actions.Reconfigurable {
 		return mock
 	}
 	return func() { actions.NewReconfigure = newReconfigureOrig }
@@ -607,38 +445,24 @@ type ReloadMock struct {
 	ExecuteMock func(recreate bool) error
 }
 
-func MockReload(mock ReloadMock) func() {
-	newFetchOrig := actions.NewReload
-	actions.NewReload = func() actions.Reloader {
-		return mock
-	}
-	return func() {
-		actions.NewReload = newFetchOrig
-	}
-}
-
 func (m ReloadMock) Execute(recreate bool) error {
 	return m.ExecuteMock(recreate)
 }
 
 type FetchMock struct {
-	ReloadServicesFromRegistryMock func(addresses []string, instanceName, mode string) error
-	ReloadClusterConfigMock        func(listenerAddr string) error
-	ReloadConfigMock               func(baseData actions.BaseReconfigure, mode string, listenerAddr string) error
+	ReloadClusterConfigMock func(listenerAddr string) error
+	ReloadConfigMock        func(baseData actions.BaseReconfigure, listenerAddr string) error
 }
 
-func (m *FetchMock) ReloadServicesFromRegistry(addresses []string, instanceName, mode string) error {
-	return m.ReloadServicesFromRegistryMock(addresses, instanceName, mode)
-}
 func (m FetchMock) ReloadClusterConfig(listenerAddr string) error {
 	return m.ReloadClusterConfigMock(listenerAddr)
 }
-func (m FetchMock) ReloadConfig(baseData actions.BaseReconfigure, mode string, listenerAddr string) error {
-	return m.ReloadConfigMock(baseData, mode, listenerAddr)
+func (m FetchMock) ReloadConfig(baseData actions.BaseReconfigure, listenerAddr string) error {
+	return m.ReloadConfigMock(baseData, listenerAddr)
 }
 func MockFetch(mock FetchMock) func() {
 	newFetchOrig := actions.NewFetch
-	actions.NewFetch = func(baseData actions.BaseReconfigure, mode string) actions.Fetchable {
+	actions.NewFetch = func(baseData actions.BaseReconfigure) actions.Fetchable {
 		return &mock
 	}
 	return func() {

@@ -5,13 +5,13 @@ import (
 	"os"
 )
 
-type Args struct{}
+type args struct{}
 
-var NewArgs = func() Args {
-	return Args{}
+var newArgs = func() args {
+	return args{}
 }
 
-func (a Args) Parse() error {
+func (a args) parse() error {
 	parser := flags.NewParser(nil, flags.Default)
 	parser.AddCommand("server", "Runs the server", "Runs the server", &serverImpl)
 	parser.ParseArgs(os.Args[1:])

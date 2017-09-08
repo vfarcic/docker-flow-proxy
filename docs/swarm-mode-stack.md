@@ -1,4 +1,4 @@
-# Using Docker Stack To Run Docker Flow Proxy In Swarm Mode
+# Using Docker Stack To Run Docker Flow Proxy
 
 This article assumes that you already understand how *Docker Flow Proxy* works. If you don't, please visit the [Running Docker Flow Proxy In Swarm Mode With Automatic Reconfiguration](swarm-mode-auto.md) page for a tutorial.
 

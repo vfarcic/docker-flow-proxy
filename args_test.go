@@ -12,7 +12,7 @@ import (
 
 type ArgsTestSuite struct {
 	suite.Suite
-	args Args
+	args args
 }
 
 func (s *ArgsTestSuite) SetupTest() {
@@ -24,9 +24,9 @@ func (s *ArgsTestSuite) SetupTest() {
 // NewArgs
 
 func (s ArgsTestSuite) Test_NewArgs_ReturnsNewStruct() {
-	a := NewArgs()
+	a := newArgs()
 
-	s.IsType(Args{}, a)
+	s.IsType(args{}, a)
 }
 
 // Parse > Server
@@ -40,13 +40,12 @@ func (s ArgsTestSuite) Test_Parse_ParsesServerLongArgs() {
 	}{
 		{"ipFromArgs", "ip", &serverImpl.IP},
 		{"portFromArgs", "port", &serverImpl.Port},
-		{"modeFromArgs", "mode", &serverImpl.Mode},
 	}
 
 	for _, d := range data {
 		os.Args = append(os.Args, fmt.Sprintf("--%s", d.key), d.expected)
 	}
-	Args{}.Parse()
+	args{}.parse()
 	for _, d := range data {
 		s.Equal(d.expected, *d.value)
 	}
@@ -61,13 +60,12 @@ func (s ArgsTestSuite) Test_Parse_ParsesServerShortArgs() {
 	}{
 		{"ipFromArgs", "i", &serverImpl.IP},
 		{"portFromArgs", "p", &serverImpl.Port},
-		{"modeFromArgs", "m", &serverImpl.Mode},
 	}
 
 	for _, d := range data {
 		os.Args = append(os.Args, fmt.Sprintf("-%s", d.key), d.expected)
 	}
-	Args{}.Parse()
+	args{}.parse()
 	for _, d := range data {
 		s.Equal(d.expected, *d.value)
 	}
@@ -85,7 +83,7 @@ func (s ArgsTestSuite) Test_Parse_ServerHasDefaultValues() {
 		{"8080", &serverImpl.Port},
 	}
 
-	Args{}.Parse()
+	args{}.parse()
 	for _, d := range data {
 		s.Equal(d.expected, *d.value)
 	}
@@ -100,13 +98,12 @@ func (s ArgsTestSuite) Test_Parse_ServerDefaultsToEnvVars() {
 	}{
 		{"ipFromEnv", "IP", &serverImpl.IP},
 		{"portFromEnv", "PORT", &serverImpl.Port},
-		{"modeFromEnv", "MODE", &serverImpl.Mode},
 	}
 
 	for _, d := range data {
 		os.Setenv(d.key, d.expected)
 	}
-	Args{}.Parse()
+	args{}.parse()
 	for _, d := range data {
 		s.Equal(d.expected, *d.value)
 	}

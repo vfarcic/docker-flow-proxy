@@ -2,7 +2,6 @@ package actions
 
 import (
 	"../proxy"
-	"../registry"
 	"bytes"
 	"fmt"
 	"html/template"
@@ -28,25 +27,20 @@ type Reconfigurable interface {
 type Reconfigure struct {
 	BaseReconfigure
 	proxy.Service
-	Mode string `short:"m" long:"mode" env:"MODE" description:"If set to 'swarm', proxy will operate assuming that Docker service from v1.12+ is used."`
 }
 
 // BaseReconfigure contains base data required to reconfigure the proxy
 type BaseReconfigure struct {
-	ConsulAddresses []string
-	ConfigsPath     string `short:"c" long:"configs-path" default:"/cfg" description:"The path to the configurations directory"`
-	InstanceName    string `long:"proxy-instance-name" env:"PROXY_INSTANCE_NAME" default:"docker-flow" required:"true" description:"The name of the proxy instance."`
-	TemplatesPath   string `short:"t" long:"templates-path" default:"/cfg/tmpl" description:"The path to the templates directory"`
+	ConfigsPath   string `short:"c" long:"configs-path" default:"/cfg" description:"The path to the configurations directory"`
+	InstanceName  string `long:"proxy-instance-name" env:"PROXY_INSTANCE_NAME" default:"docker-flow" required:"true" description:"The name of the proxy instance."`
+	TemplatesPath string `short:"t" long:"templates-path" default:"/cfg/tmpl" description:"The path to the templates directory"`
 }
 
-var reconfigureInstance Reconfigure
-
 // NewReconfigure creates new instance of the Reconfigurable interface
-var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, mode string) Reconfigurable {
+var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service) Reconfigurable {
 	return &Reconfigure{
 		BaseReconfigure: baseData,
 		Service:         serviceData,
-		Mode:            mode,
 	}
 }
 
@@ -54,7 +48,7 @@ var NewReconfigure = func(baseData BaseReconfigure, serviceData proxy.Service, m
 func (m *Reconfigure) Execute(reloadAfter bool) error {
 	mu.Lock()
 	defer mu.Unlock()
-	if isSwarm(m.Mode) && strings.EqualFold(os.Getenv("SKIP_ADDRESS_VALIDATION"), "false") {
+	if strings.EqualFold(os.Getenv("SKIP_ADDRESS_VALIDATION"), "false") {
 		host := m.ServiceName
 		if len(m.OutboundHostname) > 0 {
 			host = m.OutboundHostname
@@ -71,21 +65,18 @@ func (m *Reconfigure) Execute(reloadAfter bool) error {
 		proxy.Instance.AddService(m.Service)
 	}
 	if reloadAfter {
-		reload := Reload{}
+		reload := reload{}
 		if err := reload.Execute(true); err != nil {
 			logPrintf(err.Error())
+			action := NewRemove(
+				m.Service.ServiceName,
+				m.Service.AclName,
+				m.ConfigsPath,
+				m.TemplatesPath,
+				m.InstanceName,
+			)
+			action.Execute([]string{})
 			return err
-		}
-		//MW: this happens only when reloadAfter is requested
-		//its little ugly because it should not happen when
-		//reconfiguration is made from consul config
-		//but in that case we never call it with reloadAfter
-		//see Fetch.reloadFromRegistry
-		if len(m.ConsulAddresses) > 0 || !isSwarm(m.Mode) {
-			if err := m.putToConsul(m.ConsulAddresses, m.Service, m.InstanceName); err != nil {
-				logPrintf(err.Error())
-				return err
-			}
 		}
 	}
 	return nil
@@ -107,33 +98,22 @@ func (m *Reconfigure) GetTemplates() (front, back string, err error) {
 			sr.ServiceDest[i].ReqMode = "http"
 		}
 	}
-	if len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0 { // TODO: Deprecated (Consul). Remove it.
-		front, err = m.getConsulTemplateFromFile(sr.ConsulTemplateFePath)
+	m.formatData(sr)
+	if len(sr.TemplateFePath) > 0 {
+		feTmpl, err := readTemplateFile(sr.TemplateFePath)
 		if err != nil {
 			return "", "", err
 		}
-		back, err = m.getConsulTemplateFromFile(sr.ConsulTemplateBePath)
+		front = m.parseFrontTemplate(string(feTmpl), sr)
+	}
+	if len(sr.TemplateBePath) > 0 {
+		beTmpl, err := readTemplateFile(sr.TemplateBePath)
 		if err != nil {
 			return "", "", err
 		}
+		back = m.parseBackTemplate(string(beTmpl), "", sr)
 	} else {
-		m.formatData(sr)
-		if len(sr.TemplateFePath) > 0 {
-			feTmpl, err := readTemplateFile(sr.TemplateFePath)
-			if err != nil {
-				return "", "", err
-			}
-			front = m.parseFrontTemplate(string(feTmpl), sr)
-		}
-		if len(sr.TemplateBePath) > 0 {
-			beTmpl, err := readTemplateFile(sr.TemplateBePath)
-			if err != nil {
-				return "", "", err
-			}
-			back = m.parseBackTemplate(string(beTmpl), "", sr)
-		} else {
-			back = m.parseBackTemplate(proxy.GetBackTemplate(sr, m.Mode), m.getUsersList(sr), sr)
-		}
+		back = m.parseBackTemplate(proxy.GetBackTemplate(sr), m.getUsersList(sr), sr)
 	}
 	return front, back, nil
 }
@@ -146,53 +126,13 @@ func (m *Reconfigure) createConfigs() error {
 	if err != nil {
 		return err
 	}
-	if strings.EqualFold(m.Mode, "service") || strings.EqualFold(m.Mode, "swarm") {
-		if len(sr.AclName) == 0 {
-			sr.AclName = sr.ServiceName
-		}
-		destFe := fmt.Sprintf("%s/%s-fe.cfg", templatesPath, sr.AclName)
-		writeFeTemplate(destFe, []byte(feTemplate), 0664)
-		destBe := fmt.Sprintf("%s/%s-be.cfg", templatesPath, sr.AclName)
-		writeBeTemplate(destBe, []byte(beTemplate), 0664)
-	} else {
-		args := registry.CreateConfigsArgs{
-			Addresses:     m.ConsulAddresses,
-			TemplatesPath: templatesPath,
-			FeFile:        serviceTemplateFeFilename,
-			FeTemplate:    feTemplate,
-			BeFile:        serviceTemplateBeFilename,
-			BeTemplate:    beTemplate,
-			ServiceName:   sr.ServiceName,
-		}
-		if err = registryInstance.CreateConfigs(&args); err != nil {
-			return err
-		}
+	if len(sr.AclName) == 0 {
+		sr.AclName = sr.ServiceName
 	}
-	return nil
-}
-
-func (m *Reconfigure) putToConsul(addresses []string, sr proxy.Service, instanceName string) error {
-	path := []string{}
-	port := ""
-	if len(sr.ServiceDest) > 0 {
-		path = sr.ServiceDest[0].ServicePath
-		port = sr.ServiceDest[0].Port
-	}
-	r := registry.Registry{
-		ServiceName:          sr.ServiceName,
-		ServiceColor:         sr.ServiceColor,
-		ServicePath:          path,
-		ServiceDomain:        sr.ServiceDomain,
-		ServiceCert:          sr.ServiceCert,
-		OutboundHostname:     sr.OutboundHostname,
-		PathType:             sr.PathType,
-		ConsulTemplateFePath: sr.ConsulTemplateFePath,
-		ConsulTemplateBePath: sr.ConsulTemplateBePath,
-		Port:                 port,
-	}
-	if err := registryInstance.PutService(addresses, instanceName, r); err != nil {
-		return err
-	}
+	destFe := fmt.Sprintf("%s/%s-fe.cfg", templatesPath, sr.AclName)
+	writeFeTemplate(destFe, []byte(feTemplate), 0664)
+	destBe := fmt.Sprintf("%s/%s-be.cfg", templatesPath, sr.AclName)
+	writeBeTemplate(destBe, []byte(beTemplate), 0664)
 	return nil
 }
 
@@ -205,11 +145,6 @@ func (m *Reconfigure) formatData(sr *proxy.Service) {
 	sr.Host = m.ServiceName
 	if len(m.OutboundHostname) > 0 {
 		sr.Host = m.OutboundHostname
-	}
-	if len(sr.ServiceColor) > 0 {
-		sr.FullServiceName = fmt.Sprintf("%s-%s", sr.ServiceName, sr.ServiceColor)
-	} else {
-		sr.FullServiceName = sr.ServiceName
 	}
 	if len(sr.PathType) == 0 {
 		sr.PathType = "path_beg"
@@ -252,19 +187,6 @@ func (m *Reconfigure) parseBackTemplate(src, usersList string, sr *proxy.Service
 	return bufUsersList.String() + buf.String()
 }
 
-// TODO: Deprecated (Consul). Remove it.
-func (m *Reconfigure) getConsulTemplateFromFile(path string) (string, error) {
-	content, err := readTemplateFile(path)
-	if err != nil {
-		return "", fmt.Errorf("Could not read the file %s\n%s", path, err.Error())
-	}
-	return string(content), nil
-}
-
-// TODO: Deprecated (Consul). Remove it.
 func (m *Reconfigure) hasTemplate() bool {
-	return len(m.ConsulTemplateBePath) != 0 ||
-		len(m.ConsulTemplateFePath) != 0 ||
-		len(m.TemplateBePath) != 0 ||
-		len(m.TemplateFePath) != 0
+	return len(m.TemplateBePath) != 0 || len(m.TemplateFePath) != 0
 }

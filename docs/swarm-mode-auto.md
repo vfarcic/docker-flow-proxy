@@ -1,4 +1,4 @@
-# Running Docker Flow Proxy In Swarm Mode With Automatic Reconfiguration
+# Running Docker Flow Proxy With Automatic Reconfiguration
 
 *Docker Flow Proxy* running in the *Swarm Mode* is designed to leverage the features introduced in *Docker v1.12+*.
 
@@ -77,12 +77,14 @@ docker service create --name proxy \
     -p 80:80 \
     -p 443:443 \
     --network proxy \
-    -e MODE=swarm \
     -e LISTENER_ADDRESS=swarm-listener \
     vfarcic/docker-flow-proxy
 ```
 
-We opened the ports *80* and *443*. External requests will be routed through them towards destination services. The proxy is attached to the *proxy* network and has the mode set to *swarm*. The proxy must belong to the same network as the listener. They will exchange information whenever a service is created or removed.
+We opened the ports *80* and *443*. External requests will be routed through them towards destination services. The proxy is attached to the *proxy* network. The proxy must belong to the same network as the listener. They will exchange information whenever a service is created or removed.
+
+!!! info
+	If you name the service something other than *proxy*, you have to pass the environment variable `SERVICE_NAME` on creation. The value of `SERVICE_NAME` has to be the same as the name of the service.
 
 Let's deploy the demo service. It consists of two containers; *mongo* is the database and *vfarcic/go-demo* is the actual service that uses it. They will communicate with each other through the *go-demo* network. Since we want to expose only *vfarcic/go-demo* to the "outside" world and keep the database "private", only the *vfarcic/go-demo* container will attach itself to the *proxy* network.
 
@@ -341,6 +343,8 @@ As an example, we'll create the `go-demo` service that will be configured in the
 The command is as follows.
 
 ```bash
+docker service rm go-demo
+
 docker service create --name go-demo \
     -e DB=go-demo-db \
     --network go-demo \
@@ -378,6 +382,26 @@ hello, world!
 
 We sent a request to `/something/hello`. The proxy accepted the request, rewrote the path to `/demo/hello`, and forwarded it to the `go-demo` service.
 
+The `reqPathSearch` label accepts regular expressions. We can, for example, rewrite any path that starts with `/something/` to `/demo/hello`.
+
+```bash
+docker service update \
+    --label-add com.df.reqPathSearch='/something/.*' \
+    --label-add com.df.reqPathReplace='/demo/hello' \
+    go-demo
+```
+
+Let's check whether it works as expected.
+
+```bash
+curl -i $(docker-machine ip node-1)/something/hello
+
+curl -i $(docker-machine ip node-1)/something/else
+
+curl -i $(docker-machine ip node-1)/something/totaly/different
+```
+
+All three requests resulted in the same response. Everything that starts with `/something/` is rewritten to `/demo/hello`.
 
 Let's remove the `go-demo` service before we proceed with *authentication*.
 

@@ -1,11 +1,11 @@
 package server
 
-type ReloadParams struct {
+type reloadParams struct {
 	Recreate     bool `schema:"recreate"`
 	FromListener bool `schema:"fromListener"`
 }
 
-type RemoveParams struct {
+type removeParams struct {
 	AclName     string `schema:"aclName"`
 	Distribute  bool   `schema:"distribute"`
 	ServiceName string `schema:"serviceName"`

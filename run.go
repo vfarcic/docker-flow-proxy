@@ -6,12 +6,13 @@ type runner interface {
 	Execute(args []string) error
 }
 
-type Run struct{}
+type run struct{}
 
-var NewRun = func() runner {
-	return &Run{}
+var newRun = func() runner {
+	return &run{}
 }
 
-func (m *Run) Execute(args []string) error {
+// Execute runs the proxy
+func (m *run) Execute(args []string) error {
 	return haproxy.HaProxy{}.RunCmd([]string{})
 }

@@ -38,5 +38,5 @@ defaults
 {{.Stats}}
 {{.UserList}}
 frontend services{{.DefaultBinds}}
-    mode http
+    mode {{.DefaultReqMode}}
 {{.ExtraFrontend}}{{.ContentFrontend}}{{.ContentFrontendTcp}}{{.ContentFrontendSNI}}

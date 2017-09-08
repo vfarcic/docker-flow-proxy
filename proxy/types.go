@@ -10,6 +10,14 @@ var usersBasePath string = "/run/secrets/dfp_users_%s"
 
 // ServiceDest holds data used to generate proxy configuration. It is extracted as a separate struct since a single service can have multiple combinations.
 type ServiceDest struct {
+	// The list of allowed methods. If specified, a request with a method that is not on the list will be denied.
+	AllowedMethods []string
+	// The list of denied methods. If specified, a request with a method that is on the list will be denied.
+	DeniedMethods []string
+	// Whether to deny HTTP requests thus allowing only HTTPS.
+	DenyHttp bool
+	// Whether to redirect all http requests to https
+	HttpsOnly bool
 	// Whether to ignore authorization for this service destination.
 	IgnoreAuthorization bool
 	// The internal port of a service that should be reconfigured.
@@ -20,6 +28,11 @@ type ServiceDest struct {
 	ReqMode string
 	// Internal use only. Do not modify.
 	ReqModeFormatted string
+	// The domain of the service.
+	// If set, the proxy will allow access only to requests coming to that domain.
+	ServiceDomain []string
+	// Headers used to filter requests
+	ServiceHeader map[string]string
 	// The URL path of the service.
 	ServicePath []string
 	// The source (entry) port of a service.
@@ -33,6 +46,8 @@ type ServiceDest struct {
 	VerifyClientSsl bool
 	// If specified, only requests with the same agent will be forwarded to the backend.
 	UserAgent UserAgent
+	// Internal use only
+	Index int
 }
 
 // UserAgent holds data used to generate proxy configuration. It is extracted as a separate struct since each user agent needs an ACL identifier. If specified, only requests with the same agent will be forwarded to the backend.
@@ -65,14 +80,10 @@ type Service struct {
 	// Connection mode is restricted to HTTP mode only.
 	// If specified, connection mode will be applied to the backend section.
 	ConnectionMode string `split_words:"true"`
-	// The path to the Consul Template representing a snippet of the backend configuration.
-	// If set, proxy template will be loaded from the specified file.
-	ConsulTemplateBePath string `split_words:"true"`
-	// The path to the Consul Template representing a snippet of the frontend configuration.
-	// If specified, proxy template will be loaded from the specified file.
-	ConsulTemplateFePath string `split_words:"true"`
 	// Internal use only
 	Debug bool
+	// Internal use only
+	DebugFormat string
 	// Additional headers that will be deleted in the request before forwarding it to the service. Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-request for more info.
 	DelReqHeader []string `split_words:"true"`
 	// Additional headers that will be deleted in the response before forwarding it to the client. Please consult https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-response for more info.
@@ -80,8 +91,6 @@ type Service struct {
 	// Whether to distribute a request to all the instances of the proxy.
 	// Used only in the swarm mode.
 	Distribute bool `split_words:"true"`
-	// Whether to redirect all http requests to https
-	HttpsOnly bool `split_words:"true"`
 	// The internal HTTPS port of a service that should be reconfigured.
 	// The port is used only in the swarm mode.
 	// If not specified, the `port` parameter will be used instead.
@@ -94,8 +103,6 @@ type Service struct {
 	// The ACL derivative. Defaults to path_beg.
 	// See https://cbonte.github.io/haproxy-dconv/configuration-1.5.html#7.3.6-path for more info.
 	PathType string `split_words:"true"`
-	// TODO: Remove it. It is a temporary workaround until Consul mode is removed.
-	ProxyMode string
 	// Whether to redirect to https when X-Forwarded-Proto is http
 	RedirectWhenHttpProto bool `split_words:"true"`
 	// A regular expression to apply the modification.
@@ -106,14 +113,13 @@ type Service struct {
 	ReqPathSearch string `split_words:"true"`
 	// Content of the PEM-encoded certificate to be used by the proxy when serving traffic over SSL.
 	ServiceCert string `split_words:"true"`
-	// The domain of the service.
-	// If set, the proxy will allow access only to requests coming to that domain.
-	ServiceDomain []string `split_words:"true"`
-	// Whether to include subdomains and FDQN domains in the match. If set to false, and, for example, `serviceDomain` is set to `acme.com`, `something.acme.com` would not be considered a match unless this parameter is set to `true`. If this option is used, it is recommended to put any subdomains higher in the list using `aclName`.
-	ServiceDomainMatchAll bool `split_words:"true"`
+	// The algorithm that should be applied to domain acl. The default value is `hdr(host)`.
+	ServiceDomainAlgo string
 	// The name of the service.
-	// It must match the name of the Swarm service or the one stored in Consul.
+	// It must match the name of the Swarm service.
 	ServiceName string `split_words:"true"`
+	// Determines the type of sticky sessions. If set to `sticky-server`, session cookie will be set by the proxy. Any other value means that sticky sessions are not used and load balancing is performed by Docker's Overlay network. Please open an issue if you'd like support for other types of sticky sessions.
+	SessionType string `split_words:"true"`
 	// Additional headers that will be set to the request before forwarding it to the service. If a specified header exists, it will be replaced with the new one.
 	SetReqHeader []string `split_words:"true"`
 	// Additional headers that will be set to the response before forwarding it to the client. If a specified header exists, it will be replaced with the new one.
@@ -139,15 +145,15 @@ type Service struct {
 	// A comma-separated list of credentials(<user>:<pass>) for HTTP basic auth, which applies only to the service that will be reconfigured.
 	Users []User `split_words:"true"`
 	// Whether to add "X-Forwarded-Proto https" header.
-	XForwardedProto     bool `envconfig:"x_forwarded_proto" split_words:"true"`
-	ServiceColor        string
+	XForwardedProto bool `envconfig:"x_forwarded_proto" split_words:"true"`
+	// The rest of variables are for internal use only
 	ServicePort         string
 	AclCondition        string
-	FullServiceName     string
 	Host                string
 	LookupRetry         int
 	LookupRetryInterval int
 	ServiceDest         []ServiceDest
+	Tasks               []string
 }
 
 // Services contains the list of services used inside the proxy
@@ -175,10 +181,14 @@ func (slice Services) Less(i, j int) bool {
 	}
 }
 
+func (slice Services) Swap(i, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
+}
+
 func hasRoot(service Service) bool {
 	for _, sd := range service.ServiceDest {
 		for _, path := range sd.ServicePath {
-			if path == "/" {
+			if path == "/" && len(sd.ServiceDomain) == 0 {
 				return true
 			}
 		}
@@ -195,10 +205,6 @@ func hasWellKnown(service Service) bool {
 		}
 	}
 	return false
-}
-
-func (slice Services) Swap(i, j int) {
-	slice[i], slice[j] = slice[j], slice[i]
 }
 
 func extractUsersFromString(context, usersString string, encrypted, skipEmptyPassword bool) []*User {
@@ -258,11 +264,12 @@ func GetServiceFromMap(req *map[string]string) *Service {
 func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	sr := new(Service)
 	provider.Fill(sr)
+	// TODO: Remove. It's added to maintain backwards compatibility with the deprecated parameter serviceDomainMatchAll (since July 2017)
+	if strings.EqualFold(provider.GetString("serviceDomainMatchAll"), "true") {
+		sr.ServiceDomainAlgo = "hdr_dom(host)"
+	}
 	if len(provider.GetString("httpsPort")) > 0 {
 		sr.HttpsPort, _ = strconv.Atoi(provider.GetString("httpsPort"))
-	}
-	if len(provider.GetString("serviceDomain")) > 0 {
-		sr.ServiceDomain = strings.Split(provider.GetString("serviceDomain"), ",")
 	}
 	if len(provider.GetString("addReqHeader")) > 0 {
 		sr.AddReqHeader = strings.Split(provider.GetString("addReqHeader"), ",")
@@ -286,8 +293,11 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	if len(provider.GetString("delResHeader")) > 0 {
 		sr.DelResHeader = strings.Split(provider.GetString("delResHeader"), ",")
 	}
-	globalUsersString := GetSecretOrEnvVar("USERS", "")
-	globalUsersEncrypted := strings.EqualFold(GetSecretOrEnvVar("USERS_PASS_ENCRYPTED", ""), "true")
+	if len(sr.SessionType) > 0 {
+		sr.Tasks, _ = lookupHost("tasks." + sr.ServiceName)
+	}
+	globalUsersString := getSecretOrEnvVar("USERS", "")
+	globalUsersEncrypted := strings.EqualFold(getSecretOrEnvVar("USERS_PASS_ENCRYPTED", ""), "true")
 	sr.Users = mergeUsers(
 		sr.ServiceName,
 		provider.GetString("users"),
@@ -304,12 +314,16 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 func getServiceDestList(sr *Service, provider ServiceParameterProvider) []ServiceDest {
 	sdList := []ServiceDest{}
 	sd := getServiceDest(sr, provider, -1)
-	if isServiceDestValid(&sd) || (len(sr.ConsulTemplateFePath) > 0 && len(sr.ConsulTemplateBePath) > 0) {
+	serviceDomain := []string{}
+	if isServiceDestValid(&sd) {
 		sdList = append(sdList, sd)
+	} else {
+		serviceDomain = sd.ServiceDomain
 	}
+	httpsOnly := sd.HttpsOnly
 	for i := 1; i <= 10; i++ {
 		sd := getServiceDest(sr, provider, i)
-		if isIndexedServiceDestValid(&sd) {
+		if isServiceDestValid(&sd) {
 			sdList = append(sdList, sd)
 		} else {
 			break
@@ -322,11 +336,14 @@ func getServiceDestList(sr *Service, provider ServiceParameterProvider) []Servic
 		}
 		sdList = append(sdList, ServiceDest{ReqMode: reqMode})
 	}
-	if len(sr.ServiceDomain) > 0 {
-		for i := range sdList {
-			if len(sdList[i].ServicePath) == 0 {
-				sdList[i].ServicePath = []string{"/"}
-			}
+	for i, sd := range sdList {
+		if len(sd.ServiceDomain) > 0 && len(sd.ServicePath) == 0 {
+			sdList[i].ServicePath = []string{"/"}
+		} else if len(sd.ServiceDomain) == 0 && len(serviceDomain) > 0 {
+			sdList[i].ServiceDomain = serviceDomain
+		}
+		if httpsOnly && !sd.HttpsOnly {
+			sdList[i].HttpsOnly = true
 		}
 	}
 	return sdList
@@ -337,11 +354,7 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 	if index > 0 {
 		suffix = fmt.Sprintf(".%d", index)
 	}
-	path := []string{}
 	userAgent := UserAgent{}
-	if len(provider.GetString(fmt.Sprintf("servicePath%s", suffix))) > 0 {
-		path = strings.Split(provider.GetString(fmt.Sprintf("servicePath%s", suffix)), ",")
-	}
 	if len(provider.GetString(fmt.Sprintf("userAgent%s", suffix))) > 0 {
 		userAgent.Value = strings.Split(provider.GetString(fmt.Sprintf("userAgent%s", suffix)), ",")
 		userAgent.AclName = replaceNonAlphabetAndNumbers(userAgent.Value)
@@ -351,24 +364,48 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 		reqMode = provider.GetString(fmt.Sprintf("reqMode%s", suffix))
 	}
 	srcPort, _ := strconv.Atoi(provider.GetString(fmt.Sprintf("srcPort%s", suffix)))
+	headerString := provider.GetString(fmt.Sprintf("serviceHeader%s", suffix))
+	header := map[string]string{}
+	if len(headerString) > 0 {
+		for _, value := range strings.Split(headerString, ",") {
+			values := strings.Split(value, ":")
+			if len(values) == 2 {
+				header[strings.Trim(values[0], " ")] = strings.Trim(values[1], " ")
+			}
+		}
+	}
+	sdIndex := index
+	if sdIndex < 0 {
+		sdIndex = 0
+	}
 	return ServiceDest{
+		AllowedMethods:      getSliceFromString(provider, fmt.Sprintf("allowedMethods%s", suffix)),
+		DeniedMethods:       getSliceFromString(provider, fmt.Sprintf("deniedMethods%s", suffix)),
+		DenyHttp:            getBoolParam(provider, fmt.Sprintf("denyHttp%s", suffix)),
+		HttpsOnly:           getBoolParam(provider, fmt.Sprintf("httpsOnly%s", suffix)),
 		IgnoreAuthorization: getBoolParam(provider, fmt.Sprintf("ignoreAuthorization%s", suffix)),
 		Port:                provider.GetString(fmt.Sprintf("port%s", suffix)),
 		ReqMode:             reqMode,
+		ServiceDomain:       getSliceFromString(provider, fmt.Sprintf("serviceDomain%s", suffix)),
+		ServiceHeader:       header,
+		ServicePath:         getSliceFromString(provider, fmt.Sprintf("servicePath%s", suffix)),
 		SrcPort:             srcPort,
-		ServicePath:         path,
 		VerifyClientSsl:     getBoolParam(provider, fmt.Sprintf("verifyClientSsl%s", suffix)),
 		UserAgent:           userAgent,
+		Index:               sdIndex,
 	}
+}
 
+func getSliceFromString(provider ServiceParameterProvider, key string) []string {
+	value := []string{}
+	if len(provider.GetString(key)) > 0 {
+		value = strings.Split(provider.GetString(key), ",")
+	}
+	return value
 }
 
 func isServiceDestValid(sd *ServiceDest) bool {
 	return len(sd.ServicePath) > 0 || len(sd.Port) > 0
-}
-
-func isIndexedServiceDestValid(sd *ServiceDest) bool {
-	return len(sd.ServicePath) > 0 && len(sd.Port) > 0
 }
 
 func getBoolParam(req ServiceParameterProvider, param string) bool {
@@ -396,7 +433,7 @@ func mergeUsers(
 				fileUsers = extractUsersFromString(serviceName, globalUsersString, globalUsersEncrypted, true)
 			}
 			for _, u := range paramUsers {
-				if !u.HasPassword() {
+				if !u.hasPassword() {
 					if userByName := findUserByName(fileUsers, u.Username); userByName != nil {
 						u.Password = "sdasdsad"
 						u.Password = userByName.Password
@@ -416,13 +453,13 @@ func mergeUsers(
 	}
 	ret := []User{}
 	for _, u := range collectedUsers {
-		if u.HasPassword() {
+		if u.hasPassword() {
 			ret = append(ret, *u)
 		}
 	}
 	if len(ret) == 0 && (len(usersParam) != 0 || len(usersSecret) != 0) {
 		//we haven't found any users but they were requested so generating dummy one
-		ret = append(ret, *RandomUser())
+		ret = append(ret, *randomUser())
 	}
 	if len(ret) == 0 {
 		return nil
@@ -451,7 +488,7 @@ func getUsersFromFile(serviceName, fileName string, passEncrypted bool) ([]*User
 
 func allUsersHavePasswords(users []*User) bool {
 	for _, u := range users {
-		if !u.HasPassword() {
+		if !u.hasPassword() {
 			return false
 		}
 	}

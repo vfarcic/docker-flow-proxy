@@ -12,11 +12,11 @@ type User struct {
 	PassEncrypted bool
 }
 
-func (user *User) HasPassword() bool {
+func (user *User) hasPassword() bool {
 	return len(user.Password) > 0
 }
 
-func RandomUser() *User {
+func randomUser() *User {
 	return &User{
 		Username:      "dummyUser",
 		PassEncrypted: true,

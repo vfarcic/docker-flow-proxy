@@ -23,9 +23,9 @@ func (s *MainTestSuite) SetupTest() {}
 
 func (s MainTestSuite) Test_Main_InvokesArgsParse() {
 	actual := false
-	NewArgs = func() Args {
+	newArgs = func() args {
 		actual = true
-		return Args{}
+		return args{}
 	}
 
 	main()

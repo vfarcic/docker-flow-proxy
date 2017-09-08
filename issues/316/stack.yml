@@ -1,0 +1,24 @@
+version: "3.1"
+
+services:
+
+  proxy:
+    image: vfarcic/docker-flow-proxy:beta
+    ports:
+      - 80:80
+      - 443:443
+      - 8080:8080
+    environment:
+      - DFP_SERVICE_1_SERVICE_NAME=go-demo
+      - DFP_SERVICE_1_TEMPLATE_FE_PATH=/cfg/tmpl/services-fe.tmpl
+      - DFP_SERVICE_1_TEMPLATE_BE_PATH=/cfg/tmpl/services-be.tmpl
+
+  go-demo:
+    image: vfarcic/go-demo
+    environment:
+      - DB=db
+
+  db:
+    image: mongo
+    environment:
+      - DB=db

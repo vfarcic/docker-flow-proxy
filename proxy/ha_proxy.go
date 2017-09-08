@@ -11,23 +11,31 @@ import (
 	"time"
 )
 
+// HaProxy contains structure used by HAProxy implementation
 type HaProxy struct {
 	templatesPath string
 	configsPath   string
-	configData    ConfigData
+	configData    configData
 }
 
-// TODO: Change to pointer
-var Instance Proxy
+// Instance is a singleton containing an instance of the proxy
+var Instance proxy
+
 var reloadPauseMilliseconds time.Duration = 1000
 
 // TODO: Move to data from proxy.go when static (e.g. env. vars.)
-type ConfigData struct {
+type configData struct {
 	CertsString          string
+	ContentFrontend      string
 	ConnectionMode       string
+	ContentFrontendSNI   string
+	ContentFrontendTcp   string
+	DefaultBinds         string
+	DefaultReqMode       string
 	ExtraDefaults        string
 	ExtraFrontend        string
 	ExtraGlobal          string
+	Stats                string
 	TimeoutConnect       string
 	TimeoutClient        string
 	TimeoutServer        string
@@ -37,32 +45,29 @@ type ConfigData struct {
 	TimeoutHttpKeepAlive string
 	SslBindOptions       string
 	SslBindCiphers       string
-	Stats                string
 	UserList             string
-	DefaultBinds         string
-	ContentFrontend      string
-	ContentFrontendTcp   string
-	ContentFrontendSNI   string
 }
 
-func NewHaProxy(templatesPath, configsPath string) Proxy {
-	data.Services = map[string]Service{}
+// NewHaProxy returns an instance of the proxy
+func NewHaProxy(templatesPath, configsPath string) proxy {
+	dataInstance.Services = map[string]Service{}
 	return HaProxy{
 		templatesPath: templatesPath,
 		configsPath:   configsPath,
 	}
 }
 
+// GetCertPaths returns the paths of all the certificates
 func (m HaProxy) GetCertPaths() []string {
 	paths := []string{}
-	files, _ := ReadDir("/certs")
+	files, _ := readDir("/certs")
 	for _, file := range files {
 		if !file.IsDir() {
 			path := fmt.Sprintf("/certs/%s", file.Name())
 			paths = append(paths, path)
 		}
 	}
-	files, _ = ReadDir("/run/secrets")
+	files, _ = readDir("/run/secrets")
 	for _, file := range files {
 		if !file.IsDir() {
 			lName := strings.ToLower(file.Name())
@@ -75,6 +80,8 @@ func (m HaProxy) GetCertPaths() []string {
 	return paths
 }
 
+// GetCerts return all the certificates from the system.
+// Map's key contains the path to a certificate while the value is the certificate content.
 func (m HaProxy) GetCerts() map[string]string {
 	certs := map[string]string{}
 	paths := m.GetCertPaths()
@@ -85,6 +92,8 @@ func (m HaProxy) GetCerts() map[string]string {
 	return certs
 }
 
+// RunCmd executed HAProxy.
+// Additional arguments (defined through `extraArgs` argument) will be appended to the end of the command.
 func (m HaProxy) RunCmd(extraArgs []string) error {
 	args := []string{
 		"-f",
@@ -95,9 +104,13 @@ func (m HaProxy) RunCmd(extraArgs []string) error {
 	}
 	args = append(args, extraArgs...)
 	if err := cmdRunHa(args); err != nil {
-		configData, _ := readConfigsFile("/cfg/haproxy.cfg")
+		configData := ""
+		if strings.EqualFold(os.Getenv("DISPLAY_CONFIG_ON_ERROR"), "true") {
+			data, _ := readConfigsFile("/cfg/haproxy.cfg")
+			configData = "\n" + string(data)
+		}
 		return fmt.Errorf(
-			"Command %s\n%s\n%s",
+			"Command %s\n%s%s",
 			strings.Join(args, " "),
 			err.Error(),
 			string(configData),
@@ -106,6 +119,7 @@ func (m HaProxy) RunCmd(extraArgs []string) error {
 	return nil
 }
 
+// CreateConfigFromTemplates creates haproxy.cfg configuration file based on templates
 func (m HaProxy) CreateConfigFromTemplates() error {
 	configsContent, err := m.getConfigs()
 	if err != nil {
@@ -115,6 +129,7 @@ func (m HaProxy) CreateConfigFromTemplates() error {
 	return writeFile(configPath, []byte(configsContent), 0664)
 }
 
+// ReadConfig returns the current HAProxy configuration
 func (m HaProxy) ReadConfig() (string, error) {
 	configPath := fmt.Sprintf("%s/haproxy.cfg", m.configsPath)
 	out, err := ReadFile(configPath)
@@ -124,6 +139,7 @@ func (m HaProxy) ReadConfig() (string, error) {
 	return string(out[:]), nil
 }
 
+// Reload HAProxy
 func (m HaProxy) Reload() error {
 	logPrintf("Reloading the proxy")
 	var reloadErr error
@@ -133,7 +149,8 @@ func (m HaProxy) Reload() error {
 		if err != nil {
 			return fmt.Errorf("Could not read the %s file\n%s", pidPath, err.Error())
 		}
-		cmdArgs := []string{"-sf", string(pid)}
+		reloadStrategy := m.getReloadStrategy()
+		cmdArgs := []string{reloadStrategy, string(pid)}
 		reloadErr = HaProxy{}.RunCmd(cmdArgs)
 		if reloadErr == nil {
 			logPrintf("Proxy config was reloaded")
@@ -144,12 +161,21 @@ func (m HaProxy) Reload() error {
 	return reloadErr
 }
 
+// AddService puts a service into `dataInstance` map.
+// The key of the map is `ServiceName`
 func (m HaProxy) AddService(service Service) {
-	data.Services[service.ServiceName] = service
+	dataInstance.Services[service.ServiceName] = service
 }
 
+// RemoveService deletes a service from the `dataInstance` map using `ServiceName` as the key
 func (m HaProxy) RemoveService(service string) {
-	delete(data.Services, service)
+	delete(dataInstance.Services, service)
+}
+
+// GetServices returns a map with all the services used by the proxy.
+// The key of the map is the name of a service.
+func (m HaProxy) GetServices() map[string]Service {
+	return dataInstance.Services
 }
 
 func (m HaProxy) getConfigs() (string, error) {
@@ -199,63 +225,60 @@ backend dummy-be
 	return content.String(), nil
 }
 
-func (m HaProxy) getConfigData() ConfigData {
-	certPaths := m.GetCertPaths()
-	certsString := []string{}
-	if len(certPaths) > 0 {
-		certsString = append(certsString, " ssl")
-		for _, certPath := range certPaths {
-			certsString = append(certsString, fmt.Sprintf("crt %s", certPath))
-		}
+func (m HaProxy) getConfigData() configData {
+	d := configData{
+		CertsString: m.getCertsConfigSnippet(),
 	}
-	if len(os.Getenv("CA_FILE")) > 0 {
-		certsString = append(certsString, "ca-file "+os.Getenv("CA_FILE")+" verify optional")
-	}
-	d := ConfigData{
-		CertsString: strings.Join(certsString, " "),
-	}
-	d.ConnectionMode = GetSecretOrEnvVar("CONNECTION_MODE", "http-server-close")
-	d.SslBindCiphers = GetSecretOrEnvVar("SSL_BIND_CIPHERS", "ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS")
-	d.SslBindOptions = GetSecretOrEnvVar("SSL_BIND_OPTIONS", "no-sslv3")
-	d.TimeoutConnect = GetSecretOrEnvVar("TIMEOUT_CONNECT", "5")
-	d.TimeoutClient = GetSecretOrEnvVar("TIMEOUT_CLIENT", "20")
-	d.TimeoutServer = GetSecretOrEnvVar("TIMEOUT_SERVER", "20")
-	d.TimeoutQueue = GetSecretOrEnvVar("TIMEOUT_QUEUE", "30")
-	d.TimeoutTunnel = GetSecretOrEnvVar("TIMEOUT_TUNNEL", "3600")
-	d.TimeoutHttpRequest = GetSecretOrEnvVar("TIMEOUT_HTTP_REQUEST", "5")
-	d.TimeoutHttpKeepAlive = GetSecretOrEnvVar("TIMEOUT_HTTP_KEEP_ALIVE", "15")
+	d.ConnectionMode = getSecretOrEnvVar("CONNECTION_MODE", "http-server-close")
+	d.DefaultReqMode = getSecretOrEnvVar("DEFAULT_REQ_MODE", "http")
+	d.SslBindCiphers = getSecretOrEnvVar("SSL_BIND_CIPHERS", "ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS")
+	d.SslBindOptions = getSecretOrEnvVar("SSL_BIND_OPTIONS", "no-sslv3")
+	d.TimeoutConnect = getSecretOrEnvVar("TIMEOUT_CONNECT", "5")
+	d.TimeoutClient = getSecretOrEnvVar("TIMEOUT_CLIENT", "20")
+	d.TimeoutServer = getSecretOrEnvVar("TIMEOUT_SERVER", "20")
+	d.TimeoutQueue = getSecretOrEnvVar("TIMEOUT_QUEUE", "30")
+	d.TimeoutTunnel = getSecretOrEnvVar("TIMEOUT_TUNNEL", "3600")
+	d.TimeoutHttpRequest = getSecretOrEnvVar("TIMEOUT_HTTP_REQUEST", "5")
+	d.TimeoutHttpKeepAlive = getSecretOrEnvVar("TIMEOUT_HTTP_KEEP_ALIVE", "15")
 	m.putStats(&d)
 	m.getUserList(&d)
-	d.ExtraFrontend = GetSecretOrEnvVarSplit("EXTRA_FRONTEND", "")
+	d.ExtraFrontend = getSecretOrEnvVarSplit("EXTRA_FRONTEND", "")
 	if len(d.ExtraFrontend) > 0 {
 		d.ExtraFrontend = fmt.Sprintf("    %s", d.ExtraFrontend)
 	}
-	if value, err := strconv.ParseBool(os.Getenv("CHECK_RESOLVERS")); err == nil && value {
-		d.ExtraDefaults += `
-    default-server init-addr last,libc,none`
-	}
+	m.addDefaultServer(&d)
 	m.addCompression(&d)
 	m.addDebug(&d)
 
-	defaultPortsString := GetSecretOrEnvVar("DEFAULT_PORTS", "")
+	defaultPortsString := getSecretOrEnvVar("DEFAULT_PORTS", "")
 	defaultPorts := strings.Split(defaultPortsString, ",")
 	for _, bindPort := range defaultPorts {
 		formattedPort := strings.Replace(bindPort, ":ssl", d.CertsString, -1)
 		d.DefaultBinds += fmt.Sprintf("\n    bind *:%s", formattedPort)
 	}
-	extraGlobal := GetSecretOrEnvVarSplit("EXTRA_GLOBAL", "")
+	extraGlobal := getSecretOrEnvVarSplit("EXTRA_GLOBAL", "")
 	if len(extraGlobal) > 0 {
 		d.ExtraGlobal += fmt.Sprintf("\n    %s", extraGlobal)
 	}
-	bindPortsString := GetSecretOrEnvVar("BIND_PORTS", "")
+	bindPortsString := getSecretOrEnvVar("BIND_PORTS", "")
 	if len(bindPortsString) > 0 {
 		bindPorts := strings.Split(bindPortsString, ",")
 		for _, bindPort := range bindPorts {
 			d.ExtraFrontend += fmt.Sprintf("\n    bind *:%s", bindPort)
 		}
 	}
+	if len(os.Getenv("CAPTURE_REQUEST_HEADER")) > 0 {
+		headers := strings.Split(os.Getenv("CAPTURE_REQUEST_HEADER"), ",")
+		for _, header := range headers {
+			values := strings.Split(header, ":")
+			d.ExtraFrontend += fmt.Sprintf(`
+    capture request header %s len %s`,
+				values[0],
+				values[1])
+		}
+	}
 	services := Services{}
-	for _, s := range data.Services {
+	for _, s := range dataInstance.Services {
 		if len(s.AclName) == 0 {
 			s.AclName = s.ServiceName
 		}
@@ -270,7 +293,25 @@ func (m HaProxy) getConfigData() ConfigData {
 	return d
 }
 
-func (m *HaProxy) addCompression(data *ConfigData) {
+func (m *HaProxy) getCertsConfigSnippet() string {
+	certPaths := m.GetCertPaths()
+	certs := ""
+	if len(certPaths) > 0 {
+		certs = " ssl crt-list /cfg/crt-list.txt"
+		mu.Lock()
+		defer mu.Unlock()
+		writeFile("/cfg/crt-list.txt", []byte(strings.Join(certPaths, "\n")), 0664)
+	}
+	if len(os.Getenv("CA_FILE")) > 0 {
+		if len(certs) == 0 {
+			certs = " ssl"
+		}
+		certs = certs + " " + "ca-file " + os.Getenv("CA_FILE") + " verify optional"
+	}
+	return certs
+}
+
+func (m *HaProxy) addCompression(data *configData) {
 	if len(os.Getenv("COMPRESSION_ALGO")) > 0 {
 		data.ExtraDefaults += fmt.Sprintf(`
     compression algo %s`,
@@ -285,21 +326,30 @@ func (m *HaProxy) addCompression(data *ConfigData) {
 	}
 }
 
-func (m *HaProxy) addDebug(data *ConfigData) {
-	if strings.EqualFold(GetSecretOrEnvVar("DEBUG", ""), "true") {
+func (m *HaProxy) addDefaultServer(data *configData) {
+	checkResolvers, _ := strconv.ParseBool(os.Getenv("CHECK_RESOLVERS"))
+	doNotResolveAddr, _ := strconv.ParseBool(os.Getenv("DO_NOT_RESOLVE_ADDR"))
+	if checkResolvers || doNotResolveAddr {
+		data.ExtraDefaults += `
+    default-server init-addr last,libc,none`
+	}
+}
+
+func (m *HaProxy) addDebug(data *configData) {
+	if strings.EqualFold(getSecretOrEnvVar("DEBUG", ""), "true") {
 		data.ExtraGlobal += `
     log 127.0.0.1:1514 local0`
 		data.ExtraFrontend += `
     option httplog
     log global`
-		format := GetSecretOrEnvVar("DEBUG_HTTP_FORMAT", "")
+		format := getSecretOrEnvVar("DEBUG_HTTP_FORMAT", "")
 		if len(format) > 0 {
 			data.ExtraFrontend += fmt.Sprintf(`
     log-format %s`,
 				format,
 			)
 		}
-		if strings.EqualFold(GetSecretOrEnvVar("DEBUG_ERRORS_ONLY", ""), "true") {
+		if strings.EqualFold(getSecretOrEnvVar("DEBUG_ERRORS_ONLY", ""), "true") {
 			data.ExtraDefaults += `
     option  dontlog-normal`
 		}
@@ -310,12 +360,23 @@ func (m *HaProxy) addDebug(data *ConfigData) {
 	}
 }
 
-func (m *HaProxy) putStats(data *ConfigData) {
-	statsUser := GetSecretOrEnvVar(os.Getenv("STATS_USER_ENV"), "")
-	statsPass := GetSecretOrEnvVar(os.Getenv("STATS_PASS_ENV"), "")
-	statsUri := GetSecretOrEnvVar(os.Getenv("STATS_URI_ENV"), "/admin?stats")
+func (m *HaProxy) putStats(data *configData) {
+	statsUser := getSecretOrEnvVar(os.Getenv("STATS_USER_ENV"), "")
+	statsPass := getSecretOrEnvVar(os.Getenv("STATS_PASS_ENV"), "")
+	statsUri := getSecretOrEnvVar(os.Getenv("STATS_URI_ENV"), "/admin?stats")
+	statsPort := getSecretOrEnvVar("STATS_PORT", "")
+	if statsPort != "80" && len(statsPort) > 0 {
+		data.Stats += fmt.Sprintf(`
+frontend stats
+    bind *:%s
+    default_backend stats
+
+backend stats
+    mode http`,
+		statsPort)
+	}
 	if len(statsUser) > 0 && len(statsPass) > 0 {
-		data.Stats = fmt.Sprintf(`
+		data.Stats += fmt.Sprintf(`
     stats enable
     stats refresh 30s
     stats realm Strictly\ Private
@@ -332,16 +393,16 @@ func (m *HaProxy) putStats(data *ConfigData) {
 	}
 }
 
-func (m *HaProxy) getUserList(data *ConfigData) {
-	usersString := GetSecretOrEnvVar("USERS", "")
-	encryptedString := GetSecretOrEnvVar("USERS_PASS_ENCRYPTED", "")
+func (m *HaProxy) getUserList(data *configData) {
+	usersString := getSecretOrEnvVar("USERS", "")
+	encryptedString := getSecretOrEnvVar("USERS_PASS_ENCRYPTED", "")
 	if len(usersString) > 0 {
 		data.UserList = "\nuserlist defaultUsers\n"
 		encrypted := strings.EqualFold(encryptedString, "true")
 		users := extractUsersFromString("globalUsers", usersString, encrypted, true)
 		// TODO: Test
 		if len(users) == 0 {
-			users = append(users, RandomUser())
+			users = append(users, randomUser())
 		}
 		for _, user := range users {
 			passwordType := "insecure-password"
@@ -353,7 +414,7 @@ func (m *HaProxy) getUserList(data *ConfigData) {
 	}
 }
 
-func (m *HaProxy) getSni(services *Services, config *ConfigData) {
+func (m *HaProxy) getSni(services *Services, config *configData) {
 	sort.Sort(services)
 	snimap := make(map[int]string)
 	tcpFEs := make(map[int]Services)
@@ -362,10 +423,11 @@ func (m *HaProxy) getSni(services *Services, config *ConfigData) {
 			s.ServiceDest = []ServiceDest{{ReqMode: "http"}}
 		}
 		httpDone := false
+		putDomainAlgo(&s)
 		for i, sd := range s.ServiceDest {
 			if strings.EqualFold(sd.ReqMode, "http") {
 				if !httpDone {
-					config.ContentFrontend += m.getFrontTemplate(s)
+					config.ContentFrontend += getFrontTemplate(s)
 				}
 				httpDone = true
 			} else if strings.EqualFold(sd.ReqMode, "sni") {
@@ -374,13 +436,16 @@ func (m *HaProxy) getSni(services *Services, config *ConfigData) {
 			} else {
 				tcpService := s
 				tcpService.ServiceDest = []ServiceDest{sd}
+				tcpService.AclCondition = fmt.Sprintf(" domain_%s", s.AclName)
+				if strings.EqualFold(os.Getenv("DEBUG"), "true") {
+					tcpService.Debug = true
+					tcpService.DebugFormat = getSecretOrEnvVar("DEBUG_TCP_FORMAT", "")
+				}
 				tcpFEs[sd.SrcPort] = append(tcpFEs[sd.SrcPort], tcpService)
 			}
 		}
 	}
-	for port, tcpServices := range tcpFEs {
-		config.ContentFrontendTcp += m.getFrontTemplateTcp(port, tcpServices)
-	}
+	config.ContentFrontendTcp += getFrontTemplateTcp(tcpFEs)
 
 	// Merge the SNI entries into one single string. Sorted by port.
 	var sniports []int
@@ -393,9 +458,10 @@ func (m *HaProxy) getSni(services *Services, config *ConfigData) {
 	}
 }
 
-func (m *HaProxy) getFrontTemplateSNI(s Service, si int, gen_header bool) string {
+// TODO: Refactor into template
+func (m *HaProxy) getFrontTemplateSNI(s Service, si int, genHeader bool) string {
 	tmplString := ``
-	if gen_header {
+	if genHeader {
 		tmplString += fmt.Sprintf(`{{$sd1 := index $.ServiceDest %d}}
 
 frontend service_{{$sd1.SrcPort}}
@@ -406,146 +472,15 @@ frontend service_{{$sd1.SrcPort}}
 	}
 	tmplString += fmt.Sprintf(`{{$sd := index $.ServiceDest %d}}
     acl sni_{{.AclName}}{{$sd.Port}}-%d{{range $sd.ServicePath}} {{$.PathType}} {{.}}{{end}}{{$sd.SrcPortAcl}}
-    use_backend {{$.ServiceName}}-be{{$sd.Port}} if sni_{{$.AclName}}{{$sd.Port}}-%d{{$.AclCondition}}{{$sd.SrcPortAclName}}`, si, si+1, si+1)
-	return m.templateToString(tmplString, s)
+    use_backend {{$.ServiceName}}-be{{$sd.Port}}_{{$sd.Index}} if sni_{{$.AclName}}{{$sd.Port}}-%d{{$.AclCondition}}{{$sd.SrcPortAclName}}`, si, si+1, si+1)
+	return templateToString(tmplString, s)
 }
 
-// TODO: Move to getFrontTemplate
-func (m *HaProxy) getFrontTemplateTcp(port int, services Services) string {
-	sort.Sort(services)
-	tmpl := fmt.Sprintf(
-		`
-
-frontend tcpFE_%d
-    bind *:%d
-    mode tcp`,
-		port,
-		port,
-	)
-	if strings.EqualFold(GetSecretOrEnvVar("DEBUG", ""), "true") {
-		tmpl += `
-    option tcplog
-    log global`
-		format := GetSecretOrEnvVar("DEBUG_TCP_FORMAT", "")
-		if len(format) > 0 {
-			tmpl += fmt.Sprintf(`
-    log-format %s`,
-				format,
-			)
-		}
+func (m *HaProxy) getReloadStrategy() string {
+	reloadStrategy := "-sf"
+	terminateOnReload := strings.EqualFold(os.Getenv("TERMINATE_ON_RELOAD"), "true")
+	if terminateOnReload {
+		reloadStrategy = "-st"
 	}
-	for _, s := range services {
-		backendPort := port
-		if len(s.ServiceDest) > 0 {
-			backendPort, _ = strconv.Atoi(s.ServiceDest[0].Port)
-		}
-		var backend string
-		if len(s.ServiceDomain) > 0 {
-			backend = fmt.Sprintf(`
-    use_backend %s-be%d if domain_%s`,
-				s.ServiceName,
-				backendPort,
-				s.ServiceName,
-			)
-		} else {
-			backend = fmt.Sprintf(
-				`
-    default_backend %s-be%d`,
-				s.ServiceName,
-				backendPort,
-			)
-		}
-		aclDomain := m.templateToString(m.getAclDomain(&s), s)
-		tmpl += fmt.Sprintf(`%s%s`, aclDomain, backend)
-	}
-	return tmpl
-}
-
-// TODO: Move all the conditionals inside the template
-func (m *HaProxy) getFrontTemplate(s Service) string {
-	if len(s.PathType) == 0 {
-		s.PathType = "path_beg"
-	}
-	tmplString := fmt.Sprintf(
-		`
-{{- range .ServiceDest}}
-    {{- if eq .ReqMode "http"}}
-        {{- if ne .Port ""}}
-    acl url_{{$.AclName}}{{.Port}}{{range .ServicePath}} {{$.PathType}} {{.}}{{end}}{{.SrcPortAcl}}
-        {{- end}}
-        {{- $length := len .UserAgent.Value}}{{if gt $length 0}}
-    acl user_agent_{{$.AclName}}_{{.UserAgent.AclName}} hdr_sub(User-Agent) -i{{range .UserAgent.Value}} {{.}}{{end}}
-        {{- end}}
-    {{- end}}
-{{- end}}%s`,
-		m.getAclDomain(&s),
-	)
-	tmplString += `
-{{- if gt $.HttpsPort 0 }}
-    acl http_{{.ServiceName}} src_port 80
-    acl https_{{.ServiceName}} src_port 443
-{{- end}}
-{{- if $.RedirectWhenHttpProto}}
-    {{- range .ServiceDest}}
-        {{- if eq .ReqMode "http"}}
-            {{- if ne .Port ""}}
-    acl is_{{$.AclName}}_http hdr(X-Forwarded-Proto) http
-    redirect scheme https if is_{{$.AclName}}_http url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}
-            {{- end}}
-        {{- end}}
-    {{- end}}
-{{- end}}
-{{- if not $.RedirectWhenHttpProto}}{{- if $.HttpsOnly}}
-    {{- range .ServiceDest}}
-        {{- if eq .ReqMode "http"}}
-            {{- if ne .Port ""}}
-    redirect scheme https if !{ ssl_fc } url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}
-            {{- end}}
-        {{- end}}
-    {{- end}}
-{{- end}}{{- end}}
-{{- range .ServiceDest}}
-    {{- if eq .ReqMode "http"}}{{- if ne .Port ""}}
-    use_backend {{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}}{{.SrcPortAclName}}
-	    {{- if gt $.HttpsPort 0 }} http_{{$.ServiceName}}
-    use_backend https-{{$.ServiceName}}-be{{.Port}} if url_{{$.AclName}}{{.Port}}{{$.AclCondition}} https_{{$.ServiceName}}
-        {{- end}}
-    {{- $length := len .UserAgent.Value}}{{if gt $length 0}} user_agent_{{$.AclName}}_{{.UserAgent.AclName}}{{end}}
-        {{- if $.IsDefaultBackend}}
-    default_backend {{$.ServiceName}}-be{{.Port}}
-        {{- end}}
-    {{- end}}{{- end}}
-{{- end}}`
-	return m.templateToString(tmplString, s)
-}
-
-func (m *HaProxy) getAclDomain(s *Service) string {
-	if len(s.ServiceDomain) > 0 {
-		domFunc := "hdr"
-		if s.ServiceDomainMatchAll {
-			domFunc = "hdr_dom"
-		} else {
-			for i, domain := range s.ServiceDomain {
-				if strings.HasPrefix(domain, "*") {
-					s.ServiceDomain[i] = strings.Trim(domain, "*")
-					domFunc = "hdr_end"
-				}
-			}
-		}
-		acl := fmt.Sprintf(
-			`
-    acl domain_{{.AclName}} %s(host) -i{{range .ServiceDomain}} {{.}}{{end}}`,
-			domFunc,
-		)
-		s.AclCondition = fmt.Sprintf(" domain_%s", s.AclName)
-		return acl
-	}
-	return ""
-}
-
-func (m *HaProxy) templateToString(templateString string, service Service) string {
-	tmpl, _ := template.New("template").Parse(templateString)
-	var b bytes.Buffer
-	tmpl.Execute(&b, service)
-	return b.String()
+	return reloadStrategy
 }

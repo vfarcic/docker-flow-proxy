@@ -13,6 +13,11 @@ import (
 
 type UtilTestSuite struct {
 	suite.Suite
+	baseUrl        string
+	reconfigureUrl string
+	serviceName    string
+	dnsIps         []string
+	server         *httptest.Server
 }
 
 func (s *UtilTestSuite) SetupTest() {
@@ -20,12 +25,27 @@ func (s *UtilTestSuite) SetupTest() {
 
 func TestUtilUnitTestSuite(t *testing.T) {
 	s := new(UtilTestSuite)
+	s.baseUrl = "/v1/docker-flow-proxy/reconfigure"
+	s.serviceName = "my-fancy-service"
+	s.reconfigureUrl = fmt.Sprintf(
+		"%s?serviceName=%s&serviceColor=pink&servicePath=/path/to/my/service/api&serviceDomain=my-domain.com",
+		s.baseUrl,
+		s.serviceName,
+	)
+	lookupHostOrig := lookupHost
+	defer func() { lookupHost = lookupHostOrig }()
+	lookupHost = func(host string) (addrs []string, err error) {
+		return s.dnsIps, nil
+	}
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	addr := strings.Replace(s.server.URL, "http://", "", -1)
+	s.dnsIps = []string{strings.Split(addr, ":")[0]}
 	suite.Run(t, s)
 }
 
 // SendDistributeRequests
 
-func (s *ServerTestSuite) Test_SendDistributeRequests_InvokesLookupHost() {
+func (s *UtilTestSuite) Test_SendDistributeRequests_InvokesLookupHost() {
 	var actualHost string
 	lookupHostOrig := lookupHost
 	defer func() { lookupHost = lookupHostOrig }()
@@ -33,28 +53,28 @@ func (s *ServerTestSuite) Test_SendDistributeRequests_InvokesLookupHost() {
 		actualHost = host
 		return []string{}, nil
 	}
-	req, _ := http.NewRequest("GET", s.ReconfigureUrl, nil)
+	req, _ := http.NewRequest("GET", s.reconfigureUrl, nil)
 
-	sendDistributeRequests(req, "8080", s.ServiceName)
+	sendDistributeRequests(req, "8080", s.serviceName)
 
-	s.Assert().Equal(fmt.Sprintf("tasks.%s", s.ServiceName), actualHost)
+	s.Assert().Equal(fmt.Sprintf("tasks.%s", s.serviceName), actualHost)
 }
 
-func (s *ServerTestSuite) Test_SendDistributeRequests_ReturnsError_WhenLookupHostFails() {
+func (s *UtilTestSuite) Test_SendDistributeRequests_ReturnsError_WhenLookupHostFails() {
 	lookupHostOrig := lookupHost
 	defer func() { lookupHost = lookupHostOrig }()
 	lookupHost = func(host string) (addrs []string, err error) {
 		return []string{}, fmt.Errorf("This is an LookupHost error")
 	}
-	req, _ := http.NewRequest("GET", s.ReconfigureUrl, nil)
+	req, _ := http.NewRequest("GET", s.reconfigureUrl, nil)
 
-	status, err := sendDistributeRequests(req, "8080", s.ServiceName)
+	status, err := sendDistributeRequests(req, "8080", s.serviceName)
 
 	s.Assertions.Equal(http.StatusBadRequest, status)
 	s.Assertions.Error(err)
 }
 
-func (s *ServerTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIp() {
+func (s *UtilTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIp() {
 	var actualPath string
 	var actualQuery url.Values
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -63,41 +83,41 @@ func (s *ServerTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIp(
 	}))
 	defer func() { testServer.Close() }()
 	tsAddr := strings.Replace(testServer.URL, "http://", "", -1)
-	dnsIpsOrig := s.DnsIps
-	defer func() { s.DnsIps = dnsIpsOrig }()
-	s.DnsIps = []string{strings.Split(tsAddr, ":")[0]}
+	dnsIpsOrig := s.dnsIps
+	defer func() { s.dnsIps = dnsIpsOrig }()
+	s.dnsIps = []string{strings.Split(tsAddr, ":")[0]}
 	port := strings.Split(tsAddr, ":")[1]
 
-	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.ReconfigureUrl)
+	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.reconfigureUrl)
 	req, _ := http.NewRequest("GET", addr, nil)
 
-	sendDistributeRequests(req, port, s.ServiceName)
+	sendDistributeRequests(req, port, s.serviceName)
 
-	s.Assert().Equal(s.BaseUrl, actualPath)
+	s.Assert().Equal(s.baseUrl, actualPath)
 	s.Assert().Equal("false", actualQuery.Get("distribute"))
 }
 
-func (s *ServerTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIpWithTheCorrectMethod() {
+func (s *UtilTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIpWithTheCorrectMethod() {
 	actualProtocol := "GET"
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		actualProtocol = r.Method
 	}))
 	defer func() { testServer.Close() }()
 	tsAddr := strings.Replace(testServer.URL, "http://", "", -1)
-	dnsIpsOrig := s.DnsIps
-	defer func() { s.DnsIps = dnsIpsOrig }()
-	s.DnsIps = []string{strings.Split(tsAddr, ":")[0]}
+	dnsIpsOrig := s.dnsIps
+	defer func() { s.dnsIps = dnsIpsOrig }()
+	s.dnsIps = []string{strings.Split(tsAddr, ":")[0]}
 	port := strings.Split(tsAddr, ":")[1]
 
-	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.ReconfigureUrl)
+	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.reconfigureUrl)
 	req, _ := http.NewRequest("PUT", addr, nil)
 
-	sendDistributeRequests(req, port, s.ServiceName)
+	sendDistributeRequests(req, port, s.serviceName)
 
 	s.Assert().Equal("PUT", actualProtocol)
 }
 
-func (s *ServerTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIpWithTheBody() {
+func (s *UtilTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIpWithTheBody() {
 	actualBody := ""
 	expectedBody := "THIS IS BODY"
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -106,49 +126,49 @@ func (s *ServerTestSuite) Test_SendDistributeRequests_SendsHttpRequestForEachIpW
 	}))
 	defer func() { testServer.Close() }()
 	tsAddr := strings.Replace(testServer.URL, "http://", "", -1)
-	dnsIpsOrig := s.DnsIps
-	defer func() { s.DnsIps = dnsIpsOrig }()
-	s.DnsIps = []string{strings.Split(tsAddr, ":")[0]}
+	dnsIpsOrig := s.dnsIps
+	defer func() { s.dnsIps = dnsIpsOrig }()
+	s.dnsIps = []string{strings.Split(tsAddr, ":")[0]}
 	port := strings.Split(tsAddr, ":")[1]
 
-	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.ReconfigureUrl)
+	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.reconfigureUrl)
 	req, _ := http.NewRequest("PUT", addr, strings.NewReader(expectedBody))
 
-	sendDistributeRequests(req, port, s.ServiceName)
+	sendDistributeRequests(req, port, s.serviceName)
 
 	s.Assert().Equal(expectedBody, actualBody)
 }
 
-func (s *ServerTestSuite) Test_SendDistributeRequests_ReturnsError_WhenRequestFail() {
+func (s *UtilTestSuite) Test_SendDistributeRequests_ReturnsError_WhenRequestFail() {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer func() { testServer.Close() }()
 
 	tsAddr := strings.Replace(testServer.URL, "http://", "", -1)
-	dnsIpsOrig := s.DnsIps
-	defer func() { s.DnsIps = dnsIpsOrig }()
-	s.DnsIps = []string{strings.Split(tsAddr, ":")[0]}
+	dnsIpsOrig := s.dnsIps
+	defer func() { s.dnsIps = dnsIpsOrig }()
+	s.dnsIps = []string{strings.Split(tsAddr, ":")[0]}
 	port := strings.Split(tsAddr, ":")[1]
 
-	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.ReconfigureUrl)
+	addr := fmt.Sprintf("http://initial-proxy-address:%s%s&distribute=true", port, s.reconfigureUrl)
 	req, _ := http.NewRequest("GET", addr, nil)
 
-	actualStatus, err := sendDistributeRequests(req, port, s.ServiceName)
+	actualStatus, err := sendDistributeRequests(req, port, s.serviceName)
 
 	s.Assertions.Equal(http.StatusBadRequest, actualStatus)
 	s.Assertions.Error(err)
 }
 
-func (s *ServerTestSuite) Test_SendDistributeRequests_ReturnsError_WhenProxyIPsAreNotFound() {
+func (s *UtilTestSuite) Test_SendDistributeRequests_ReturnsError_WhenProxyIPsAreNotFound() {
 	lookupHostOrig := lookupHost
 	defer func() { lookupHost = lookupHostOrig }()
 	lookupHost = func(host string) (addrs []string, err error) {
 		return []string{}, nil
 	}
-	req, _ := http.NewRequest("GET", s.ReconfigureUrl, nil)
+	req, _ := http.NewRequest("GET", s.reconfigureUrl, nil)
 
-	actualStatus, err := sendDistributeRequests(req, "1234", s.ServiceName)
+	actualStatus, err := sendDistributeRequests(req, "1234", s.serviceName)
 
 	s.Assertions.Equal(http.StatusBadRequest, actualStatus)
 	s.Assertions.Error(err)

@@ -1,0 +1,57 @@
+version: '3.2'
+
+services:
+
+  proxy:
+    image: vfarcic/docker-flow-proxy:17.07.13-2
+    ports:
+      - 80:80
+      - 88:88
+    networks:
+      - proxy
+    environment:
+      - LISTENER_ADDRESS=swarm-listener
+      - DEFAULT_PORTS=80,88
+      - MODE=swarm
+      - DEBUG=true
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  swarm-listener:
+    image: vfarcic/docker-flow-swarm-listener
+    networks:
+      - proxy
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+    environment:
+      - DF_NOTIFY_CREATE_SERVICE_URL=http://proxy:8080/v1/docker-flow-proxy/reconfigure
+      - DF_NOTIFY_REMOVE_SERVICE_URL=http://proxy:8080/v1/docker-flow-proxy/remove
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  ######## payload ############
+  nginx:
+    image: nginx:alpine
+    networks:
+      - proxy
+    ports:
+      - 8080:80
+    deploy:
+      labels:
+        - "com.df.notify=true"
+        - "com.df.distribute=true"
+        - "com.df.serviceDomain=test.local"
+        - "com.df.port=80"
+        - "com.df.srcPort=88"
+#        - "com.df.reqMode=tcp"
+      placement:
+        constraints:
+          - node.role == manager
+
+networks:
+  proxy:
+      driver: overlay
