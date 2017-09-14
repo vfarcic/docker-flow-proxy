@@ -39,6 +39,7 @@ EXPOSE 443
 EXPOSE 8080
 
 RUN apk --no-cache add tini
+ENTRYPOINT ["/sbin/tini","--"]
 CMD ["docker-flow-proxy", "server"]
 
 COPY errorfiles /errorfiles
