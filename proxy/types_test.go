@@ -1,10 +1,11 @@
 package proxy
 
 import (
-	"github.com/stretchr/testify/suite"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 )
 
 type TypesTestSuite struct {
@@ -234,25 +235,27 @@ func (s *TypesTestSuite) Test_GetServiceFromProvider_MovesServiceDomainToIndexed
 func (s *TypesTestSuite) Test_GetServiceFromProvider_MovesHttpsOnlyToIndexedEntries_WhenEmpty() {
 	expected := Service{
 		ServiceDest: []ServiceDest{{
-			AllowedMethods: []string{},
-			DeniedMethods:  []string{},
-			HttpsOnly:      true,
-			ServiceDomain:  []string{},
-			ServiceHeader:  map[string]string{},
-			ServicePath:    []string{"/"},
-			Port:           "1234",
-			ReqMode:        "reqMode",
-			Index:          1,
+			AllowedMethods:    []string{},
+			DeniedMethods:     []string{},
+			HttpsOnly:         true,
+			HttpsRedirectCode: "",
+			ServiceDomain:     []string{},
+			ServiceHeader:     map[string]string{},
+			ServicePath:       []string{"/"},
+			Port:              "1234",
+			ReqMode:           "reqMode",
+			Index:             1,
 		}},
 		ServiceName: "serviceName",
 	}
 	serviceMap := map[string]string{
 		//		"serviceDomain": strings.Join(expected.ServiceDest[0].ServiceDomain, ","),
-		"httpsOnly":     strconv.FormatBool(expected.ServiceDest[0].HttpsOnly),
-		"serviceName":   expected.ServiceName,
-		"port.1":        expected.ServiceDest[0].Port,
-		"reqMode.1":     expected.ServiceDest[0].ReqMode,
-		"servicePath.1": strings.Join(expected.ServiceDest[0].ServicePath, ","),
+		"httpsOnly":         strconv.FormatBool(expected.ServiceDest[0].HttpsOnly),
+		"httpsRedirectCode": expected.ServiceDest[0].HttpsRedirectCode,
+		"serviceName":       expected.ServiceName,
+		"port.1":            expected.ServiceDest[0].Port,
+		"reqMode.1":         expected.ServiceDest[0].ReqMode,
+		"servicePath.1":     strings.Join(expected.ServiceDest[0].ServicePath, ","),
 	}
 	provider := mapParameterProvider{&serviceMap}
 	actual := GetServiceFromProvider(&provider)
@@ -307,6 +310,7 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"deniedMethods" + indexSuffix:       strings.Join(expected.ServiceDest[0].DeniedMethods, ","),
 		"denyHttp" + indexSuffix:            strconv.FormatBool(expected.ServiceDest[0].DenyHttp),
 		"httpsOnly" + indexSuffix:           strconv.FormatBool(expected.ServiceDest[0].HttpsOnly),
+		"httpsRedirectCode" + indexSuffix:   expected.ServiceDest[0].HttpsRedirectCode,
 		"ignoreAuthorization" + indexSuffix: strconv.FormatBool(expected.ServiceDest[0].IgnoreAuthorization),
 		"port" + indexSuffix:                expected.ServiceDest[0].Port,
 		"reqMode" + indexSuffix:             expected.ServiceDest[0].ReqMode,
@@ -341,6 +345,7 @@ func (s *TypesTestSuite) getExpectedService() Service {
 			DeniedMethods:       []string{"PUT", "POST"},
 			DenyHttp:            true,
 			HttpsOnly:           true,
+			HttpsRedirectCode:   "301",
 			IgnoreAuthorization: true,
 			ServiceDomain:       []string{"domain1", "domain2"},
 			ServiceHeader:       map[string]string{"X-Version": "3", "name": "Viktor"},
