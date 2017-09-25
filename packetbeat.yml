@@ -1,0 +1,26 @@
+packetbeat.interfaces.device: '${DF_PACKETBEAT_INTERFACE}'
+packetbeat.protocols.http:
+  ports: '${DF_PACKETBEAT_PORT}'
+  hide_keywords: ["pass", "password", "passwd", "newPassword", "currentPassword"]
+  send_headers: ["User-Agent", "X-CD-Version", "X-CD-User", "X-CD-Masquerading-User", "Authorization"]
+  real_ip_header: "X-Forwarded-For"
+  send_request: true
+  send_response: true
+output.logstash:
+  enabled: true
+  hosts: '${DF_PACKETBEAT_LOGSTASH_HOSTS}'
+  index: 'packetbeat'
+  ssl.enabled: false
+output.file:
+  enabled: true
+  path: "/tmp/packetbeat"
+  filename: packetbeat
+  number_of_files: 2
+
+#================================ Logging ======================================
+logging.level: warning
+logging.to_syslog: false
+logging.to_files: true
+logging.files:
+  path: /var/log/mybeat
+  name: mybeat.log
