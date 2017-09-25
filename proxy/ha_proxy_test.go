@@ -89,6 +89,12 @@ config2 be content`
 	reloadPauseMillisecondsOrig := reloadPauseMilliseconds
 	reconfigureAttemptsOrig := os.Getenv("RECONFIGURE_ATTEMPTS")
 	os.Setenv("RECONFIGURE_ATTEMPTS", "1")
+	cmdRunHa = func(args []string) error {
+		return nil
+	}
+	cmdValidateHa = func(args []string) error {
+		return nil
+	}
 	defer func() {
 		reloadPauseMilliseconds = reloadPauseMillisecondsOrig
 		os.Setenv("RECONFIGURE_ATTEMPTS", reconfigureAttemptsOrig)
@@ -2039,6 +2045,8 @@ func (s *HaProxyTestSuite) Test_Reload_ReadsPidFile() {
 }
 
 func (s *HaProxyTestSuite) Test_Reload_ReturnsError_WhenHaCommandFails() {
+	cmdRunHaOrig := cmdRunHa
+	defer func() { cmdRunHa = cmdRunHaOrig }()
 	cmdRunHa = func(args []string) error {
 		return fmt.Errorf("This is an error")
 	}
@@ -2046,6 +2054,57 @@ func (s *HaProxyTestSuite) Test_Reload_ReturnsError_WhenHaCommandFails() {
 	err := HaProxy{}.Reload()
 
 	s.Error(err)
+}
+
+func (s *HaProxyTestSuite) Test_Reload_ReturnsError_WhenValidateHaCommandFails() {
+	cmdValidateHaOrig := cmdValidateHa
+	defer func() { cmdValidateHa = cmdValidateHaOrig }()
+	cmdValidateHa = func(args []string) error {
+		return fmt.Errorf("This is an error")
+	}
+
+	err := HaProxy{}.Reload()
+
+	s.Error(err)
+}
+
+func (s *HaProxyTestSuite) Test_Reload_DoesNotReturnError_WhenValidateHaCommandFailsOnlyOnce() {
+	reconfigureAttemptsOrig := os.Getenv("RECONFIGURE_ATTEMPTS")
+	os.Setenv("RECONFIGURE_ATTEMPTS", "2")
+	defer func() {
+		os.Setenv("RECONFIGURE_ATTEMPTS", reconfigureAttemptsOrig)
+	}()
+
+	iteration := 1
+	cmdValidateHaOrig := cmdValidateHa
+	defer func() { cmdValidateHa = cmdValidateHaOrig }()
+	cmdValidateHa = func(args []string) error {
+		if iteration == 2 {
+			return nil
+		}
+		iteration++
+		return fmt.Errorf("This is an error")
+	}
+
+	println("000")
+	err := HaProxy{}.Reload()
+
+	s.NoError(err)
+}
+
+func (s *HaProxyTestSuite) Test_Reload_ExecutesValidateHaCommand() {
+	actualArgs := []string{}
+	expectedArgs := []string{"-c", "-V", "-f", "/cfg/haproxy.cfg"}
+	cmdValidateHaOrig := cmdValidateHa
+	defer func() { cmdValidateHa = cmdValidateHaOrig }()
+	cmdValidateHa = func(args []string) error {
+		actualArgs = args
+		return nil
+	}
+
+	HaProxy{}.Reload()
+
+	s.Equal(expectedArgs, actualArgs)
 }
 
 func (s *HaProxyTestSuite) Test_Reload_ReturnsError_WhenReadPidFails() {

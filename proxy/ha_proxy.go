@@ -148,6 +148,11 @@ func (m HaProxy) Reload() error {
 		reconfigureAttempts, _ = strconv.Atoi(os.Getenv("RECONFIGURE_ATTEMPTS"))
 	}
 	for i := 0; i < reconfigureAttempts; i++ {
+		if err := m.validateConfig(); err != nil {
+			logPrintf("Config validation failed. Will try again...")
+			reloadErr = err
+			continue
+		}
 		pidPath := "/var/run/haproxy.pid"
 		pid, err := readPidFile(pidPath)
 		if err != nil {
@@ -488,4 +493,23 @@ func (m *HaProxy) getReloadStrategy() string {
 		reloadStrategy = "-st"
 	}
 	return reloadStrategy
+}
+
+func (m HaProxy) validateConfig() error {
+	logPrintf("Validating configuration")
+	args := []string{
+		"-c",
+		"-V",
+		"-f",
+		"/cfg/haproxy.cfg",
+	}
+	if err := cmdValidateHa(args); err != nil {
+		config, _ := readConfigsFile("/cfg/haproxy.cfg")
+		return fmt.Errorf(
+			"Config validation failed\n%s\n%s",
+			err.Error(),
+			config,
+		)
+	}
+	return nil
 }
