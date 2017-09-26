@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"os"
 )
 
 var usersBasePath string = "/run/secrets/dfp_users_%s"
@@ -266,6 +267,7 @@ func GetServiceFromMap(req *map[string]string) *Service {
 func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	sr := new(Service)
 	provider.Fill(sr)
+	separator := os.Getenv("SEPARATOR")
 	// TODO: Remove. It's added to maintain backwards compatibility with the deprecated parameter serviceDomainMatchAll (since July 2017)
 	if strings.EqualFold(provider.GetString("serviceDomainMatchAll"), "true") {
 		sr.ServiceDomainAlgo = "hdr_dom(host)"
@@ -274,26 +276,26 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 		sr.HttpsPort, _ = strconv.Atoi(provider.GetString("httpsPort"))
 	}
 	if len(provider.GetString("addReqHeader")) > 0 {
-		sr.AddReqHeader = strings.Split(provider.GetString("addReqHeader"), ",")
+		sr.AddReqHeader = strings.Split(provider.GetString("addReqHeader"), separator)
 	} else if len(provider.GetString("addHeader")) > 0 { // TODO: Deprecated since Apr. 2017.
-		sr.AddReqHeader = strings.Split(provider.GetString("addHeader"), ",")
+		sr.AddReqHeader = strings.Split(provider.GetString("addHeader"), separator)
 	}
 	if len(provider.GetString("setReqHeader")) > 0 {
-		sr.SetReqHeader = strings.Split(provider.GetString("setReqHeader"), ",")
+		sr.SetReqHeader = strings.Split(provider.GetString("setReqHeader"), separator)
 	} else if len(provider.GetString("setHeader")) > 0 { // TODO: Deprecated since Apr. 2017.
-		sr.SetReqHeader = strings.Split(provider.GetString("setHeader"), ",")
+		sr.SetReqHeader = strings.Split(provider.GetString("setHeader"), separator)
 	}
 	if len(provider.GetString("delReqHeader")) > 0 {
-		sr.DelReqHeader = strings.Split(provider.GetString("delReqHeader"), ",")
+		sr.DelReqHeader = strings.Split(provider.GetString("delReqHeader"), separator)
 	}
 	if len(provider.GetString("addResHeader")) > 0 {
-		sr.AddResHeader = strings.Split(provider.GetString("addResHeader"), ",")
+		sr.AddResHeader = strings.Split(provider.GetString("addResHeader"), separator)
 	}
 	if len(provider.GetString("setResHeader")) > 0 {
-		sr.SetResHeader = strings.Split(provider.GetString("setResHeader"), ",")
+		sr.SetResHeader = strings.Split(provider.GetString("setResHeader"), separator)
 	}
 	if len(provider.GetString("delResHeader")) > 0 {
-		sr.DelResHeader = strings.Split(provider.GetString("delResHeader"), ",")
+		sr.DelResHeader = strings.Split(provider.GetString("delResHeader"), separator)
 	}
 	if len(sr.SessionType) > 0 {
 		sr.Tasks, _ = lookupHost("tasks." + sr.ServiceName)
@@ -354,13 +356,14 @@ func getServiceDestList(sr *Service, provider ServiceParameterProvider) []Servic
 }
 
 func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) ServiceDest {
+	separator := os.Getenv("SEPARATOR")
 	suffix := ""
 	if index > 0 {
 		suffix = fmt.Sprintf(".%d", index)
 	}
 	userAgent := UserAgent{}
 	if len(provider.GetString(fmt.Sprintf("userAgent%s", suffix))) > 0 {
-		userAgent.Value = strings.Split(provider.GetString(fmt.Sprintf("userAgent%s", suffix)), ",")
+		userAgent.Value = strings.Split(provider.GetString(fmt.Sprintf("userAgent%s", suffix)), separator)
 		userAgent.AclName = replaceNonAlphabetAndNumbers(userAgent.Value)
 	}
 	reqMode := "http"
@@ -371,7 +374,7 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 	headerString := provider.GetString(fmt.Sprintf("serviceHeader%s", suffix))
 	header := map[string]string{}
 	if len(headerString) > 0 {
-		for _, value := range strings.Split(headerString, ",") {
+		for _, value := range strings.Split(headerString, separator) {
 			values := strings.Split(value, ":")
 			if len(values) == 2 {
 				header[strings.Trim(values[0], " ")] = strings.Trim(values[1], " ")
@@ -402,9 +405,10 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 }
 
 func getSliceFromString(provider ServiceParameterProvider, key string) []string {
+	separator := os.Getenv("SEPARATOR")
 	value := []string{}
 	if len(provider.GetString(key)) > 0 {
-		value = strings.Split(provider.GetString(key), ",")
+		value = strings.Split(provider.GetString(key), separator)
 	}
 	return value
 }

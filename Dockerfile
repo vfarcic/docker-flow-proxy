@@ -28,6 +28,7 @@ ENV CERTS="" \
     PROXY_INSTANCE_NAME="docker-flow" \
     RELOAD_INTERVAL="5000" REPEAT_RELOAD=false \
     RECONFIGURE_ATTEMPTS="20" \
+    SEPARATOR="," \
     SERVICE_NAME="proxy" SERVICE_DOMAIN_ALGO="hdr(host)" \
     STATS_USER="" STATS_USER_ENV="STATS_USER" STATS_PASS="" STATS_PASS_ENV="STATS_PASS" STATS_URI="" STATS_URI_ENV="STATS_URI" STATS_PORT="" \
     TIMEOUT_HTTP_REQUEST="5" TIMEOUT_HTTP_KEEP_ALIVE="15" TIMEOUT_CLIENT="20" TIMEOUT_CONNECT="5" TIMEOUT_QUEUE="30" TIMEOUT_SERVER="20" TIMEOUT_TUNNEL="3600" \
@@ -42,7 +43,10 @@ EXPOSE 8080
 RUN apk --no-cache add tini
 ENTRYPOINT ["/sbin/tini","--"]
 CMD ["docker-flow-proxy", "server"]
+HEALTHCHECK --interval=5s --start-period=3s --timeout=5s CMD check.sh
 
+COPY scripts/check.sh /usr/local/bin/check.sh
+RUN chmod +x /usr/local/bin/check.sh
 COPY errorfiles /errorfiles
 COPY haproxy.cfg /cfg/haproxy.cfg
 COPY haproxy.tmpl /cfg/tmpl/haproxy.tmpl

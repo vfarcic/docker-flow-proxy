@@ -13,6 +13,7 @@ services:
       - LISTENER_ADDRESS=swarm-listener
       - STATS_USER=none
       - STATS_PASS=none
+      - HEALTHCHECK=true
     secrets:
       - dfp_users_vfarcic
     deploy:
@@ -40,6 +41,7 @@ services:
       labels:
         - com.df.distribute=true
         - com.df.notify=true
+        - com.df.reschedule=true
         - com.df.port=80
         - com.df.serviceDomain=proxy.dockerflow.com
         - com.df.servicePath=/

@@ -33,6 +33,7 @@ func TestServerUnitTestSuite(t *testing.T) {
 	logPrintf = func(format string, v ...interface{}) {}
 
 	os.Setenv("SKIP_ADDRESS_VALIDATION", "false")
+	os.Setenv("SEPARATOR", ",")
 
 	suite.Run(t, s)
 }

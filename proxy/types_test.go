@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,6 +15,11 @@ type TypesTestSuite struct {
 
 func (s *TypesTestSuite) SetupTest() {
 	logPrintf = func(format string, v ...interface{}) {}
+}
+
+func TestRunUnitTestSuite(t *testing.T) {
+	os.Setenv("SEPARATOR", ",")
+	suite.Run(t, new(TypesTestSuite))
 }
 
 // mergeUsers
@@ -169,7 +175,7 @@ x:X`, false, false)
 func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 	expected := s.getExpectedService()
 	expected.ServiceDest[0].Index = 0
-	serviceMap := s.getServiceMap(expected, "")
+	serviceMap := s.getServiceMap(expected, "", ",")
 	actual := GetServiceFromMap(&serviceMap)
 	s.Equal(expected, *actual)
 }
@@ -178,7 +184,20 @@ func (s *TypesTestSuite) Test_GetServiceFromMap_ReturnsProxyService() {
 
 func (s *TypesTestSuite) Test_GetServiceFromProvider_ReturnsProxyServiceWithIndexedData() {
 	expected := s.getExpectedService()
-	serviceMap := s.getServiceMap(expected, ".1")
+	serviceMap := s.getServiceMap(expected, ".1", ",")
+	provider := mapParameterProvider{&serviceMap}
+
+	actual := GetServiceFromProvider(&provider)
+
+	s.Equal(expected, *actual)
+}
+
+func (s *TypesTestSuite) Test_GetServiceFromProvider_UsesSeparatorFromEnvVar() {
+	separatorOrig := os.Getenv("SEPARATOR")
+	defer func() { os.Setenv("SEPARATOR", separatorOrig) }()
+	os.Setenv("SEPARATOR", "@")
+	expected := s.getExpectedService()
+	serviceMap := s.getServiceMap(expected, ".1", "@")
 	provider := mapParameterProvider{&serviceMap}
 
 	actual := GetServiceFromProvider(&provider)
@@ -190,7 +209,7 @@ func (s *TypesTestSuite) Test_GetServiceFromProvider_AddsTasksWhenSessionTypeIsN
 	expected := s.getExpectedService()
 	expected.SessionType = "sticky-server"
 	expected.Tasks = []string{"1.2.3.4", "4.3.2.1"}
-	serviceMap := s.getServiceMap(expected, ".1")
+	serviceMap := s.getServiceMap(expected, ".1", ",")
 	provider := mapParameterProvider{&serviceMap}
 	actualHost := ""
 	lookupHostOrig := lookupHost
@@ -262,27 +281,21 @@ func (s *TypesTestSuite) Test_GetServiceFromProvider_MovesHttpsOnlyToIndexedEntr
 	s.Equal(expected, *actual)
 }
 
-// Suite
-
-func TestRunUnitTestSuite(t *testing.T) {
-	suite.Run(t, new(TypesTestSuite))
-}
-
 // Util
 
-func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map[string]string {
+func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix, separator string) map[string]string {
 	header := ""
 	for key, value := range expected.ServiceDest[0].ServiceHeader {
-		header += key + ":" + value + ","
+		header += key + ":" + value + separator
 	}
-	header = strings.TrimRight(header, ",")
+	header = strings.TrimRight(header, separator)
 	return map[string]string{
 		"aclName":               expected.AclName,
-		"addReqHeader":          strings.Join(expected.AddReqHeader, ","),
-		"addResHeader":          strings.Join(expected.AddResHeader, ","),
+		"addReqHeader":          strings.Join(expected.AddReqHeader, separator),
+		"addResHeader":          strings.Join(expected.AddResHeader, separator),
 		"backendExtra":          expected.BackendExtra,
-		"delReqHeader":          strings.Join(expected.DelReqHeader, ","),
-		"delResHeader":          strings.Join(expected.DelResHeader, ","),
+		"delReqHeader":          strings.Join(expected.DelReqHeader, separator),
+		"delResHeader":          strings.Join(expected.DelResHeader, separator),
 		"distribute":            strconv.FormatBool(expected.Distribute),
 		"httpsPort":             strconv.Itoa(expected.HttpsPort),
 		"isDefaultBackend":      strconv.FormatBool(expected.IsDefaultBackend),
@@ -295,8 +308,8 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"serviceDomainAlgo":     expected.ServiceDomainAlgo,
 		"serviceName":           expected.ServiceName,
 		"sessionType":           expected.SessionType,
-		"setReqHeader":          strings.Join(expected.SetReqHeader, ","),
-		"setResHeader":          strings.Join(expected.SetResHeader, ","),
+		"setReqHeader":          strings.Join(expected.SetReqHeader, separator),
+		"setResHeader":          strings.Join(expected.SetResHeader, separator),
 		"sslVerifyNone":         strconv.FormatBool(expected.SslVerifyNone),
 		"templateBePath":        expected.TemplateBePath,
 		"templateFePath":        expected.TemplateFePath,
@@ -306,18 +319,18 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix string) map
 		"usersPassEncrypted":    "true",
 		"xForwardedProto":       strconv.FormatBool(expected.XForwardedProto),
 		// ServiceDest
-		"allowedMethods" + indexSuffix:      strings.Join(expected.ServiceDest[0].AllowedMethods, ","),
-		"deniedMethods" + indexSuffix:       strings.Join(expected.ServiceDest[0].DeniedMethods, ","),
+		"allowedMethods" + indexSuffix:      strings.Join(expected.ServiceDest[0].AllowedMethods, separator),
+		"deniedMethods" + indexSuffix:       strings.Join(expected.ServiceDest[0].DeniedMethods, separator),
 		"denyHttp" + indexSuffix:            strconv.FormatBool(expected.ServiceDest[0].DenyHttp),
 		"httpsOnly" + indexSuffix:           strconv.FormatBool(expected.ServiceDest[0].HttpsOnly),
 		"httpsRedirectCode" + indexSuffix:   expected.ServiceDest[0].HttpsRedirectCode,
 		"ignoreAuthorization" + indexSuffix: strconv.FormatBool(expected.ServiceDest[0].IgnoreAuthorization),
 		"port" + indexSuffix:                expected.ServiceDest[0].Port,
 		"reqMode" + indexSuffix:             expected.ServiceDest[0].ReqMode,
-		"serviceDomain" + indexSuffix:       strings.Join(expected.ServiceDest[0].ServiceDomain, ","),
+		"serviceDomain" + indexSuffix:       strings.Join(expected.ServiceDest[0].ServiceDomain, separator),
 		"serviceHeader" + indexSuffix:       header,
-		"servicePath" + indexSuffix:         strings.Join(expected.ServiceDest[0].ServicePath, ","),
-		"userAgent" + indexSuffix:           strings.Join(expected.ServiceDest[0].UserAgent.Value, ","),
+		"servicePath" + indexSuffix:         strings.Join(expected.ServiceDest[0].ServicePath, separator),
+		"userAgent" + indexSuffix:           strings.Join(expected.ServiceDest[0].UserAgent.Value, separator),
 		"verifyClientSsl" + indexSuffix:     strconv.FormatBool(expected.ServiceDest[0].VerifyClientSsl),
 	}
 }

@@ -15,24 +15,12 @@ pipeline {
           def dateFormat = new SimpleDateFormat("yy.MM.dd")
           currentBuild.displayName = dateFormat.format(new Date()) + "-" + env.BUILD_NUMBER
         }
-        sh "docker image build -t vfarcic/docker-flow-proxy ."
-        sh "docker tag vfarcic/docker-flow-proxy vfarcic/docker-flow-proxy:beta"
-        withCredentials([usernamePassword(
-          credentialsId: "docker",
-          usernameVariable: "USER",
-          passwordVariable: "PASS"
-        )]) {
-          sh "docker login -u $USER -p $PASS"
-        }
-        sh "docker image push vfarcic/docker-flow-proxy:beta"
-        sh "docker image build -t vfarcic/docker-flow-proxy-test -f Dockerfile.test ."
-        sh "docker image push vfarcic/docker-flow-proxy-test"
-        sh "docker image build -t vfarcic/docker-flow-proxy-docs -f Dockerfile.docs ."
-        sh "docker tag vfarcic/docker-flow-proxy vfarcic/docker-flow-proxy:${currentBuild.displayName}"
-        sh "docker tag vfarcic/docker-flow-proxy-docs vfarcic/docker-flow-proxy-docs:${currentBuild.displayName}"
+        dfBuild("docker-flow-proxy")
+        sh "docker image build -t vfarcic/docker-flow-proxy:latest-packet-beat -f Dockerfile.packetbeat ."
+        sh "docker image tag vfarcic/docker-flow-proxy:latest-packet-beat vfarcic/docker-flow-proxy:${currentBuild.displayName}-packet-beat"
       }
     }
-    stage("test") {
+    stage("staging") {
       environment {
         DOCKER_HUB_USER = "vfarcic"
       }
@@ -49,10 +37,11 @@ pipeline {
         branch "master"
       }
       steps {
-        sh "docker push vfarcic/docker-flow-proxy:latest"
-        sh "docker push vfarcic/docker-flow-proxy:${currentBuild.displayName}"
-        sh "docker push vfarcic/docker-flow-proxy-docs:latest"
-        sh "docker push vfarcic/docker-flow-proxy-docs:${currentBuild.displayName}"
+        dfRelease("docker-flow-proxy")
+        dockerLogin()
+        sh "docker image push vfarcic/docker-flow-proxy:latest-packet-beat"
+        sh "docker image push vfarcic/docker-flow-proxy:${currentBuild.displayName}-packet-beat"
+        dockerLogout()
       }
     }
     stage("deploy") {
@@ -63,8 +52,7 @@ pipeline {
         label "prod"
       }
       steps {
-        sh "docker service update --image vfarcic/docker-flow-proxy:${currentBuild.displayName} proxy_proxy"
-        sh "docker service update --image vfarcic/docker-flow-proxy-docs:${currentBuild.displayName} proxy_docs"
+        dfDeploy("docker-flow-proxy", "proxy_proxy", "proxy_docs")
       }
     }
   }

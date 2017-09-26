@@ -1,0 +1,29 @@
+packetbeat.interfaces.device: '${DF_PACKETBEAT_INTERFACE}'
+packetbeat.protocols.http:
+  ports: '${DF_PACKETBEAT_HTTP_PORT}'
+  hide_keywords: '${DF_PACKETBEAT_HTTP_HIDE_KEYWORDS}'
+  send_headers: '${DF_PACKETBEAT_HTTP_SEND_HEADERS}'
+  real_ip_header: '${DF_PACKETBEAT_HTTP_REAL_IP_HEADER}'
+  send_request: '${DF_PACKETBEAT_HTTP_SEND_REQUEST:false}'
+  send_response: '${DF_PACKETBEAT_HTTP_SEND_RESPONSE:false}'
+output.logstash:
+  enabled: true
+  hosts: '${DF_PACKETBEAT_LOGSTASH_HOSTS}'
+  index: 'packetbeat'
+  ssl.enabled: false
+output.file:
+  enabled: '${DF_PACKETBEAT_OUTPUT_FILE:true}'
+  path: "/tmp/packetbeat"
+  filename: packetbeat
+  rotate_every_kb: 10240 # 10 MB
+  number_of_files: 2
+
+#================================ Logging ======================================
+logging.level: warning
+logging.to_syslog: false
+logging.to_files: true
+logging.files:
+  path: /var/log/mybeat
+  name: mybeat.log
+  rotateeverybytes: 10485760 # 10 MB
+  keepfiles: 7
