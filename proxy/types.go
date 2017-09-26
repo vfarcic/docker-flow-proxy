@@ -325,7 +325,6 @@ func getServiceDestList(sr *Service, provider ServiceParameterProvider) []Servic
 		serviceDomain = sd.ServiceDomain
 	}
 	httpsOnly := sd.HttpsOnly
-
 	for i := 1; i <= 10; i++ {
 		sd := getServiceDest(sr, provider, i)
 		if isServiceDestValid(&sd) {
@@ -350,7 +349,6 @@ func getServiceDestList(sr *Service, provider ServiceParameterProvider) []Servic
 		if httpsOnly && !sd.HttpsOnly {
 			sdList[i].HttpsOnly = true
 		}
-
 	}
 	return sdList
 }
@@ -361,10 +359,6 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 	if index > 0 {
 		suffix = fmt.Sprintf(".%d", index)
 	}
-	//httpsRedirectCode := "302"
-	//if len(provider.GetString(fmt.Sprintf("httpsRedirectCode%s", suffix))) > 0 {
-	//	httpsRedirectCode = provider.GetString(fmt.Sprintf("httpsRedirectCode%s", suffix))
-	//}
 	userAgent := UserAgent{}
 	if len(provider.GetString(fmt.Sprintf("userAgent%s", suffix))) > 0 {
 		userAgent.Value = strings.Split(provider.GetString(fmt.Sprintf("userAgent%s", suffix)), separator)
