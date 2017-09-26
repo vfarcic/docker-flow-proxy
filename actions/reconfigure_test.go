@@ -533,6 +533,37 @@ backend %s-be%s_0
 	s.Equal(expectedData, actualData)
 }
 
+func (s ReconfigureTestSuite) Test_Execute_WritesBeTemplateWithHttpsRedirectCode_WhenHttpsRedirectCodeIsSet() {
+	s.reconfigure.ServiceDest[0].HttpsRedirectCode = "301"
+	s.reconfigure.ServiceDest[0].Index = 0
+	var actualFilename, actualData string
+	expectedFilename := fmt.Sprintf("%s/%s-be.cfg", s.TemplatesPath, s.ServiceName)
+	expectedData := fmt.Sprintf(
+		`
+backend %s-be%s_0
+    mode http
+    redirect scheme https code 301 if !{ ssl_fc }
+    server %s %s:%s`,
+		s.ServiceName,
+		s.reconfigure.ServiceDest[0].Port,
+		s.ServiceName,
+		s.ServiceName,
+		s.reconfigure.ServiceDest[0].Port,
+	)
+	writeBeTemplateOrig := writeBeTemplate
+	defer func() { writeBeTemplate = writeBeTemplateOrig }()
+	writeBeTemplate = func(filename string, data []byte, perm os.FileMode) error {
+		actualFilename = filename
+		actualData = string(data)
+		return nil
+	}
+
+	s.reconfigure.Execute(true)
+
+	s.Equal(expectedFilename, actualFilename)
+	s.Equal(expectedData, actualData)
+}
+
 func (s ReconfigureTestSuite) Test_Execute_WritesServerSession() {
 	s.reconfigure.ServiceName = "my-service"
 	s.reconfigure.ServiceDest[0].Port = "1111"

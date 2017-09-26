@@ -145,9 +145,12 @@ backend {{$.ServiceName}}-be{{.Port}}_{{.Index}}
 		{{- end}}
 		{{- if .DenyHttp}}
     http-request deny if !{ ssl_fc }
-		{{- end}}
-		{{- if .HttpsOnly}}
+        {{- end}}
+        {{- if .HttpsRedirectCode}}
+    redirect scheme https code {{.HttpsRedirectCode}} if !{ ssl_fc }
+		{{- else if .HttpsOnly}}
     redirect scheme https if !{ ssl_fc }
+        
 		{{- end}}
 		{{- if eq $.SessionType "sticky-server"}}
     balance roundrobin
