@@ -542,10 +542,11 @@ func (s ReconfigureTestSuite) Test_Execute_WritesBeTemplateWithHttpsRedirectCode
 		`
 backend %s-be%s_0
     mode http
-    redirect scheme https code 301 if !{ ssl_fc }
+    redirect scheme https code %s if !{ ssl_fc }
     server %s %s:%s`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
+		s.reconfigure.ServiceDest[0].HttpsRedirectCode,
 		s.ServiceName,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
