@@ -572,8 +572,6 @@ backend %s-be%s_0
     mode http
     http-request add-header X-Forwarded-Proto https if { ssl_fc }
     http-request redirect scheme https code %s if !{ ssl_fc }
-    http-request add-header X-Forwarded-Proto https if { ssl_fc }
-    http-request redirect scheme https if !{ ssl_fc }
     server %s %s:%s`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
