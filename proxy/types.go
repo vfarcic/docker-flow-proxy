@@ -26,6 +26,8 @@ type ServiceDest struct {
 	// The internal port of a service that should be reconfigured.
 	// The port is used only in the *swarm* mode.
 	Port string
+	// If a request is sent to one of the domains in this list, it will be redirected to one of the values of the `ServiceDomain`.
+	RedirectFromDomain []string
 	// The request mode. The proxy should be able to work with any mode supported by HAProxy.
 	// However, actively supported and tested modes are *http*, *tcp*, and *sni*.
 	ReqMode string
@@ -391,6 +393,7 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 		HttpsRedirectCode:   provider.GetString(fmt.Sprintf("httpsRedirectCode%s", suffix)),
 		IgnoreAuthorization: getBoolParam(provider, fmt.Sprintf("ignoreAuthorization%s", suffix)),
 		Port:                provider.GetString(fmt.Sprintf("port%s", suffix)),
+		RedirectFromDomain:  getSliceFromString(provider, fmt.Sprintf("redirectFromDomain%s", suffix)),
 		ReqMode:             reqMode,
 		ServiceDomain:       getSliceFromString(provider, fmt.Sprintf("serviceDomain%s", suffix)),
 		ServiceHeader:       header,

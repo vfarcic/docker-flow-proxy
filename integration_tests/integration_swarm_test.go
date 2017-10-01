@@ -105,6 +105,23 @@ func (s IntegrationSwarmTestSuite) Test_Domain() {
 	}
 }
 
+func (s IntegrationSwarmTestSuite) Test_RedirectFromDomain() {
+	params := fmt.Sprintf("&serviceDomain=%s&redirectFromDomain=my-other-domain.com", s.hostIP)
+	s.reconfigureGoDemo(params)
+
+	client := new(http.Client)
+	url := fmt.Sprintf("http://%s/demo/hello", s.hostIP)
+	req, err := http.NewRequest("GET", url, nil)
+	s.NoError(err)
+	req.Host = "my-other-domain.com"
+	resp, err := client.Do(req)
+
+	s.NoError(err, s.getProxyConf(""))
+	if resp != nil {
+		s.Equal(200, resp.StatusCode, s.getProxyConf(""))
+	}
+}
+
 func (s IntegrationSwarmTestSuite) Test_Config() {
 	s.reconfigureGoDemo("")
 

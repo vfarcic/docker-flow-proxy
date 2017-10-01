@@ -534,6 +534,7 @@ backend %s-be%s_0
 }
 
 func (s ReconfigureTestSuite) Test_Execute_WritesBeTemplateWithHttpsRedirectCode_WhenHttpsRedirectCodeIsSet() {
+	s.reconfigure.ServiceDest[0].HttpsOnly = true
 	s.reconfigure.ServiceDest[0].HttpsRedirectCode = "301"
 	s.reconfigure.ServiceDest[0].Index = 0
 	var actualFilename, actualData string

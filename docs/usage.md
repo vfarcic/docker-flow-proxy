@@ -37,7 +37,7 @@ The following query parameters can be used to send a *reconfigure* request to *D
 |timeoutTunnel  |The tunnel timeout in seconds.<br>**Default:** `3600`<br>**Example:** `3600`|
 |xForwardedProto|Whether to add "X-Forwarded-Proto https" header.<br>**Default:** `false`<br>**Example:** `true`|
 
-Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization`, `serviceDomain``allowedMethods`, `deniedMethods`, `denyHttp`, `httpsOnly`, or `ReqMode` parameters. In that case, `srcPort` is required.
+Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization`, `serviceDomain``allowedMethods`, `deniedMethods`, `denyHttp`, `httpsOnly`, `redirectFromDomain`, or `ReqMode` parameters. In that case, `srcPort` is required.
 
 ### HTTP Mode Query Parameters
 
@@ -51,9 +51,10 @@ The following query parameters can be used only when `reqMode` is set to `http` 
 |httpsOnly    |If set to true, HTTP requests to the service will be redirected to HTTPS. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `httpsOnly.1`, `httpsOnly.2`, and so on).<br>**Example:** `true`<br>**Default Value:** `false`|
 |outboundHostname|The hostname where the service is running, for instance on a separate swarm. If specified, the proxy will dispatch requests to that domain.<br>**Example:** `ecme.com`|
 |pathType     |The ACL derivative. Defaults to *path_beg*. See [HAProxy path](https://cbonte.github.io/haproxy-dconv/configuration-1.5.html#7.3.6-path) for more info.<br>**Example:** `path_beg`|
+|redirectFromDomain|If a request is sent to one of the domains in this list, it will be redirected to one of the values of the `ServiceDomain`. Multiple domains can be separated with comma (e.g. `acme.com,something.acme.com`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service.<br>**Example:** `acme.com,something.acme.com`|
 |redirectWhenHttpProto|Whether to redirect to https when X-Forwarded-Proto is set and the request is made over an HTTP port.<br>**Example:** `true`<br>**Default Value:** `false`|
 |serviceCert  |Content of the PEM-encoded certificate to be used by the proxy when serving traffic over SSL.|
-|serviceDomain  |The domain of the service. If set, the proxy will allow access only to requests coming to that domain. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `serviceDomain.1`, `serviceDomain.2`, and so on).  Asterisk sign can be placed to begining of value and in this case **serviceDomainAlgo** parameter will be **replaced** to `hdr_end(host)`. This parameter is **mandatory** if `servicePath` is not specified.<br>**Example:** `ecme.com`|
+|serviceDomain  |The domain of the service. If set, the proxy will allow access only to requests coming to that domain. Multiple domains can be separated with comma (e.g. `acme.com,something.else.com`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `serviceDomain.1`, `serviceDomain.2`, and so on).  Asterisk sign can be placed to beginning of value and in this case **serviceDomainAlgo** parameter will be **replaced** to `hdr_end(host)`. This parameter is **mandatory** if `servicePath` is not specified.<br>**Example:** `ecme.com`|
 |serviceDomainAlgo|Algorithm that should be applied to domain ACLs. Any ACL works only with one flag: `-i : ignore case during matching of all subsequent patterns`. If not set, the value of the environment variable `SERVICE_DOMAIN_ALGO` will be used instead. If defaults to `hdr(host)`<br>**Examples:**<br>`hdr(host)`: matches only if domain is the same as `serviceDomain`<br>`hdr_dom(host)`: matches the specified `serviceDomain` and any subdomain (a string either isolated or delimited by dots). **Example:** if `hdr_dom(host)` contains `www.ecme.com` and `serviceDomain` equals `ecme.com` the rule will be passed.<br>`req.ssl_sni`: matches Server Name TLS extension|
 |serviceHeader|Headers used to filter requests. If set, the proxy will allow access only to requests that contain specified headers. A header consists of a key and value separated with colon (e.g. `X-Version:3`). Multiple headers can be separated with comma (e.g. `X-Version:3,name:viktor`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `serviceHeader.1`, `serviceHeader.2`, and so on). <br>**Example:** `X-Version:3,name:viktor`|
 |servicePath  |The URL path of the service. Multiple values should be separated with comma (`,`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `servicePath.1`, `servicePath.2`, and so on). This parameter **is mandatory** unless `serviceDomain` is specified.<br>**Example:** `/api/v1/books`|
@@ -67,7 +68,7 @@ The following query parameters can be used only when `reqMode` is set to `http` 
 |usersPassEncrypted|Indicates whether passwords provided by `users` or `usersSecret` contain encrypted data. Passwords can be encrypted with the command `mkpasswd -m sha-512 password1`.<br>**Example:** `true`<br>**Default Value:** `false`|
 |verifyClientSsl|Whether to verify client SSL and, if it is not valid, deny request and return 403 Forbidden status code. SSL is validated against the `ca-file` specified through the environment variable `CA_FILE`.<br>**Example:** true<br>**Default Value:** `false`|
 
-Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization`, `serviceDomain`, `allowedMethods`, `deniedMethods`, `denyHttp`, `httpsOnly`, or `ReqMode` parameters. In that case, `srcPort` is required.
+Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization`, `serviceDomain`, `allowedMethods`, `deniedMethods`, `denyHttp`, `httpsOnly`, `redirectFromDomain`, or `ReqMode` parameters. In that case, `srcPort` is required.
 
 ### TCP Mode HTTP Query Parameters
 
@@ -121,6 +122,7 @@ The map between the HTTP query parameters and environment variables is as follow
 |outboundHostname     |OUTBOUND_HOSTNAME       |
 |pathType             |PATH_TYPE               |
 |port                 |PORT                    |
+|redirectFromDomain   |REDIRECT_FROM_DOMAIN    |
 |redirectWhenHttpProto|REDIRECT_WHEN_HTTP_PROTO|
 |reqMode              |REQ_MODE                |
 |reqPathReplace       |REQ_PATH_REPLACE        |
