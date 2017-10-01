@@ -149,8 +149,6 @@ type Service struct {
 	UseGlobalUsers bool
 	// A comma-separated list of credentials(<user>:<pass>) for HTTP basic auth, which applies only to the service that will be reconfigured.
 	Users []User `split_words:"true"`
-	// Whether to add "X-Forwarded-Proto https" header.
-	XForwardedProto bool `envconfig:"x_forwarded_proto" split_words:"true"`
 	// The rest of variables are for internal use only
 	ServicePort         string
 	AclCondition        string

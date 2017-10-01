@@ -37,11 +37,11 @@ pipeline {
         branch "master"
       }
       steps {
-        dfRelease("docker-flow-proxy")
         dockerLogin()
         sh "docker image push vfarcic/docker-flow-proxy:latest-packet-beat"
         sh "docker image push vfarcic/docker-flow-proxy:${currentBuild.displayName}-packet-beat"
         dockerLogout()
+        dfRelease("docker-flow-proxy")
       }
     }
     stage("deploy") {

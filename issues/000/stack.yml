@@ -1,0 +1,50 @@
+version: "3.2"
+
+services:
+
+  web:
+    image: ghost:1.10-alpine
+    networks:
+      - proxy
+    environment:
+      url: https://zarbis.tk
+    deploy:
+      labels:
+        - com.df.notify=true
+        - com.df.distribute=true
+        - com.df.port=2368
+#        - com.df.servicePath=/
+#        - com.df.httpsOnly=false
+        - com.df.serviceDomain=zarbis.tk
+#        - com.df.letsencrypt.host=zarbis.tk
+#        - com.df.letsencrypt.email=ubuntolog@gmail.com
+
+  proxy:
+    image: vfarcic/docker-flow-proxy:${TAG:-latest}
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - proxy
+    environment:
+      - LISTENER_ADDRESS=swarm-listener
+
+  swarm-listener:
+    image: vfarcic/docker-flow-swarm-listener
+    networks:
+      - proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DF_NOTIFY_CREATE_SERVICE_URL=http://proxy:8080/v1/docker-flow-proxy/reconfigure
+      - DF_NOTIFY_REMOVE_SERVICE_URL=http://proxy:8080/v1/docker-flow-proxy/remove
+    deploy:
+      labels:
+        - com.df.notify=true
+        - com.df.distribute=true
+      placement:
+        constraints: [node.role == manager]
+
+networks:
+  proxy:
+    external: true

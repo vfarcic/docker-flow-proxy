@@ -35,7 +35,6 @@ The following query parameters can be used to send a *reconfigure* request to *D
 |srcPort        |The source (entry) port of a service. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `srcPort.1`, `srcPort.2`, and so on). The parameter is mandatory when specifying multiple destinations of a single service.<br>**Example:** `80`|
 |timeoutServer  |The server timeout in seconds.<br>**Default:** `20`<br>**Example:** `60`|
 |timeoutTunnel  |The tunnel timeout in seconds.<br>**Default:** `3600`<br>**Example:** `3600`|
-|xForwardedProto|Whether to add "X-Forwarded-Proto https" header.<br>**Default:** `false`<br>**Example:** `true`|
 
 Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization`, `serviceDomain``allowedMethods`, `deniedMethods`, `denyHttp`, `httpsOnly`, `redirectFromDomain`, or `ReqMode` parameters. In that case, `srcPort` is required.
 
@@ -143,7 +142,6 @@ The map between the HTTP query parameters and environment variables is as follow
 |usersSecret          |**Not supported**       |
 |usersPassEncrypted   |**Not supported**       |
 |verifyClientSsl      |VERIFY_CLIENT_SSL       |
-|xForwardedProto      |X_FORWARDED_PROTO       |
 
 Please explore the [Configuring Non-Swarm Services](non-swarm.md) tutorial for more info.
 

@@ -120,7 +120,10 @@ func GetBackTemplate(sr *Service) string {
 	tmpl := `{{- range $sd := .ServiceDest}}
 backend {{$.ServiceName}}-be{{.Port}}_{{.Index}}
     mode {{.ReqModeFormatted}}
-        {{- if ne $.ConnectionMode ""}}
+    {{- if eq .ReqModeFormatted "http"}}
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
+	{{- end}}
+	{{- if ne $.ConnectionMode ""}}
     option {{$.ConnectionMode}}
         {{- end}}
         {{- if $.Debug}}
@@ -185,6 +188,9 @@ backend {{$.ServiceName}}-be{{.Port}}_{{.Index}}
         {{- range $sd := .ServiceDest}}
 backend https-{{$.ServiceName}}-be{{.Port}}_{{.Index}}
     mode {{.ReqModeFormatted}}
+            {{- if eq .ReqModeFormatted "http"}}
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
+            {{- end}}
             {{- if ne $.ConnectionMode ""}}
     option {{$.ConnectionMode}}
             {{- end}}
@@ -247,10 +253,6 @@ backend https-{{$.ServiceName}}-be{{.Port}}_{{.Index}}
 
 func getHeaders(sr *Service) string {
 	tmpl := ""
-	if sr.XForwardedProto {
-		tmpl += `
-    http-request add-header X-Forwarded-Proto https if { ssl_fc }`
-	}
 	for _, header := range sr.AddReqHeader {
 		tmpl += fmt.Sprintf(`
     http-request add-header %s`,

@@ -318,7 +318,6 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix, separator 
 		"timeoutTunnel":         expected.TimeoutTunnel,
 		"users":                 "user1:pass1,user2:pass2",
 		"usersPassEncrypted":    "true",
-		"xForwardedProto":       strconv.FormatBool(expected.XForwardedProto),
 		// ServiceDest
 		"allowedMethods" + indexSuffix:      strings.Join(expected.ServiceDest[0].AllowedMethods, separator),
 		"deniedMethods" + indexSuffix:       strings.Join(expected.ServiceDest[0].DeniedMethods, separator),
@@ -380,7 +379,6 @@ func (s *TypesTestSuite) getExpectedService() Service {
 		TemplateFePath:  "templateFePath",
 		TimeoutServer:   "timeoutServer",
 		TimeoutTunnel:   "timeoutTunnel",
-		XForwardedProto: true,
 		Users: []User{
 			{Username: "user1", Password: "pass1", PassEncrypted: true},
 			{Username: "user2", Password: "pass2", PassEncrypted: true},
