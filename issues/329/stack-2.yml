@@ -1,0 +1,46 @@
+version: "3.2"
+
+services:
+
+  proxy:
+    image: vfarcic/docker-flow-proxy:17.09.14-15
+    ports:
+      - "80:80" # New
+      - "443:443" # New
+#      - "443:80"
+    environment:
+      - LISTENER_ADDRESS=swarm-listener
+      - MODE=swarm
+    deploy:
+      labels:
+        com.docker.aws.lb.arn: "aaaa111"
+#      placement:
+#        constraints: [node.role == worker]
+
+  swarm-listener:
+    image: vfarcic/docker-flow-swarm-listener:17.07.28-1
+    environment:
+      - DF_NOTIFY_CREATE_SERVICE_URL=http://proxy:8080/v1/docker-flow-proxy/reconfigure
+      - DF_NOTIFY_REMOVE_SERVICE_URL=http://proxy:8080/v1/docker-flow-proxy/remove
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  myservice:
+    image: vfarcic/go-demo-2
+    deploy:
+      labels:
+        com.df.notify: "true"
+        com.df.distribute: "true"
+#        com.df.servicePath: "/myservice"
+        com.df.servicePath: "/demo" # New
+        com.df.port: "8080"
+#        com.df.reqPathSearch: "/myservice"
+#        com.df.addReqHeader: "Forwarded proto=https;\\ host=%[req.hdr(Host)];\\ port=443;\\ path=/myservice"
+#      placement:
+#        constraints: [node.role == worker]
+
+  db:
+    image: mongo

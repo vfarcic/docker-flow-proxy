@@ -22,6 +22,9 @@ var cmdRunHa = func(args []string) error {
 	}
 	return err
 }
+var cmdValidateHa = func(args []string) error {
+	return cmdRunHa(args)
+}
 var readConfigsFile = ioutil.ReadFile
 var readSecretsFile = ioutil.ReadFile
 var writeFile = ioutil.WriteFile

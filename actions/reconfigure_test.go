@@ -1,12 +1,13 @@
 package actions
 
 import (
-	"../proxy"
 	"fmt"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 	"os"
 	"testing"
+
+	"../proxy"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
 
 type ReconfigureTestSuite struct {
@@ -79,6 +80,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersEnvIsPrese
 	expected := `
 backend myService-be1234_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:1234
     acl defaultUsersAcl http_auth(defaultUsers)
     http-request auth realm defaultRealm if !defaultUsersAcl
@@ -107,21 +109,25 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersIsPresent(
 
 backend myService-be1111_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:1111
     acl myServiceUsersAcl http_auth(myServiceUsers)
     http-request auth realm myServiceRealm if !myServiceUsersAcl
     http-request del-header Authorization
 backend myService-be2222_1
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:2222
 backend https-myService-be1111_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:3333
     acl myServiceUsersAcl http_auth(myServiceUsers)
     http-request auth realm myServiceRealm if !myServiceUsersAcl
     http-request del-header Authorization
 backend https-myService-be2222_1
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:3333`
 
 	_, actual, _ := s.reconfigure.GetTemplates()
@@ -142,6 +148,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpAuth_WhenUsersIsPresentA
 
 backend myService-be1234_6
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:1234
     acl myServiceUsersAcl http_auth(myServiceUsers)
     http-request auth realm myServiceRealm if !myServiceUsersAcl
@@ -158,6 +165,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_ReturnsFormattedContent() {
 	expected := `
 backend myService-be1234_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:1234`
 
 	_, actual, _ := s.reconfigure.GetTemplates()
@@ -175,6 +183,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsCheckResolversDocker_WhenChe
 	expected := `
 backend myService-be1234_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:1234 check resolvers docker`
 
 	_, actual, _ := s.reconfigure.GetTemplates()
@@ -189,6 +198,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsRequestDeny_WhenVerifyClient
 	expected := `
 backend myService-be1234_3
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     acl valid_client_cert_myService1234 ssl_c_used ssl_c_verify 0
     http-request deny unless valid_client_cert_myService1234
     server myService myService:1234`
@@ -206,11 +216,13 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsRequestDeny_WhenNotOneOfAllo
 	expected := `
 backend myService-be1234_2
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     acl valid_allowed_method method GET DELETE
     http-request deny unless valid_allowed_method
     server myService myService:1234
 backend https-myService-be1234_2
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     acl valid_allowed_method method GET DELETE
     http-request deny unless valid_allowed_method
     server myService myService:4321`
@@ -228,11 +240,13 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsRequestDeny_WhenOneOfDeniedM
 	expected := `
 backend myService-be1234_5
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     acl valid_denied_method method GET DELETE
     http-request deny if valid_denied_method
     server myService myService:1234
 backend https-myService-be1234_5
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     acl valid_denied_method method GET DELETE
     http-request deny if valid_denied_method
     server myService myService:4321`
@@ -250,10 +264,12 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpDeny() {
 	expected := `
 backend myService-be1234_32
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     http-request deny if !{ ssl_fc }
     server myService myService:1234
 backend https-myService-be1234_32
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:4321`
 
 	_, actual, _ := s.reconfigure.GetTemplates()
@@ -268,6 +284,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddSllVerifyNone_WhenSslVerifyNo
 	expected := `
 backend myService-be1234_6
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:1234 ssl verify none`
 
 	_, actual, _ := s.reconfigure.GetTemplates()
@@ -293,9 +310,11 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpsPort_WhenPresent() {
 	expectedBack := `
 backend myService-be1234_3
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:1234
 backend https-myService-be1234_3
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:4321`
 	s.reconfigure.ServiceDest[0].Port = "1234"
 	s.reconfigure.ServiceDest[0].Index = 3
@@ -310,6 +329,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsConnectionMode_WhenPresent()
 	expectedBack := `
 backend myService-be1234_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     option my-connection-mode
     server myService myService:1234`
 	s.reconfigure.ServiceDest[0].Port = "1234"
@@ -325,6 +345,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsTimeoutServer_WhenPresent() 
 	expectedBack := `
 backend myService-be1234_4
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     timeout server 9999s
     server myService myService:1234`
 	s.reconfigure.ServiceDest[0].Port = "1234"
@@ -340,6 +361,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsTimeoutTunnel_WhenPresent() 
 	expectedBack := `
 backend myService-be1234_3
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     timeout tunnel 9999s
     server myService myService:1234`
 	s.reconfigure.ServiceDest[0].Port = "1234"
@@ -360,12 +382,14 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsMultipleDestinations() {
 	expectedBack := `
 backend myService-be1111_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:1111
 backend myService-be3333_1
     mode tcp
     server myService myService:3333
 backend myService-be5555_2
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:5555`
 	s.reconfigure.ServiceDest = sd
 	actualFront, actualBack, _ := s.reconfigure.GetTemplates()
@@ -381,6 +405,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpRequestSetPath_WhenReqPa
 	expected := fmt.Sprintf(`
 backend myService-be1234_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     http-request set-path %%[path,regsub(%s,%s)]
     server myService myService:1234`,
 		s.reconfigure.ReqPathSearch,
@@ -398,6 +423,7 @@ func (s ReconfigureTestSuite) Test_GetTemplates_AddsBackendExtra() {
 	expected := fmt.Sprintf(`
 backend myService-be1234_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server myService myService:1234
     %s`,
 		s.reconfigure.BackendExtra,
@@ -480,6 +506,7 @@ func (s ReconfigureTestSuite) Test_Execute_WritesBeTemplate() {
 		`
 backend %s-be%s_9
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     server %s %s:%s`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
@@ -510,10 +537,45 @@ func (s ReconfigureTestSuite) Test_Execute_WritesBeTemplateWithRedirectToHttps_W
 		`
 backend %s-be%s_0
     mode http
-    redirect scheme https if !{ ssl_fc }
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
+    http-request redirect scheme https if !{ ssl_fc }
     server %s %s:%s`,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
+		s.ServiceName,
+		s.ServiceName,
+		s.reconfigure.ServiceDest[0].Port,
+	)
+	writeBeTemplateOrig := writeBeTemplate
+	defer func() { writeBeTemplate = writeBeTemplateOrig }()
+	writeBeTemplate = func(filename string, data []byte, perm os.FileMode) error {
+		actualFilename = filename
+		actualData = string(data)
+		return nil
+	}
+
+	s.reconfigure.Execute(true)
+
+	s.Equal(expectedFilename, actualFilename)
+	s.Equal(expectedData, actualData)
+}
+
+func (s ReconfigureTestSuite) Test_Execute_WritesBeTemplateWithHttpsRedirectCode_WhenHttpsRedirectCodeIsSet() {
+	s.reconfigure.ServiceDest[0].HttpsOnly = true
+	s.reconfigure.ServiceDest[0].HttpsRedirectCode = "301"
+	s.reconfigure.ServiceDest[0].Index = 0
+	var actualFilename, actualData string
+	expectedFilename := fmt.Sprintf("%s/%s-be.cfg", s.TemplatesPath, s.ServiceName)
+	expectedData := fmt.Sprintf(
+		`
+backend %s-be%s_0
+    mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
+    http-request redirect scheme https code %s if !{ ssl_fc }
+    server %s %s:%s`,
+		s.ServiceName,
+		s.reconfigure.ServiceDest[0].Port,
+		s.reconfigure.ServiceDest[0].HttpsRedirectCode,
 		s.ServiceName,
 		s.ServiceName,
 		s.reconfigure.ServiceDest[0].Port,
@@ -542,12 +604,14 @@ func (s ReconfigureTestSuite) Test_Execute_WritesServerSession() {
 	expectedData := `
 backend my-service-be1111_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     balance roundrobin
     cookie my-service insert indirect nocache
     server my-service_0 1.2.3.4:1111 check cookie my-service_0
     server my-service_1 4.3.2.1:1111 check cookie my-service_1
 backend https-my-service-be1111_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     balance roundrobin
     cookie my-service insert indirect nocache
     server my-service_0 1.2.3.4:2222 check cookie my-service_0
@@ -564,36 +628,6 @@ backend https-my-service-be1111_0
 	s.Equal(expectedData, actualData)
 }
 
-func (s ReconfigureTestSuite) Test_Execute_AddsXForwardedProto_WhenTrue() {
-	s.reconfigure.XForwardedProto = true
-	var actualFilename, actualData string
-	expectedFilename := fmt.Sprintf("%s/%s-be.cfg", s.TemplatesPath, s.ServiceName)
-	expectedData := fmt.Sprintf(
-		`
-backend %s-be%s_0
-    mode http
-    http-request add-header X-Forwarded-Proto https if { ssl_fc }
-    server %s %s:%s`,
-		s.ServiceName,
-		s.reconfigure.ServiceDest[0].Port,
-		s.ServiceName,
-		s.ServiceName,
-		s.reconfigure.ServiceDest[0].Port,
-	)
-	writeBeTemplateOrig := writeBeTemplate
-	defer func() { writeBeTemplate = writeBeTemplateOrig }()
-	writeBeTemplate = func(filename string, data []byte, perm os.FileMode) error {
-		actualFilename = filename
-		actualData = string(data)
-		return nil
-	}
-
-	s.reconfigure.Execute(true)
-
-	s.Equal(expectedFilename, actualFilename)
-	s.Equal(expectedData, actualData)
-}
-
 func (s ReconfigureTestSuite) Test_Execute_AddsReqHeader_WhenAddReqHeaderIsSet() {
 	s.reconfigure.AddReqHeader = []string{"header-1", "header-2"}
 	var actualFilename, actualData string
@@ -602,6 +636,7 @@ func (s ReconfigureTestSuite) Test_Execute_AddsReqHeader_WhenAddReqHeaderIsSet()
 		`
 backend %s-be%s_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     http-request add-header header-1
     http-request add-header header-2
     server %s %s:%s`,
@@ -633,6 +668,7 @@ func (s ReconfigureTestSuite) Test_Execute_AddsResHeader_WhenAddResHeaderIsSet()
 		`
 backend %s-be%s_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     http-response add-header header-1
     http-response add-header header-2
     server %s %s:%s`,
@@ -664,6 +700,7 @@ func (s ReconfigureTestSuite) Test_Execute_AddsReqHeader_WhenSetReqHeaderIsSet()
 		`
 backend %s-be%s_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     http-request set-header header-1
     http-request set-header header-2
     server %s %s:%s`,
@@ -695,6 +732,7 @@ func (s ReconfigureTestSuite) Test_Execute_AddsResHeader_WhenSetResHeaderIsSet()
 		`
 backend %s-be%s_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     http-response set-header header-1
     http-response set-header header-2
     server %s %s:%s`,
@@ -726,6 +764,7 @@ func (s ReconfigureTestSuite) Test_Execute_DelReqHeader_WhenDelReqHeaderIsSet() 
 		`
 backend %s-be%s_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     http-request del-header header-1
     http-request del-header header-2
     server %s %s:%s`,
@@ -757,6 +796,7 @@ func (s ReconfigureTestSuite) Test_Execute_DelResHeader_WhenDelResHeaderIsSet() 
 		`
 backend %s-be%s_0
     mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
     http-response del-header header-1
     http-response del-header header-2
     server %s %s:%s`,

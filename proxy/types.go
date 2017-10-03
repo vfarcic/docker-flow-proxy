@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -18,11 +19,15 @@ type ServiceDest struct {
 	DenyHttp bool
 	// Whether to redirect all http requests to https
 	HttpsOnly bool
+	// HTTP code for HTTP to HTTPS redirects. This parameter is used only if `httpsOnly` is set to `true`.
+	HttpsRedirectCode string
 	// Whether to ignore authorization for this service destination.
 	IgnoreAuthorization bool
 	// The internal port of a service that should be reconfigured.
 	// The port is used only in the *swarm* mode.
 	Port string
+	// If a request is sent to one of the domains in this list, it will be redirected to one of the values of the `ServiceDomain`.
+	RedirectFromDomain []string
 	// The request mode. The proxy should be able to work with any mode supported by HAProxy.
 	// However, actively supported and tested modes are *http*, *tcp*, and *sni*.
 	ReqMode string
@@ -144,8 +149,6 @@ type Service struct {
 	UseGlobalUsers bool
 	// A comma-separated list of credentials(<user>:<pass>) for HTTP basic auth, which applies only to the service that will be reconfigured.
 	Users []User `split_words:"true"`
-	// Whether to add "X-Forwarded-Proto https" header.
-	XForwardedProto bool `envconfig:"x_forwarded_proto" split_words:"true"`
 	// The rest of variables are for internal use only
 	ServicePort         string
 	AclCondition        string
@@ -264,6 +267,7 @@ func GetServiceFromMap(req *map[string]string) *Service {
 func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 	sr := new(Service)
 	provider.Fill(sr)
+	separator := os.Getenv("SEPARATOR")
 	// TODO: Remove. It's added to maintain backwards compatibility with the deprecated parameter serviceDomainMatchAll (since July 2017)
 	if strings.EqualFold(provider.GetString("serviceDomainMatchAll"), "true") {
 		sr.ServiceDomainAlgo = "hdr_dom(host)"
@@ -272,26 +276,26 @@ func GetServiceFromProvider(provider ServiceParameterProvider) *Service {
 		sr.HttpsPort, _ = strconv.Atoi(provider.GetString("httpsPort"))
 	}
 	if len(provider.GetString("addReqHeader")) > 0 {
-		sr.AddReqHeader = strings.Split(provider.GetString("addReqHeader"), ",")
+		sr.AddReqHeader = strings.Split(provider.GetString("addReqHeader"), separator)
 	} else if len(provider.GetString("addHeader")) > 0 { // TODO: Deprecated since Apr. 2017.
-		sr.AddReqHeader = strings.Split(provider.GetString("addHeader"), ",")
+		sr.AddReqHeader = strings.Split(provider.GetString("addHeader"), separator)
 	}
 	if len(provider.GetString("setReqHeader")) > 0 {
-		sr.SetReqHeader = strings.Split(provider.GetString("setReqHeader"), ",")
+		sr.SetReqHeader = strings.Split(provider.GetString("setReqHeader"), separator)
 	} else if len(provider.GetString("setHeader")) > 0 { // TODO: Deprecated since Apr. 2017.
-		sr.SetReqHeader = strings.Split(provider.GetString("setHeader"), ",")
+		sr.SetReqHeader = strings.Split(provider.GetString("setHeader"), separator)
 	}
 	if len(provider.GetString("delReqHeader")) > 0 {
-		sr.DelReqHeader = strings.Split(provider.GetString("delReqHeader"), ",")
+		sr.DelReqHeader = strings.Split(provider.GetString("delReqHeader"), separator)
 	}
 	if len(provider.GetString("addResHeader")) > 0 {
-		sr.AddResHeader = strings.Split(provider.GetString("addResHeader"), ",")
+		sr.AddResHeader = strings.Split(provider.GetString("addResHeader"), separator)
 	}
 	if len(provider.GetString("setResHeader")) > 0 {
-		sr.SetResHeader = strings.Split(provider.GetString("setResHeader"), ",")
+		sr.SetResHeader = strings.Split(provider.GetString("setResHeader"), separator)
 	}
 	if len(provider.GetString("delResHeader")) > 0 {
-		sr.DelResHeader = strings.Split(provider.GetString("delResHeader"), ",")
+		sr.DelResHeader = strings.Split(provider.GetString("delResHeader"), separator)
 	}
 	if len(sr.SessionType) > 0 {
 		sr.Tasks, _ = lookupHost("tasks." + sr.ServiceName)
@@ -350,13 +354,14 @@ func getServiceDestList(sr *Service, provider ServiceParameterProvider) []Servic
 }
 
 func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) ServiceDest {
+	separator := os.Getenv("SEPARATOR")
 	suffix := ""
 	if index > 0 {
 		suffix = fmt.Sprintf(".%d", index)
 	}
 	userAgent := UserAgent{}
 	if len(provider.GetString(fmt.Sprintf("userAgent%s", suffix))) > 0 {
-		userAgent.Value = strings.Split(provider.GetString(fmt.Sprintf("userAgent%s", suffix)), ",")
+		userAgent.Value = strings.Split(provider.GetString(fmt.Sprintf("userAgent%s", suffix)), separator)
 		userAgent.AclName = replaceNonAlphabetAndNumbers(userAgent.Value)
 	}
 	reqMode := "http"
@@ -367,7 +372,7 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 	headerString := provider.GetString(fmt.Sprintf("serviceHeader%s", suffix))
 	header := map[string]string{}
 	if len(headerString) > 0 {
-		for _, value := range strings.Split(headerString, ",") {
+		for _, value := range strings.Split(headerString, separator) {
 			values := strings.Split(value, ":")
 			if len(values) == 2 {
 				header[strings.Trim(values[0], " ")] = strings.Trim(values[1], " ")
@@ -383,8 +388,10 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 		DeniedMethods:       getSliceFromString(provider, fmt.Sprintf("deniedMethods%s", suffix)),
 		DenyHttp:            getBoolParam(provider, fmt.Sprintf("denyHttp%s", suffix)),
 		HttpsOnly:           getBoolParam(provider, fmt.Sprintf("httpsOnly%s", suffix)),
+		HttpsRedirectCode:   provider.GetString(fmt.Sprintf("httpsRedirectCode%s", suffix)),
 		IgnoreAuthorization: getBoolParam(provider, fmt.Sprintf("ignoreAuthorization%s", suffix)),
 		Port:                provider.GetString(fmt.Sprintf("port%s", suffix)),
+		RedirectFromDomain:  getSliceFromString(provider, fmt.Sprintf("redirectFromDomain%s", suffix)),
 		ReqMode:             reqMode,
 		ServiceDomain:       getSliceFromString(provider, fmt.Sprintf("serviceDomain%s", suffix)),
 		ServiceHeader:       header,
@@ -397,9 +404,10 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 }
 
 func getSliceFromString(provider ServiceParameterProvider, key string) []string {
+	separator := os.Getenv("SEPARATOR")
 	value := []string{}
 	if len(provider.GetString(key)) > 0 {
-		value = strings.Split(provider.GetString(key), ",")
+		value = strings.Split(provider.GetString(key), separator)
 	}
 	return value
 }

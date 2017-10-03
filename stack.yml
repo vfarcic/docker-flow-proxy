@@ -13,6 +13,7 @@ services:
       - LISTENER_ADDRESS=swarm-listener
       - STATS_USER=none
       - STATS_PASS=none
+      - HEALTHCHECK=true
     secrets:
       - dfp_users_vfarcic
     deploy:
@@ -28,9 +29,9 @@ services:
         delay: 10s
       resources:
         reservations:
-          memory: 10M
-        limits:
           memory: 20M
+        limits:
+          memory: 50M
 
   docs:
     image: vfarcic/docker-flow-proxy-docs:${TAG:-latest}
@@ -40,6 +41,7 @@ services:
       labels:
         - com.df.distribute=true
         - com.df.notify=true
+        - com.df.reschedule=true
         - com.df.port=80
         - com.df.serviceDomain=proxy.dockerflow.com
         - com.df.servicePath=/
@@ -58,7 +60,7 @@ services:
     networks:
       - proxy
     environment:
-      - DOMAIN_1=("dockerflow.com" "proxy.dockerflow.com" "swarmlistener.dockerflow.com" "monitor.dockerflow.com" "jenkins.dockerflow.com")
+      - DOMAIN_1=("dockerflow.com" "proxy.dockerflow.com" "swarmlistener.dockerflow.com" "monitor.dockerflow.com" "jenkins.dockerflow.com" "prometheus.dockerflow.com" "proxy-letsencrypt.dockerflow.com")
       - CERTBOT_EMAIL=viktor@farcic.com
       - PROXY_ADDRESS=proxy
       - CERTBOT_CRON_RENEW=("0 3 * * *" "0 15 * * *")

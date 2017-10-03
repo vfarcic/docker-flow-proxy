@@ -160,7 +160,6 @@ func (s *FetchTestSuite) Test_ReloadConfig_SendsARequestToSwarmListener_WhenList
 	reconfigureMock.AssertNumberOfCalls(s.T(), "Execute", 1)
 	proxyMock.AssertCalled(s.T(), "Reload")
 	proxyMock.AssertCalled(s.T(), "CreateConfigFromTemplates")
-
 }
 
 func (s *FetchTestSuite) Test_ReloadConfig_ReturnsError_WhenSwarmListenerReturnsWrongData() {

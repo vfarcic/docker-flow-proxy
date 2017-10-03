@@ -87,8 +87,17 @@ config2 be content`
 	os.Setenv("STATS_URI_ENV", "STATS_URI")
 	os.Setenv("SERVICE_DOMAIN_ALGO", "hdr(host)")
 	reloadPauseMillisecondsOrig := reloadPauseMilliseconds
+	reconfigureAttemptsOrig := os.Getenv("RECONFIGURE_ATTEMPTS")
+	os.Setenv("RECONFIGURE_ATTEMPTS", "1")
+	cmdRunHa = func(args []string) error {
+		return nil
+	}
+	cmdValidateHa = func(args []string) error {
+		return nil
+	}
 	defer func() {
 		reloadPauseMilliseconds = reloadPauseMillisecondsOrig
+		os.Setenv("RECONFIGURE_ATTEMPTS", reconfigureAttemptsOrig)
 		os.Unsetenv("SERVICE_DOMAIN_ALGO")
 	}()
 	reloadPauseMilliseconds = 1
@@ -1493,7 +1502,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToHttps_WhenRed
     acl url_my-service1111_0 path_beg /path
     acl domain_my-service1111_0 hdr(host) -i my-domain.com
     acl is_my-service_http hdr(X-Forwarded-Proto) http
-    redirect scheme https if is_my-service_http url_my-service1111_0 domain_my-service1111_0
+    http-request redirect scheme https if is_my-service_http url_my-service1111_0 domain_my-service1111_0
     use_backend my-service-be1111_0 if url_my-service1111_0 domain_my-service1111_0%s`,
 		tmpl,
 		s.ServicesContent,
@@ -1510,6 +1519,43 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToHttps_WhenRed
 		AclName:               "my-service",
 		ServiceDest: []ServiceDest{
 			{Port: "1111", ServicePath: []string{"/path"}, ServiceDomain: []string{"my-domain.com"}},
+		},
+	}
+
+	p.CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToDomain_WhenRedirectFromDomainIsSet() {
+	var actualData string
+	tmpl := s.TemplateContent
+	expectedData := fmt.Sprintf(
+		`%s
+    acl url_my-service1111_0 path_beg /path
+    acl domain_my-service1111_0 hdr(host) -i my-domain-1.com my-domain-2.com
+    http-request redirect code 301 prefix http://my-domain-1.com if { hdr(host) -i my-other-domain-1.com }
+    http-request redirect code 301 prefix http://my-domain-1.com if { hdr(host) -i my-other-domain-2.com }
+    use_backend my-service-be1111_0 if url_my-service1111_0 domain_my-service1111_0%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	dataInstance.Services["my-service"] = Service{
+		ServiceName: "my-service",
+		PathType:    "path_beg",
+		AclName:     "my-service",
+		ServiceDest: []ServiceDest{
+			{
+				Port:               "1111",
+				ServicePath:        []string{"/path"},
+				ServiceDomain:      []string{"my-domain-1.com", "my-domain-2.com"},
+				RedirectFromDomain: []string{"my-other-domain-1.com", "my-other-domain-2.com"},
+			},
 		},
 	}
 
@@ -2036,6 +2082,8 @@ func (s *HaProxyTestSuite) Test_Reload_ReadsPidFile() {
 }
 
 func (s *HaProxyTestSuite) Test_Reload_ReturnsError_WhenHaCommandFails() {
+	cmdRunHaOrig := cmdRunHa
+	defer func() { cmdRunHa = cmdRunHaOrig }()
 	cmdRunHa = func(args []string) error {
 		return fmt.Errorf("This is an error")
 	}
@@ -2043,6 +2091,57 @@ func (s *HaProxyTestSuite) Test_Reload_ReturnsError_WhenHaCommandFails() {
 	err := HaProxy{}.Reload()
 
 	s.Error(err)
+}
+
+func (s *HaProxyTestSuite) Test_Reload_ReturnsError_WhenValidateHaCommandFails() {
+	cmdValidateHaOrig := cmdValidateHa
+	defer func() { cmdValidateHa = cmdValidateHaOrig }()
+	cmdValidateHa = func(args []string) error {
+		return fmt.Errorf("This is an error")
+	}
+
+	err := HaProxy{}.Reload()
+
+	s.Error(err)
+}
+
+func (s *HaProxyTestSuite) Test_Reload_DoesNotReturnError_WhenValidateHaCommandFailsOnlyOnce() {
+	reconfigureAttemptsOrig := os.Getenv("RECONFIGURE_ATTEMPTS")
+	os.Setenv("RECONFIGURE_ATTEMPTS", "2")
+	defer func() {
+		os.Setenv("RECONFIGURE_ATTEMPTS", reconfigureAttemptsOrig)
+	}()
+
+	iteration := 1
+	cmdValidateHaOrig := cmdValidateHa
+	defer func() { cmdValidateHa = cmdValidateHaOrig }()
+	cmdValidateHa = func(args []string) error {
+		if iteration == 2 {
+			return nil
+		}
+		iteration++
+		return fmt.Errorf("This is an error")
+	}
+
+	println("000")
+	err := HaProxy{}.Reload()
+
+	s.NoError(err)
+}
+
+func (s *HaProxyTestSuite) Test_Reload_ExecutesValidateHaCommand() {
+	actualArgs := []string{}
+	expectedArgs := []string{"-c", "-V", "-f", "/cfg/haproxy.cfg"}
+	cmdValidateHaOrig := cmdValidateHa
+	defer func() { cmdValidateHa = cmdValidateHaOrig }()
+	cmdValidateHa = func(args []string) error {
+		actualArgs = args
+		return nil
+	}
+
+	HaProxy{}.Reload()
+
+	s.Equal(expectedArgs, actualArgs)
 }
 
 func (s *HaProxyTestSuite) Test_Reload_ReturnsError_WhenReadPidFails() {

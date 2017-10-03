@@ -1,15 +1,16 @@
 package server
 
 import (
-	"../actions"
-	"../proxy"
 	"encoding/json"
 	"fmt"
-	"github.com/kelseyhightower/envconfig"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+
+	"../actions"
+	"../proxy"
+	"github.com/kelseyhightower/envconfig"
 )
 
 // Server handles requests
@@ -261,16 +262,19 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 		reqMode = getSecretOrEnvVar("DEFAULT_PROTOCOL", "http")
 	}
 	httpsOnly, _ := strconv.ParseBool(os.Getenv(prefix + "_HTTPS_ONLY"))
+	httpsRedirectCode := os.Getenv(prefix + "_HTTPS_REDIRECT_CODE")
+
 	if len(path) > 0 || len(port) > 0 {
 		sd = append(
 			sd,
 			proxy.ServiceDest{
-				HttpsOnly:     httpsOnly,
-				Port:          port,
-				ReqMode:       reqMode,
-				ServiceDomain: domain,
-				ServicePath:   path,
-				SrcPort:       srcPort,
+				HttpsOnly:         httpsOnly,
+				HttpsRedirectCode: httpsRedirectCode,
+				Port:              port,
+				ReqMode:           reqMode,
+				ServiceDomain:     domain,
+				ServicePath:       path,
+				SrcPort:           srcPort,
 			},
 		)
 	}
@@ -279,6 +283,7 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 		path := os.Getenv(fmt.Sprintf("%s_SERVICE_PATH_%d", prefix, i))
 		reqMode := os.Getenv(fmt.Sprintf("%s_REQ_MODE_%d", prefix, i))
 		httpsOnly, _ := strconv.ParseBool(os.Getenv(fmt.Sprintf("%s_HTTPS_ONLY_%d", prefix, i)))
+		httpsRedirectCode := os.Getenv(fmt.Sprintf("%s_HTTPS_REDIRECT_CODE_%d", prefix, i))
 		if len(reqMode) == 0 {
 			reqMode = "http"
 		}
@@ -287,11 +292,12 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 			sd = append(
 				sd,
 				proxy.ServiceDest{
-					HttpsOnly:   httpsOnly,
-					Port:        port,
-					SrcPort:     srcPort,
-					ServicePath: strings.Split(path, ","),
-					ReqMode:     reqMode,
+					HttpsOnly:         httpsOnly,
+					HttpsRedirectCode: httpsRedirectCode,
+					Port:              port,
+					SrcPort:           srcPort,
+					ServicePath:       strings.Split(path, ","),
+					ReqMode:           reqMode,
 				},
 			)
 		} else {
