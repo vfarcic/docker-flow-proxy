@@ -12,7 +12,7 @@ Before we jump into configuring *Docker Flow Proxy* to route requests to service
 
 ## Requirements
 
-This tutorial assumes you already have a docker swarm cluster running _Docker Flow Proxy_. If you don't, please visit the [Running _Docker Flow Proxy_ In Swarm Mode With Automatic Reconfiguration](swarm-mode-auto.md) page for a tutorial. Once you have _Docker Flow Proxy_ running, you can proceed with the remaining tutorial. We shall only cover the bits where we launch services into swarm and have _Docker Flow Proxy_ route to the service using the SNI headers. Here's what we'll need before we start:
+This tutorial assumes you already have a docker swarm cluster running _Docker Flow Proxy_. If you don't, please visit the [Running _Docker Flow Proxy_ In Swarm Mode With Automatic Reconfiguration](swarm-mode-auto) page for a tutorial. Once you have _Docker Flow Proxy_ running, you can proceed with the remaining tutorial. We shall only cover the bits where we launch services into swarm and have _Docker Flow Proxy_ route to the service using the SNI headers. Here's what we'll need before we start:
 
 1. Service names (FQDNs) to use.
 2. Name resolution
@@ -174,7 +174,7 @@ Similarly if you hit https://api.foobar.net/sleep/5, this is what you see.
 In either case, HA-Proxy is now using the SNI field added to the TLS handshake by the browser to figure out what service to connect to.
 
 ## Final steps
-Services can expose more than one backend port and that's supported by the SNI routing code as well. To support front-end ports other than 443, just make sure you modify the _Docker Flow Proxy_ yaml to add the extra ports there. To configure the service, set the srcPort label accordingly. To support more than one front-end/back-end port on the service, use the _Docker Flow Proxy_ indexed configuration [feature](http://add-link-here).
+Services can expose more than one backend port and that's supported by the SNI routing code as well. To support front-end ports other than 443, just make sure you modify the _Docker Flow Proxy_ yaml to add the extra ports there. To configure the service, set the srcPort label accordingly. To support more than one front-end/back-end port on the service, use the _Docker Flow Proxy_ indexed configuration [feature](usage/#general-query-parameters).
 
 To clean up, destroy the service using:
 ```Shell
