@@ -520,6 +520,8 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		AclName:               "aclName",
 		AddReqHeader:          []string{"add-header-1", "add-header-2"},
 		AddResHeader:          []string{"add-header-1", "add-header-2"},
+		CompressionAlgo:       "compressionAlgo",
+		CompressionType:       "compressionType",
 		ConnectionMode:        "my-connection-mode",
 		DelReqHeader:          []string{"add-header-1", "add-header-2"},
 		DelResHeader:          []string{"add-header-1", "add-header-2"},
@@ -556,7 +558,7 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 			{Username: "user2", Password: "pass2", PassEncrypted: true}},
 	}
 	addr := fmt.Sprintf(
-		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceCert=%s&outboundHostname=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&httpsRedirectCode=%s&isDefaultBackend=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&redirectFromDomain=%s&distribute=%t&sslVerifyNone=%t&serviceDomainAlgo=%s&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&delReqHeader=%s&delResHeader=%s&servicePath=/&port=1234&connectionMode=%s&serviceHeader=X-Version:3,name:Viktor&allowedMethods=GET,DELETE&deniedMethods=PUT,POST",
+		"%s?serviceName=%s&users=%s&usersPassEncrypted=%t&aclName=%s&serviceCert=%s&outboundHostname=%s&pathType=%s&reqPathSearch=%s&reqPathReplace=%s&templateFePath=%s&templateBePath=%s&timeoutServer=%s&timeoutTunnel=%s&reqMode=%s&httpsOnly=%t&httpsRedirectCode=%s&isDefaultBackend=%t&redirectWhenHttpProto=%t&httpsPort=%d&serviceDomain=%s&redirectFromDomain=%s&distribute=%t&sslVerifyNone=%t&serviceDomainAlgo=%s&addReqHeader=%s&addResHeader=%s&setReqHeader=%s&setResHeader=%s&delReqHeader=%s&delResHeader=%s&servicePath=/&port=1234&connectionMode=%s&serviceHeader=X-Version:3,name:Viktor&allowedMethods=GET,DELETE&deniedMethods=PUT,POST&compressionAlgo=%s&compressionType=%s",
 		s.BaseUrl,
 		expected.ServiceName,
 		"user1:pass1,user2:pass2",
@@ -589,6 +591,8 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		strings.Join(expected.DelReqHeader, ","),
 		strings.Join(expected.DelResHeader, ","),
 		expected.ConnectionMode,
+		expected.CompressionAlgo,
+		expected.CompressionType,
 	)
 	req, _ := http.NewRequest("GET", addr, nil)
 	srv := serve{}
@@ -652,9 +656,11 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_SetsServicePathToSlash_WhenDoma
 
 func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 	service := proxy.Service{
-		AclName:               "my-AclName",
-		AddReqHeader:          []string{"add-header-1", "add-header-2"},
-		AddResHeader:          []string{"add-header-1", "add-header-2"},
+		AclName:         "my-AclName",
+		AddReqHeader:    []string{"add-header-1", "add-header-2"},
+		AddResHeader:    []string{"add-header-1", "add-header-2"},
+		CompressionAlgo: "compressionAlgo",
+		//		CompressionType:       "compressionType",
 		ConnectionMode:        "my-connection-mode",
 		DelReqHeader:          []string{"del-header-1", "del-header-2"},
 		DelResHeader:          []string{"del-header-1", "del-header-2"},
@@ -691,6 +697,8 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 	os.Setenv("DFP_SERVICE_ACL_NAME", service.AclName)
 	os.Setenv("DFP_SERVICE_ADD_REQ_HEADER", strings.Join(service.AddReqHeader, ","))
 	os.Setenv("DFP_SERVICE_ADD_RES_HEADER", strings.Join(service.AddResHeader, ","))
+	os.Setenv("DFP_SERVICE_COMPRESSION_ALGO", service.CompressionAlgo)
+	os.Setenv("DFP_SERVICE_COMPRESSION_TYPE", service.CompressionType)
 	os.Setenv("DFP_SERVICE_CONNECTION_MODE", service.ConnectionMode)
 	os.Setenv("DFP_SERVICE_DEL_REQ_HEADER", strings.Join(service.DelReqHeader, ","))
 	os.Setenv("DFP_SERVICE_DEL_RES_HEADER", strings.Join(service.DelResHeader, ","))
@@ -724,6 +732,8 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		os.Unsetenv("DFP_SERVICE_ACL_NAME")
 		os.Unsetenv("DFP_SERVICE_ADD_REQ_HEADER")
 		os.Unsetenv("DFP_SERVICE_ADD_RES_HEADER")
+		os.Unsetenv("DFP_SERVICE_COMPRESSION_ALGO")
+		os.Unsetenv("DFP_SERVICE_COMPRESSION_TYPE")
 		os.Unsetenv("DFP_SERVICE_CONNECTION_MODE")
 		os.Unsetenv("DFP_SERVICE_DEL_REQ_HEADER")
 		os.Unsetenv("DFP_SERVICE_DEL_RES_HEADER")

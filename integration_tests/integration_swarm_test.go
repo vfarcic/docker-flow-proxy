@@ -170,10 +170,9 @@ func (s IntegrationSwarmTestSuite) Test_Metrics() {
 }
 
 func (s IntegrationSwarmTestSuite) Test_Compression() {
-	defer func() {
-		exec.Command("/bin/sh", "-c", `docker service update --env-rm "COMPRESSION_ALGO" --env-rm "COMPRESSION_TYPE" proxy`).Output()
-		s.waitForContainers(1, "proxy")
-	}()
+
+	// Compression defined for all services
+
 	_, err := exec.Command(
 		"/bin/sh",
 		"-c",
@@ -188,6 +187,21 @@ func (s IntegrationSwarmTestSuite) Test_Compression() {
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Add("Accept-Encoding", "gzip")
 	resp, err := client.Do(req)
+
+	s.NoError(err)
+	if resp != nil {
+		s.Equal(200, resp.StatusCode, s.getProxyConf(""))
+		s.Contains(resp.Header["Content-Encoding"], "gzip", s.getProxyConf(""))
+	}
+
+	exec.Command("/bin/sh", "-c", `docker service update --env-rm "COMPRESSION_ALGO" --env-rm "COMPRESSION_TYPE" proxy`).Output()
+	s.waitForContainers(1, "proxy")
+
+	// Compression defined on a service level
+
+	s.reconfigureGoDemo("&compressionAlgo=gzip&compressionType=text/css%20text/html%20text/javascript%20application/javascript%20text/plain%20text/xml%20application/json")
+
+	resp, err = client.Do(req)
 
 	s.NoError(err)
 	if resp != nil {

@@ -1,4 +1,4 @@
-FROM golang:1.8 AS build
+FROM golang:1.9 AS build
 ADD . /src
 WORKDIR /src
 RUN go get -d -v -t

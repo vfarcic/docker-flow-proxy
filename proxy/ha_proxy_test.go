@@ -1564,6 +1564,41 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToDomain_WhenRe
 	s.Equal(expectedData, actualData)
 }
 
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCompressionAlgoToTheFrontent() {
+	var actualData string
+	tmpl := s.TemplateContent
+	expectedData := fmt.Sprintf(
+		`%s
+    compression algo my-compression-algo
+    compression type my-compression-type
+    acl url_my-service1111_0 path_beg /path
+    use_backend my-service-be1111_0 if url_my-service1111_0%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	dataInstance.Services["my-service"] = Service{
+		CompressionAlgo: "my-compression-algo",
+		CompressionType: "my-compression-type",
+		PathType:        "path_beg",
+		ServiceName:     "my-service",
+		ServiceDest: []ServiceDest{
+			{
+				Port:        "1111",
+				ServicePath: []string{"/path"},
+			},
+		},
+	}
+
+	p.CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_UsesServiceHeader() {
 	var actualData string
 	tmpl := s.TemplateContent

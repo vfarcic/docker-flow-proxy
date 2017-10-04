@@ -14,6 +14,12 @@ func getFrontTemplate(s Service) string {
 	tmplString := `
 {{- range $sd := .ServiceDest}}
     {{- if eq .ReqMode "http"}}
+        {{- if ne $.CompressionAlgo ""}}
+    compression algo {{$.CompressionAlgo}}
+            {{- if ne $.CompressionType ""}}
+    compression type {{$.CompressionType}}
+            {{- end}}
+        {{- end}}
         {{- if ne .Port ""}}
     acl url_{{$.AclName}}{{.Port}}_{{.Index}}{{range .ServicePath}} {{if eq $.PathType ""}}path_beg{{end}}{{if ne $.PathType ""}}{{$.PathType}}{{end}} {{.}}{{end}}{{.SrcPortAcl}}
         {{- end}}

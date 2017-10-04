@@ -8,6 +8,7 @@ pages:
     - Managing SSL Certificates: certs.md
     - Blocking Requests: blocking.md
     - Debugging: debugging.md
+    - Using SNI Routing: sni-routing.md
     - Configuring Non-Swarm Services: non-swarm.md
   - Configuration: config.md
   - Usage: usage.md

@@ -75,6 +75,11 @@ type Service struct {
 	BackendExtra string `split_words:"true"`
 	// Whether to use `docker` as a check resolver. Set through the environment variable CHECK_RESOLVERS
 	CheckResolvers bool `split_words:"true"`
+	// Enable HTTP compression.
+	// The currently supported algorithms are: identity, gzip, deflate, raw-deflate.
+	CompressionAlgo string `split_words:"true"`
+	// The type of files that will be compressed.
+	CompressionType string `split_words:"true"`
 	// One of the five connection modes supported by the HAProxy.
 	// `http-keep-alive`: all requests and responses are processed.
 	// `http-tunnel`: only the first request and response are processed, everything else is forwarded with no analysis.
