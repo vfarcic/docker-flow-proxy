@@ -4,11 +4,12 @@ package proxy
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/suite"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/suite"
 )
 
 // Setup
@@ -85,7 +86,7 @@ config2 be content`
 	os.Setenv("STATS_USER_ENV", "STATS_USER")
 	os.Setenv("STATS_PASS_ENV", "STATS_PASS")
 	os.Setenv("STATS_URI_ENV", "STATS_URI")
-	os.Setenv("SERVICE_DOMAIN_ALGO", "hdr(host)")
+	os.Setenv("SERVICE_DOMAIN_ALGO", "hdr_beg(host)")
 	reloadPauseOrig := reloadPause
 	reconfigureAttemptsOrig := os.Getenv("RECONFIGURE_ATTEMPTS")
 	os.Setenv("RECONFIGURE_ATTEMPTS", "1")
@@ -967,9 +968,9 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_GroupsTcpFrontendsByPor
 frontend tcpFE_1234
     bind *:1234
     mode tcp
-    acl domain_my-service-14321_4 hdr(host) -i my-domain.com
+    acl domain_my-service-14321_4 hdr_beg(host) -i my-domain.com
     use_backend my-service-1-be4321_4 if domain_my-service-14321_4
-    acl domain_my-service-24321_7 hdr(host) -i my-domain-1.com my-domain-2.com
+    acl domain_my-service-24321_7 hdr_beg(host) -i my-domain-1.com my-domain-2.com
     use_backend my-service-2-be4321_7 if domain_my-service-24321_7%s`,
 		tmpl,
 		s.ServicesContent,
@@ -1213,10 +1214,10 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	expectedData := fmt.Sprintf(
 		`%s
     acl url_my-service-11111_0 path_beg /path
-    acl domain_my-service-11111_0 hdr(host) -i domain-1-1 domain-1-2
+    acl domain_my-service-11111_0 hdr_beg(host) -i domain-1-1 domain-1-2
     use_backend my-service-1-be1111_0 if url_my-service-11111_0 domain_my-service-11111_0
     acl url_my-service-21111_0 path_beg /path
-    acl domain_my-service-21111_0 hdr(host) -i domain-2-1 domain-2-2
+    acl domain_my-service-21111_0 hdr_beg(host) -i domain-2-1 domain-2-2
     use_backend my-service-2-be1111_0 if url_my-service-21111_0 domain_my-service-21111_0%s`,
 		tmpl,
 		s.ServicesContent,
@@ -1249,9 +1250,9 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsDomainsForEachServi
 	expectedData := fmt.Sprintf(
 		`%s
     acl url_my-service1111_1 path_beg /path
-    acl domain_my-service1111_1 hdr(host) -i domain-1-1.com domain-1-2.com
+    acl domain_my-service1111_1 hdr_beg(host) -i domain-1-1.com domain-1-2.com
     acl url_my-service2222_45 path_beg /path
-    acl domain_my-service2222_45 hdr(host) -i domain-2-1.com domain-2-2.com
+    acl domain_my-service2222_45 hdr_beg(host) -i domain-2-1.com domain-2-2.com
     use_backend my-service-be1111_1 if url_my-service1111_1 domain_my-service1111_1
     use_backend my-service-be2222_45 if url_my-service2222_45 domain_my-service2222_45%s`,
 		tmpl,
@@ -1462,7 +1463,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToHttps_WhenRed
 	expectedData := fmt.Sprintf(
 		`%s
     acl url_my-service1111_0 path_beg /path
-    acl domain_my-service1111_0 hdr(host) -i my-domain.com
+    acl domain_my-service1111_0 hdr_beg(host) -i my-domain.com
     acl is_my-service_http hdr(X-Forwarded-Proto) http
     http-request redirect scheme https if is_my-service_http url_my-service1111_0 domain_my-service1111_0
     use_backend my-service-be1111_0 if url_my-service1111_0 domain_my-service1111_0%s`,
@@ -1495,9 +1496,9 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToDomain_WhenRe
 	expectedData := fmt.Sprintf(
 		`%s
     acl url_my-service1111_0 path_beg /path
-    acl domain_my-service1111_0 hdr(host) -i my-domain-1.com my-domain-2.com
-    http-request redirect code 301 prefix http://my-domain-1.com if { hdr(host) -i my-other-domain-1.com }
-    http-request redirect code 301 prefix http://my-domain-1.com if { hdr(host) -i my-other-domain-2.com }
+    acl domain_my-service1111_0 hdr_beg(host) -i my-domain-1.com my-domain-2.com
+    http-request redirect code 301 prefix http://my-domain-1.com if { hdr_beg(host) -i my-other-domain-1.com }
+    http-request redirect code 301 prefix http://my-domain-1.com if { hdr_beg(host) -i my-other-domain-2.com }
     use_backend my-service-be1111_0 if url_my-service1111_0 domain_my-service1111_0%s`,
 		tmpl,
 		s.ServicesContent,

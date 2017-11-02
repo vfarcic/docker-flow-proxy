@@ -123,7 +123,7 @@ type Service struct {
 	ReqPathSearch string `split_words:"true"`
 	// Content of the PEM-encoded certificate to be used by the proxy when serving traffic over SSL.
 	ServiceCert string `split_words:"true"`
-	// The algorithm that should be applied to domain acl. The default value is `hdr(host)`.
+	// The algorithm that should be applied to domain acl. The default value is `hdr_beg(host)`.
 	ServiceDomainAlgo string
 	// The name of the service.
 	// It must match the name of the Swarm service.

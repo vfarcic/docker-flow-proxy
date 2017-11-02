@@ -41,7 +41,7 @@ func getFrontTemplate(s Service) string {
 {{- end}}
 {{- range $sd := .ServiceDest}}
     {{- range $rd := $sd.RedirectFromDomain}}
-    http-request redirect code 301 prefix http://{{index $sd.ServiceDomain 0}} if { hdr(host) -i {{$rd}} }
+    http-request redirect code 301 prefix http://{{index $sd.ServiceDomain 0}} if { hdr_beg(host) -i {{$rd}} }
     {{- end}}
 {{- end}}
 {{- if $.RedirectWhenHttpProto}}
