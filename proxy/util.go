@@ -18,7 +18,7 @@ import (
 
 var cmdRunHa = func(args []string) error {
         var stdoutBuf, stderrBuf bytes.Buffer
-        cmd := out, err := exec.Command("haproxy", args...)
+        cmd := exec.Command("haproxy", args...)
 
         stdoutIn, _ := cmd.StdoutPipe()
         stderrIn, _ := cmd.StderrPipe()
