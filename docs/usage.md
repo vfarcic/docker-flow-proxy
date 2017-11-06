@@ -126,7 +126,7 @@ The map between the HTTP query parameters and environment variables is as follow
 |port                     |PORT                    |
 |redirectFromDomain       |REDIRECT_FROM_DOMAIN    |
 |redirectWhenHttpProto    |REDIRECT_WHEN_HTTP_PROTO|
-|redirectWhenNotSHttpProto|REDIRECT_WHEN_NOT_HTTPS_PROTO|
+|redirectWhenNotHttpsProto|REDIRECT_WHEN_NOT_HTTPS_PROTO|
 |reqMode                  |REQ_MODE                |
 |reqPathReplace           |REQ_PATH_REPLACE        |
 |reqPathSearch            |REQ_PATH_SEARCH         |
