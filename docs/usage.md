@@ -107,45 +107,45 @@ The environment variables must apply the rules that follow.
 
 The map between the HTTP query parameters and environment variables is as follows.
 
-|Query                |Environment variable    |
-|---------------------|------------------------|
-|aclName                  |ACL_NAME                |
-|addReqHeader             |ADD_REQ_HEADER          |
-|addResHeader             |ADD_RES_HEADER          |
-|allowedMethods           |ALLOWED_METHODS         |
-|backendExtra             |BACKEND_EXTRA           |
-|compressionAlgo          |COMPRESSION_ALGO        |
-|compressionType          |COMPRESSION_TYPE        |
-|deniedMethods            |DENIED_METHODS          |
-|distribute               |DISTRIBUTE              |
-|httpsOnly                |HTTPS_ONLY              |
-|httpsPort                |HTTPS_PORT              |
-|isDefaultBackend         |IS_DEFAULT_BACKEND      |
-|outboundHostname         |OUTBOUND_HOSTNAME       |
-|pathType                 |PATH_TYPE               |
-|port                     |PORT                    |
-|redirectFromDomain       |REDIRECT_FROM_DOMAIN    |
-|redirectWhenHttpProto    |REDIRECT_WHEN_HTTP_PROTO|
+|Query                    |Environment variable         |
+|-------------------------|-----------------------------|
+|aclName                  |ACL_NAME                     |
+|addReqHeader             |ADD_REQ_HEADER               |
+|addResHeader             |ADD_RES_HEADER               |
+|allowedMethods           |ALLOWED_METHODS              |
+|backendExtra             |BACKEND_EXTRA                |
+|compressionAlgo          |COMPRESSION_ALGO             |
+|compressionType          |COMPRESSION_TYPE             |
+|deniedMethods            |DENIED_METHODS               |
+|distribute               |DISTRIBUTE                   |
+|httpsOnly                |HTTPS_ONLY                   |
+|httpsPort                |HTTPS_PORT                   |
+|isDefaultBackend         |IS_DEFAULT_BACKEND           |
+|outboundHostname         |OUTBOUND_HOSTNAME            |
+|pathType                 |PATH_TYPE                    |
+|port                     |PORT                         |
+|redirectFromDomain       |REDIRECT_FROM_DOMAIN         |
+|redirectWhenHttpProto    |REDIRECT_WHEN_HTTP_PROTO     |
 |redirectWhenNotHttpsProto|REDIRECT_WHEN_NOT_HTTPS_PROTO|
-|reqMode                  |REQ_MODE                |
-|reqPathReplace           |REQ_PATH_REPLACE        |
-|reqPathSearch            |REQ_PATH_SEARCH         |
-|serviceCert              |SERVICE_CERT            |
-|serviceDomain            |SERVICE_DOMAIN          |
-|serviceName              |SERVICE_NAME            |
-|servicePath              |SERVICE_PATH            |
-|setReqHeader             |SET_REQ_HEADER          |
-|setResHeader             |SET_RES_HEADER          |
-|srcPort                  |SRC_PORT                |
-|sslVerifyNone            |SSL_VERIFY_NONE         |
-|templateBePath           |TEMPLATE_BE_PATH        |
-|templateFePath           |TEMPLATE_FE_PATH        |
-|timeoutServer            |TIMEOUT_SERVER          |
-|timeoutTunnel            |TIMEOUT_TUNNEL          |
-|users                    |**Not supported**       |
-|usersSecret              |**Not supported**       |
-|usersPassEncrypted       |**Not supported**       |
-|verifyClientSsl          |VERIFY_CLIENT_SSL       |
+|reqMode                  |REQ_MODE                     |
+|reqPathReplace           |REQ_PATH_REPLACE             |
+|reqPathSearch            |REQ_PATH_SEARCH              |
+|serviceCert              |SERVICE_CERT                 |
+|serviceDomain            |SERVICE_DOMAIN               |
+|serviceName              |SERVICE_NAME                 |
+|servicePath              |SERVICE_PATH                 |
+|setReqHeader             |SET_REQ_HEADER               |
+|setResHeader             |SET_RES_HEADER               |
+|srcPort                  |SRC_PORT                     |
+|sslVerifyNone            |SSL_VERIFY_NONE              |
+|templateBePath           |TEMPLATE_BE_PATH             |
+|templateFePath           |TEMPLATE_FE_PATH             |
+|timeoutServer            |TIMEOUT_SERVER               |
+|timeoutTunnel            |TIMEOUT_TUNNEL               |
+|users                    |**Not supported**            |
+|usersSecret              |**Not supported**            |
+|usersPassEncrypted       |**Not supported**            |
+|verifyClientSsl          |VERIFY_CLIENT_SSL            |
 
 Please explore the [Configuring Non-Swarm Services](non-swarm.md) tutorial for more info.
 
