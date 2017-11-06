@@ -55,6 +55,7 @@ The following query parameters can be used only when `reqMode` is set to `http` 
 |pathType     |The ACL derivative. Defaults to *path_beg*. See [HAProxy path](https://cbonte.github.io/haproxy-dconv/configuration-1.5.html#7.3.6-path) for more info.<br>**Example:** `path_beg`|
 |redirectFromDomain|If a request is sent to one of the domains in this list, it will be redirected to one of the values of the `ServiceDomain`. Multiple domains can be separated with comma (e.g. `acme.com,something.acme.com`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service.<br>**Example:** `acme.com,something.acme.com`|
 |redirectWhenHttpProto|Whether to redirect to https when X-Forwarded-Proto is set and the request is made over an HTTP port.<br>**Example:** `true`<br>**Default Value:** `false`|
+|redirectWhenNotHttpsProto|Whether to redirect to https when X-Forwarded-Proto is not set.<br>**Example:** `true`<br>**Default Value:** `false`|
 |serviceCert  |Content of the PEM-encoded certificate to be used by the proxy when serving traffic over SSL.|
 |serviceDomain  |The domain of the service. If set, the proxy will allow access only to requests coming to that domain. Multiple domains can be separated with comma (e.g. `acme.com,something.else.com`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `serviceDomain.1`, `serviceDomain.2`, and so on).  Asterisk sign can be placed to beginning of value and in this case **serviceDomainAlgo** parameter will be **replaced** to `hdr_end(host)`. This parameter is **mandatory** if `servicePath` is not specified.<br>**Example:** `ecme.com`|
 |serviceDomainAlgo|Algorithm that should be applied to domain ACLs. Any ACL works only with one flag: `-i : ignore case during matching of all subsequent patterns`. If not set, the value of the environment variable `SERVICE_DOMAIN_ALGO` will be used instead. If defaults to `hdr_beg(host)`<br>**Examples:**<br>`hdr(host)`: matches only if domain is the same as `serviceDomain`<br>`hdr_dom(host)`: matches the specified `serviceDomain` and any subdomain (a string either isolated or delimited by dots). **Example:** if `hdr_dom(host)` contains `www.ecme.com` and `serviceDomain` equals `ecme.com` the rule will be passed.<br>`req.ssl_sni`: matches Server Name TLS extension|
@@ -108,42 +109,43 @@ The map between the HTTP query parameters and environment variables is as follow
 
 |Query                |Environment variable    |
 |---------------------|------------------------|
-|aclName              |ACL_NAME                |
-|addReqHeader         |ADD_REQ_HEADER          |
-|addResHeader         |ADD_RES_HEADER          |
-|allowedMethods       |ALLOWED_METHODS         |
-|backendExtra         |BACKEND_EXTRA           |
-|compressionAlgo      |COMPRESSION_ALGO        |
-|compressionType      |COMPRESSION_TYPE        |
-|deniedMethods        |DENIED_METHODS          |
-|distribute           |DISTRIBUTE              |
-|httpsOnly            |HTTPS_ONLY              |
-|httpsPort            |HTTPS_PORT              |
-|isDefaultBackend     |IS_DEFAULT_BACKEND      |
-|outboundHostname     |OUTBOUND_HOSTNAME       |
-|pathType             |PATH_TYPE               |
-|port                 |PORT                    |
-|redirectFromDomain   |REDIRECT_FROM_DOMAIN    |
-|redirectWhenHttpProto|REDIRECT_WHEN_HTTP_PROTO|
-|reqMode              |REQ_MODE                |
-|reqPathReplace       |REQ_PATH_REPLACE        |
-|reqPathSearch        |REQ_PATH_SEARCH         |
-|serviceCert          |SERVICE_CERT            |
-|serviceDomain        |SERVICE_DOMAIN          |
-|serviceName          |SERVICE_NAME            |
-|servicePath          |SERVICE_PATH            |
-|setReqHeader         |SET_REQ_HEADER          |
-|setResHeader         |SET_RES_HEADER          |
-|srcPort              |SRC_PORT                |
-|sslVerifyNone        |SSL_VERIFY_NONE         |
-|templateBePath       |TEMPLATE_BE_PATH        |
-|templateFePath       |TEMPLATE_FE_PATH        |
-|timeoutServer        |TIMEOUT_SERVER          |
-|timeoutTunnel        |TIMEOUT_TUNNEL          |
-|users                |**Not supported**       |
-|usersSecret          |**Not supported**       |
-|usersPassEncrypted   |**Not supported**       |
-|verifyClientSsl      |VERIFY_CLIENT_SSL       |
+|aclName                  |ACL_NAME                |
+|addReqHeader             |ADD_REQ_HEADER          |
+|addResHeader             |ADD_RES_HEADER          |
+|allowedMethods           |ALLOWED_METHODS         |
+|backendExtra             |BACKEND_EXTRA           |
+|compressionAlgo          |COMPRESSION_ALGO        |
+|compressionType          |COMPRESSION_TYPE        |
+|deniedMethods            |DENIED_METHODS          |
+|distribute               |DISTRIBUTE              |
+|httpsOnly                |HTTPS_ONLY              |
+|httpsPort                |HTTPS_PORT              |
+|isDefaultBackend         |IS_DEFAULT_BACKEND      |
+|outboundHostname         |OUTBOUND_HOSTNAME       |
+|pathType                 |PATH_TYPE               |
+|port                     |PORT                    |
+|redirectFromDomain       |REDIRECT_FROM_DOMAIN    |
+|redirectWhenHttpProto    |REDIRECT_WHEN_HTTP_PROTO|
+|redirectWhenNotSHttpProto|REDIRECT_WHEN_NOT_HTTPS_PROTO|
+|reqMode                  |REQ_MODE                |
+|reqPathReplace           |REQ_PATH_REPLACE        |
+|reqPathSearch            |REQ_PATH_SEARCH         |
+|serviceCert              |SERVICE_CERT            |
+|serviceDomain            |SERVICE_DOMAIN          |
+|serviceName              |SERVICE_NAME            |
+|servicePath              |SERVICE_PATH            |
+|setReqHeader             |SET_REQ_HEADER          |
+|setResHeader             |SET_RES_HEADER          |
+|srcPort                  |SRC_PORT                |
+|sslVerifyNone            |SSL_VERIFY_NONE         |
+|templateBePath           |TEMPLATE_BE_PATH        |
+|templateFePath           |TEMPLATE_FE_PATH        |
+|timeoutServer            |TIMEOUT_SERVER          |
+|timeoutTunnel            |TIMEOUT_TUNNEL          |
+|users                    |**Not supported**       |
+|usersSecret              |**Not supported**       |
+|usersPassEncrypted       |**Not supported**       |
+|verifyClientSsl          |VERIFY_CLIENT_SSL       |
 
 Please explore the [Configuring Non-Swarm Services](non-swarm.md) tutorial for more info.
 
