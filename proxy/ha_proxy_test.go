@@ -90,6 +90,8 @@ config2 be content`
 	reloadPauseOrig := reloadPause
 	reconfigureAttemptsOrig := os.Getenv("RECONFIGURE_ATTEMPTS")
 	os.Setenv("RECONFIGURE_ATTEMPTS", "1")
+	cmdRunHaOrig := cmdRunHa
+	defer func() { cmdRunHa = cmdRunHaOrig }()
 	cmdRunHa = func(args []string) error {
 		return nil
 	}

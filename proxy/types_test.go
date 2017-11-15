@@ -17,7 +17,7 @@ func (s *TypesTestSuite) SetupTest() {
 	logPrintf = func(format string, v ...interface{}) {}
 }
 
-func TestRunUnitTestSuite(t *testing.T) {
+func TestTypesUnitTestSuite(t *testing.T) {
 	os.Setenv("SEPARATOR", ",")
 	suite.Run(t, new(TypesTestSuite))
 }
