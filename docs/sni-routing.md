@@ -63,7 +63,6 @@ services:
       replicas: 1
       labels:
         com.df.notify: 'true'
-        com.df.distribute: 'true'
         com.df.pathType: "req_ssl_sni -i -m reg"
         com.df.servicePath: "^(api\\.)"
         com.df.srcPort: 443
@@ -87,7 +86,6 @@ services:
       replicas: 1
       labels:
         com.df.notify: 'true'
-        com.df.distribute: 'true'
         com.df.pathType: "req_ssl_sni -i -m beg"
         com.df.servicePath: "test."
         com.df.srcPort: 443

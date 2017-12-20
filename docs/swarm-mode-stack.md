@@ -141,7 +141,6 @@ services:
       replicas: 3
       labels:
         - com.df.notify=true
-        - com.df.distribute=true
         - com.df.servicePath=/demo
         - com.df.port=8080
 

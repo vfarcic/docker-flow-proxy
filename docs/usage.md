@@ -21,7 +21,7 @@ The following query parameters can be used to send a *reconfigure* request to *D
 |connectionMode |HAProxy supports 5 connection modes.<br><br>`http-keep-alive`: all requests and responses are processed.<br>`http-tunnel`: only the first request and response are processed, everything else is forwarded with no analysis.<br>`httpclose`: tunnel with "Connection: close" added in both directions.<br>`http-server-close`: the server-facing connection is closed after the response.<br>`forceclose`: the connection is actively closed after end of response.<br><br>In general, it is preferred to use `http-server-close` with application servers, and some static servers might benefit from `http-keep-alive`.<br>Connection mode is restricted to HTTP mode only. If specified, connection mode will be applied to the backend section.<br>**Example:** http-keep-alive|
 |delReqHeader   |Additional headers that will be deleted in the request before forwarding it to the service. Multiple headers should be separated with comma (`,`). Change the environment variable `SEPARATOR` if comma is to be used for other purposes. Please consult [Delete a header in the request](https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-request) for more info.<br>**Example:** `X-Forwarded-For,Cookie`|
 |delResHeader   |Additional headers that will be deleted in the response before forwarding it to the client. Multiple headers should be separated with comma (`,`). Change the environment variable `SEPARATOR` if comma is to be used for other purposes. Please consult [Delete a header in the response](https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-response) for more info.<br>**Example:** `X-Varnish,X-Cache`|
-|distribute   |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.<br>**Example:** `true`|false|
+|distribute   |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.<br>**Default:** `true`<br>**Example:** `true`|false|
 |httpsPort      |The internal HTTPS port of a service that should be reconfigured. The port is used only in the `swarm` mode. If not specified, the `port` parameter will be used instead.<br>**Example:** `443`|
 |ignoreAuthorization|If set to true, the service destination will not require authorization. The parameter must be prefixed with the index of the service destination that should be excluded from authorization.<br>**Default:** `false`<br>**Example:** `true`|
 |isDefaultBackend  |If set to true, the service will be set to the default_backend rule, meaning it will catch all requests not matching any other rules.<br>**Default:** `false`<br>**Example:** `true`|
@@ -159,7 +159,7 @@ The following query arguments can be used to send a *remove* request to *Docker 
 |-----------|----------------------------------------------------------------------------|--------|-------|-------|
 |aclName    |Mandatory if ACL name was specified in reconfigure request                  |No      |       |05-go-demo-acl|
 |serviceName|The name of the service. It must match the name of the service              |Yes     |       |go-demo|
-|distribute |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.|No|false|true|
+|distribute |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.|No|true|false|
 
 ## Certificates
 
@@ -182,7 +182,7 @@ When a new replica is deployed, it will synchronize with other replicas and recu
 |Query      |Description                                                                 |Required|Default|Example    |
 |-----------|----------------------------------------------------------------------------|--------|-------|-----------|
 |certName   |The file name of the certificate                                            |Yes     |       |my-cert.pem|
-|distribute |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.|No|false|true|
+|distribute |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.|No|true|false|
 
 An example is as follows.
 
