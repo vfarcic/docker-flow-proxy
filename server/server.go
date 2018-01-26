@@ -242,17 +242,11 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 		return proxy.Service{}, fmt.Errorf("%s_SERVICE_NAME is not set", prefix)
 	}
 	sd := []proxy.ServiceDest{}
-	path := []string{}
-	if len(os.Getenv(prefix+"_SERVICE_PATH")) > 0 {
-		path = strings.Split(os.Getenv(prefix+"_SERVICE_PATH"), ",")
-	}
+	path := getSliceFromString(os.Getenv(prefix+"_SERVICE_PATH"))
 	port := os.Getenv(prefix + "_PORT")
 	srcPort, _ := strconv.Atoi(os.Getenv(prefix + "_SRC_PORT"))
 	reqMode := os.Getenv(prefix + "_REQ_MODE")
-	domain := []string{}
-	if len(os.Getenv(prefix+"_SERVICE_DOMAIN")) > 0 {
-		domain = strings.Split(os.Getenv(prefix+"_SERVICE_DOMAIN"), ",")
-	}
+	domain := getSliceFromString(os.Getenv(prefix+"_SERVICE_DOMAIN"))
 	// TODO: Remove.
 	// It is a temporary workaround to maintain compatibility with the deprecated serviceDomainMatchAll parameter (since July 2017).
 	if len(s.ServiceDomainAlgo) == 0 && strings.EqualFold(os.Getenv(prefix+"_SERVICE_DOMAIN_MATCH_ALL"), "true") {
@@ -269,27 +263,42 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 	if len(reqPathSearchReplace) > 0 {
 		reqPathSearchReplaceFormatted = strings.Split(reqPathSearchReplace, ":")
 	}
+	allowedMethods := getSliceFromString(os.Getenv(prefix + "_ALLOWED_METHODS"))
+	deniedMethods := getSliceFromString(os.Getenv(prefix + "_DENIED_METHODS"))
+	redirectFromDomain := getSliceFromString(os.Getenv(prefix + "_REDIRECT_FROM_DOMAIN"))
+	servicePathExclude := getSliceFromString(os.Getenv(prefix + "_SERVICE_PATH_EXCLUDE"))
+	verifyClientSsl, _ := strconv.ParseBool(os.Getenv(prefix + "_SSL_VERIFY_NONE"))
+	denyHttp, _ := strconv.ParseBool(os.Getenv(prefix + "_DENY_HTTP"))
+	ignoreAuthorization, _ := strconv.ParseBool(os.Getenv(prefix + "_IGNORE_AUTHORIZATION"))
 
 	if len(path) > 0 || len(port) > 0 {
 		sd = append(
 			sd,
 			proxy.ServiceDest{
+				AllowedMethods:                allowedMethods,
+				DeniedMethods:                 deniedMethods,
+				DenyHttp:                      denyHttp,
 				HttpsOnly:                     httpsOnly,
 				HttpsRedirectCode:             httpsRedirectCode,
+				IgnoreAuthorization:           ignoreAuthorization,
 				OutboundHostname:              globalOutboundHostname,
 				Port:                          port,
+				RedirectFromDomain:            redirectFromDomain,
 				ReqMode:                       reqMode,
 				ReqPathSearchReplace:          reqPathSearchReplace,
 				ReqPathSearchReplaceFormatted: reqPathSearchReplaceFormatted,
 				ServiceDomain:                 domain,
 				ServicePath:                   path,
+				ServicePathExclude:            servicePathExclude,
 				SrcPort:                       srcPort,
+				VerifyClientSsl:               verifyClientSsl,
 			},
 		)
 	}
 	for i := 1; i <= 10; i++ {
+		domain := getSliceFromString(os.Getenv(fmt.Sprintf("%s_SERVICE_DOMAIN_%d", prefix, i)))
 		port := os.Getenv(fmt.Sprintf("%s_PORT_%d", prefix, i))
-		path := os.Getenv(fmt.Sprintf("%s_SERVICE_PATH_%d", prefix, i))
+		path := getSliceFromString(os.Getenv(fmt.Sprintf("%s_SERVICE_PATH_%d", prefix, i)))
 		reqMode := os.Getenv(fmt.Sprintf("%s_REQ_MODE_%d", prefix, i))
 		reqPathSearchReplace := os.Getenv(fmt.Sprintf("%s_REQ_PATH_SEARCH_REPLACE_%d", prefix, i))
 		reqPathSearchReplaceFormatted := []string{}
@@ -302,6 +311,13 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 			reqMode = "http"
 		}
 		srcPort, _ := strconv.Atoi(os.Getenv(fmt.Sprintf("%s_SRC_PORT_%d", prefix, i)))
+		allowedMethods := getSliceFromString(os.Getenv(fmt.Sprintf("%s_ALLOWED_METHODS_%d", prefix, i)))
+		deniedMethods := getSliceFromString(os.Getenv(fmt.Sprintf("%s_DENIED_METHODS_%d", prefix, i)))
+		redirectFromDomain := getSliceFromString(os.Getenv(fmt.Sprintf("%s_REDIRECT_FROM_DOMAIN_%d", prefix, i)))
+		servicePathExclude := getSliceFromString(os.Getenv(fmt.Sprintf("%s_SERVICE_PATH_EXCLUDE_%d", prefix, i)))
+		verifyClientSsl, _ := strconv.ParseBool(os.Getenv(fmt.Sprintf("%s_SSL_VERIFY_NONE_%d", prefix, i)))
+		denyHttp, _ := strconv.ParseBool(os.Getenv(fmt.Sprintf("%s_DENY_HTTP_%d", prefix, i)))
+		ignoreAuthorization, _ := strconv.ParseBool(os.Getenv(fmt.Sprintf("%s_IGNORE_AUTHORIZATION_%d", prefix, i)))
 		if len(path) > 0 && len(port) > 0 {
 			outboundHostname := os.Getenv(fmt.Sprintf("%s_OUTBOUND_HOSTNAME_%d", prefix, i))
 			if len(outboundHostname) == 0 {
@@ -310,15 +326,23 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 			sd = append(
 				sd,
 				proxy.ServiceDest{
+					AllowedMethods: 			   allowedMethods,
+					DeniedMethods:                 deniedMethods,
+					DenyHttp:                      denyHttp,
 					HttpsOnly:                     httpsOnly,
 					HttpsRedirectCode:             httpsRedirectCode,
+					IgnoreAuthorization:           ignoreAuthorization,
 					OutboundHostname:              outboundHostname,
 					Port:                          port,
+					RedirectFromDomain:            redirectFromDomain,
 					ReqPathSearchReplace:          reqPathSearchReplace,
 					ReqPathSearchReplaceFormatted: reqPathSearchReplaceFormatted,
-					SrcPort:     srcPort,
-					ServicePath: strings.Split(path, ","),
-					ReqMode:     reqMode,
+					ServiceDomain:                 domain,
+					SrcPort:                       srcPort,
+					ServicePath:                   path,
+					ServicePathExclude:            servicePathExclude,
+					ReqMode:                       reqMode,
+					VerifyClientSsl:               verifyClientSsl,
 				},
 			)
 		} else {
@@ -349,4 +373,13 @@ func (m *serve) writeInternalServerError(w http.ResponseWriter, resp *Response, 
 
 func (m *serve) hasPort(sd []proxy.ServiceDest) bool {
 	return len(sd) > 0 && len(sd[0].Port) > 0
+}
+
+func getSliceFromString(input string) []string {
+	separator := os.Getenv("SEPARATOR")
+	value := []string{}
+	if len(input) > 0 {
+		value = strings.Split(input, separator)
+	}
+	return value
 }

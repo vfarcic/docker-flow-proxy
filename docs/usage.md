@@ -118,9 +118,11 @@ The map between the HTTP query parameters and environment variables is as follow
 |compressionAlgo      |COMPRESSION_ALGO        |
 |compressionType      |COMPRESSION_TYPE        |
 |deniedMethods        |DENIED_METHODS          |
+|denyHttp             |DENY_HTTP               |
 |distribute           |DISTRIBUTE              |
 |httpsOnly            |HTTPS_ONLY              |
 |httpsPort            |HTTPS_PORT              |
+|ignoreAuthorization  |IGNORE_AUTHORIZATION    |
 |isDefaultBackend     |IS_DEFAULT_BACKEND      |
 |outboundHostname     |OUTBOUND_HOSTNAME       |
 |pathType             |PATH_TYPE               |

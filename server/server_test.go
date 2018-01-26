@@ -696,24 +696,36 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 				ServicePath:                   []string{"my-path-11", "my-path-12"},
 				SrcPort:                       1112,
 				ReqMode:                       "my-ReqMode",
+				AllowedMethods: 			   []string{"GET", "POST"},
+				DeniedMethods: 			       []string{"OPTION", "TRACE"},
+				RedirectFromDomain: 		   []string{"proxy.dockerflow.com", "dockerflow.com"},
+				ServicePathExclude:            []string{"some-path", "some-path2"},
+				VerifyClientSsl:               true,
+				DenyHttp:                      true,
+				IgnoreAuthorization:           true,
 			},
 		},
 	}
 	os.Setenv("DFP_SERVICE_ACL_NAME", service.AclName)
 	os.Setenv("DFP_SERVICE_ADD_REQ_HEADER", strings.Join(service.AddReqHeader, ","))
 	os.Setenv("DFP_SERVICE_ADD_RES_HEADER", strings.Join(service.AddResHeader, ","))
+	os.Setenv("DFP_SERVICE_ALLOWED_METHODS", strings.Join(service.ServiceDest[0].AllowedMethods, ","))
 	os.Setenv("DFP_SERVICE_COMPRESSION_ALGO", service.CompressionAlgo)
 	os.Setenv("DFP_SERVICE_COMPRESSION_TYPE", service.CompressionType)
 	os.Setenv("DFP_SERVICE_CONNECTION_MODE", service.ConnectionMode)
 	os.Setenv("DFP_SERVICE_DEL_REQ_HEADER", strings.Join(service.DelReqHeader, ","))
 	os.Setenv("DFP_SERVICE_DEL_RES_HEADER", strings.Join(service.DelResHeader, ","))
+	os.Setenv("DFP_SERVICE_DENIED_METHODS", strings.Join(service.ServiceDest[0].DeniedMethods, ","))
+	os.Setenv("DFP_SERVICE_DENY_HTTP", strconv.FormatBool(service.ServiceDest[0].DenyHttp))
 	os.Setenv("DFP_SERVICE_DISTRIBUTE", strconv.FormatBool(service.Distribute))
 	os.Setenv("DFP_SERVICE_HTTPS_ONLY", strconv.FormatBool(service.ServiceDest[0].HttpsOnly))
 	os.Setenv("DFP_SERVICE_HTTPS_REDIRECT_CODE", service.ServiceDest[0].HttpsRedirectCode)
 	os.Setenv("DFP_SERVICE_HTTPS_PORT", strconv.Itoa(service.HttpsPort))
+	os.Setenv("DFP_SERVICE_IGNORE_AUTHORIZATION", strconv.FormatBool(service.ServiceDest[0].IgnoreAuthorization))
 	os.Setenv("DFP_SERVICE_IS_DEFAULT_BACKEND", strconv.FormatBool(service.IsDefaultBackend))
 	os.Setenv("DFP_SERVICE_OUTBOUND_HOSTNAME", service.ServiceDest[0].OutboundHostname)
 	os.Setenv("DFP_SERVICE_PATH_TYPE", service.PathType)
+	os.Setenv("DFP_SERVICE_REDIRECT_FROM_DOMAIN", strings.Join(service.ServiceDest[0].RedirectFromDomain, ","))
 	os.Setenv("DFP_SERVICE_REDIRECT_WHEN_HTTP_PROTO", strconv.FormatBool(service.RedirectWhenHttpProto))
 	os.Setenv("DFP_SERVICE_REQ_MODE", service.ServiceDest[0].ReqMode)
 	os.Setenv("DFP_SERVICE_REQ_PATH_SEARCH_REPLACE", service.ServiceDest[0].ReqPathSearchReplace)
@@ -721,6 +733,7 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 	os.Setenv("DFP_SERVICE_SERVICE_DOMAIN", strings.Join(service.ServiceDest[0].ServiceDomain, ","))
 	os.Setenv("DFP_SERVICE_SERVICE_DOMAIN_ALGO", service.ServiceDomainAlgo)
 	os.Setenv("DFP_SERVICE_SERVICE_NAME", service.ServiceName)
+	os.Setenv("DFP_SERVICE_SERVICE_PATH_EXCLUDE", strings.Join(service.ServiceDest[0].ServicePathExclude, ","))
 	os.Setenv("DFP_SERVICE_SSL_VERIFY_NONE", strconv.FormatBool(service.SslVerifyNone))
 	os.Setenv("DFP_SERVICE_TEMPLATE_BE_PATH", service.TemplateBePath)
 	os.Setenv("DFP_SERVICE_TEMPLATE_FE_PATH", service.TemplateFePath)
@@ -731,24 +744,30 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 	os.Setenv("DFP_SERVICE_SET_REQ_HEADER", strings.Join(service.SetReqHeader, ","))
 	os.Setenv("DFP_SERVICE_SET_RES_HEADER", strings.Join(service.SetResHeader, ","))
 	os.Setenv("DFP_SERVICE_SRC_PORT", strconv.Itoa(service.ServiceDest[0].SrcPort))
+	os.Setenv("DFP_SERVICE_SSL_VERIFY_NONE", strconv.FormatBool(service.ServiceDest[0].VerifyClientSsl))
 
 	defer func() {
 		os.Unsetenv("DFP_SERVICE_ACL_NAME")
 		os.Unsetenv("DFP_SERVICE_ADD_REQ_HEADER")
 		os.Unsetenv("DFP_SERVICE_ADD_RES_HEADER")
+		os.Unsetenv("DFP_SERVICE_ALLOWED_METHODS")
 		os.Unsetenv("DFP_SERVICE_COMPRESSION_ALGO")
 		os.Unsetenv("DFP_SERVICE_COMPRESSION_TYPE")
 		os.Unsetenv("DFP_SERVICE_CONNECTION_MODE")
 		os.Unsetenv("DFP_SERVICE_DEL_REQ_HEADER")
 		os.Unsetenv("DFP_SERVICE_DEL_RES_HEADER")
+		os.Unsetenv("DFP_SERVICE_DENIED_METHODS")
+		os.Unsetenv("DFP_SERVICE_DENY_HTTP")
 		os.Unsetenv("DFP_SERVICE_DISTRIBUTE")
 		os.Unsetenv("DFP_SERVICE_HTTPS_ONLY")
 		os.Unsetenv("DFP_SERVICE_HTTPS_PORT")
 		os.Unsetenv("DFP_SERVICE_HTTPS_REDIRECT_CODE")
+		os.Unsetenv("DFP_SERVICE_IGNORE_AUTHORIZATION")
 		os.Unsetenv("DFP_SERVICE_IS_DEFAULT_BACKEND")
 		os.Unsetenv("DFP_SERVICE_OUTBOUND_HOSTNAME")
 		os.Unsetenv("DFP_SERVICE_PATH_TYPE")
 		os.Unsetenv("DFP_SERVICE_PORT")
+		os.Unsetenv("DFP_SERVICE_REDIRECT_FROM_DOMAIN")
 		os.Unsetenv("DFP_SERVICE_REDIRECT_WHEN_HTTP_PROTO")
 		os.Unsetenv("DFP_SERVICE_REQ_MODE")
 		os.Unsetenv("DFP_SERVICE_REQ_PATH_SEARCH_REPLACE")
@@ -757,9 +776,11 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		os.Unsetenv("DFP_SERVICE_SERVICE_DOMAIN_ALGO")
 		os.Unsetenv("DFP_SERVICE_SERVICE_NAME")
 		os.Unsetenv("DFP_SERVICE_SERVICE_PATH")
+		os.Unsetenv("DFP_SERVICE_SERVICE_PATH_EXCLUDE")
 		os.Unsetenv("DFP_SERVICE_SET_REQ_HEADER")
 		os.Unsetenv("DFP_SERVICE_SET_RES_HEADER")
 		os.Unsetenv("DFP_SERVICE_SRC_PORT")
+		os.Unsetenv("DFP_SERVICE_SSL_VERIFY_NONE")
 		os.Unsetenv("DFP_SERVICE_SSL_VERIFY_NONE")
 		os.Unsetenv("DFP_SERVICE_TEMPLATE_BE_PATH")
 		os.Unsetenv("DFP_SERVICE_TEMPLATE_FE_PATH")
@@ -784,6 +805,10 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_SetsServiceDomainAlgoToHdr
 				ReqPathSearchReplaceFormatted: []string{},
 				ServiceDomain:                 []string{"my-domain-1.com", "my-domain-2.com"},
 				ServicePath:                   []string{"my-path-11", "my-path-12"},
+				AllowedMethods:                []string{},
+				DeniedMethods:                 []string{},
+				RedirectFromDomain: 		   []string{},
+				ServicePathExclude:            []string{},
 			},
 		},
 		ServiceDomainAlgo: "hdr_dom(host)",
@@ -815,6 +840,11 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServicesWithIndexed
 				ReqPathSearchReplace:          "/this,/that",
 				ReqPathSearchReplaceFormatted: []string{"/this,/that"},
 				ServicePath:                   []string{"my-path-11", "my-path-12"},
+				ServiceDomain:				   []string{"some-domain.com", "some-domain2.com"},
+				AllowedMethods: 			   []string{},
+				DeniedMethods: 			       []string{},
+				RedirectFromDomain: 		   []string{},
+				ServicePathExclude:            []string{},
 				SrcPort:                       1112,
 				HttpsOnly:                     true,
 			}, {
@@ -822,9 +852,17 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServicesWithIndexed
 				ReqPathSearchReplace:          "/something,/else",
 				ReqPathSearchReplaceFormatted: []string{"/something,/else"},
 				ServicePath:                   []string{"my-path-21", "my-path-22"},
+				ServiceDomain:                 []string{},
 				SrcPort:                       2222,
 				HttpsOnly:                     false,
 				OutboundHostname:              "my-outbound-domain.com",
+				AllowedMethods: 			   []string{"GET", "POST"},
+				DeniedMethods: 			       []string{"OPTION", "TRACE"},
+				RedirectFromDomain: 		   []string{"proxy.dockerflow.com", "dockerflow.com"},
+				ServicePathExclude:            []string{"some-path", "some-path2"},
+				VerifyClientSsl:               true,
+				DenyHttp:                      true,
+				IgnoreAuthorization:           true,
 			},
 		},
 	}
@@ -833,6 +871,7 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServicesWithIndexed
 	os.Setenv("DFP_SERVICE_PORT_1", expected.ServiceDest[0].Port)
 	os.Setenv("DFP_SERVICE_REQ_PATH_SEARCH_REPLACE_1", expected.ServiceDest[0].ReqPathSearchReplace)
 	os.Setenv("DFP_SERVICE_SERVICE_PATH_1", strings.Join(expected.ServiceDest[0].ServicePath, ","))
+	os.Setenv("DFP_SERVICE_SERVICE_DOMAIN_1", strings.Join(expected.ServiceDest[0].ServiceDomain, ","))
 	os.Setenv("DFP_SERVICE_SRC_PORT_1", strconv.Itoa(expected.ServiceDest[0].SrcPort))
 	os.Setenv("DFP_SERVICE_HTTPS_ONLY_2", "false")
 	os.Setenv("DFP_SERVICE_PORT_2", expected.ServiceDest[1].Port)
@@ -840,6 +879,13 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServicesWithIndexed
 	os.Setenv("DFP_SERVICE_SERVICE_PATH_2", strings.Join(expected.ServiceDest[1].ServicePath, ","))
 	os.Setenv("DFP_SERVICE_SRC_PORT_2", strconv.Itoa(expected.ServiceDest[1].SrcPort))
 	os.Setenv("DFP_SERVICE_OUTBOUND_HOSTNAME_2", expected.ServiceDest[1].OutboundHostname)
+	os.Setenv("DFP_SERVICE_ALLOWED_METHODS_2", strings.Join(expected.ServiceDest[1].AllowedMethods, ","))
+	os.Setenv("DFP_SERVICE_DENIED_METHODS_2", strings.Join(expected.ServiceDest[1].DeniedMethods, ","))
+	os.Setenv("DFP_SERVICE_REDIRECT_FROM_DOMAIN_2", strings.Join(expected.ServiceDest[1].RedirectFromDomain, ","))
+	os.Setenv("DFP_SERVICE_SERVICE_PATH_EXCLUDE_2", strings.Join(expected.ServiceDest[1].ServicePathExclude, ","))
+	os.Setenv("DFP_SERVICE_SSL_VERIFY_NONE_2", strconv.FormatBool(expected.ServiceDest[1].VerifyClientSsl))
+	os.Setenv("DFP_SERVICE_DENY_HTTP_2", strconv.FormatBool(expected.ServiceDest[1].DenyHttp))
+	os.Setenv("DFP_SERVICE_IGNORE_AUTHORIZATION_2", strconv.FormatBool(expected.ServiceDest[1].IgnoreAuthorization))
 
 	defer func() {
 		os.Unsetenv("DFP_SERVICE_SERVICE_NAME")
@@ -854,6 +900,14 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServicesWithIndexed
 		os.Unsetenv("DFP_SERVICE_SERVICE_PATH_2")
 		os.Unsetenv("DFP_SERVICE_SRC_PORT_2")
 		os.Unsetenv("DFP_SERVICE_OUTBOUND_HOSTNAME_2")
+		os.Unsetenv("DFP_SERVICE_ALLOWED_METHODS_2")
+		os.Unsetenv("DFP_SERVICE_DENIED_METHODS_2")
+		os.Unsetenv("DFP_SERVICE_REDIRECT_FROM_DOMAIN_2")
+		os.Unsetenv("DFP_SERVICE_SERVICE_PATH_EXCLUDE_2")
+		os.Unsetenv("DFP_SERVICE_SERVICE_DOMAIN_2")
+		os.Unsetenv("DFP_SERVICE_VERIFY_CLIENT_SSL_2")
+		os.Unsetenv("DFP_SERVICE_DENY_HTTP_2")
+		os.Unsetenv("DFP_SERVICE_IGNORE_AUTHORIZATION_2")
 	}()
 	srv := serve{}
 	actual := srv.GetServicesFromEnvVars()
@@ -882,6 +936,10 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsMultipleServices() 
 				ServicePath:                   []string{"my-path-11", "my-path-12"},
 				SrcPort:                       1112,
 				ReqMode:                       "http",
+				AllowedMethods: 			   []string{},
+				DeniedMethods:                 []string{},
+				RedirectFromDomain: 		   []string{},
+				ServicePathExclude:            []string{},
 			},
 		},
 	}
