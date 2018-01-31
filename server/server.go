@@ -269,7 +269,7 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 	deniedMethods := getSliceFromString(os.Getenv(prefix + "_DENIED_METHODS"))
 	redirectFromDomain := getSliceFromString(os.Getenv(prefix + "_REDIRECT_FROM_DOMAIN"))
 	servicePathExclude := getSliceFromString(os.Getenv(prefix + "_SERVICE_PATH_EXCLUDE"))
-	verifyClientSsl, _ := strconv.ParseBool(os.Getenv(prefix + "_SSL_VERIFY_NONE"))
+	verifyClientSsl, _ := strconv.ParseBool(os.Getenv(prefix + "_VERIFY_CLIENT_SSL"))
 	denyHttp, _ := strconv.ParseBool(os.Getenv(prefix + "_DENY_HTTP"))
 	ignoreAuthorization, _ := strconv.ParseBool(os.Getenv(prefix + "_IGNORE_AUTHORIZATION"))
 
