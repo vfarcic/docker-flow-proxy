@@ -311,7 +311,11 @@ func (m *HaProxy) getCertsConfigSnippet() string {
 	certPaths := m.GetCertPaths()
 	certs := ""
 	if len(certPaths) > 0 {
-		certs = " ssl crt-list /cfg/crt-list.txt"
+		h2 := ""
+		if strings.EqualFold(os.Getenv("ENABLE_H2"), "true") {
+			h2 = "h2,"
+		}
+		certs = fmt.Sprintf(" ssl crt-list /cfg/crt-list.txt alpn %shttp/1.1", h2)
 		mu.Lock()
 		defer mu.Unlock()
 		writeFile("/cfg/crt-list.txt", []byte(strings.Join(certPaths, "\n")), 0664)
@@ -441,8 +445,6 @@ func (m *HaProxy) getSni(services *Services, config *configData) {
 		for i, sd := range s.ServiceDest {
 			if strings.EqualFold(sd.ReqMode, "http") {
 				if !httpDone {
-					// TODO: Remove that line once the problems with redirectWhenHttpProto are resolved
-					s.RedirectWhenHttpProto = false
 					config.ContentFrontend += getFrontTemplate(s)
 				}
 				httpDone = true

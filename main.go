@@ -1,12 +1,11 @@
 package main
 
 import (
-	"./logging"
 	"log"
 	"os"
 	"strings"
-	//	"sync"
-	//	"github.com/hashicorp/go-reap"
+
+	"./logging"
 )
 
 func main() {

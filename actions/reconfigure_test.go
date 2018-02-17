@@ -341,6 +341,26 @@ backend myService-be1234_0
 	s.Equal(expectedBack, actualBack)
 }
 
+func (s ReconfigureTestSuite) Test_GetTemplates_UsesOutboundHostname() {
+	s.reconfigure.Service.HttpsPort = 4321
+	s.reconfigure.Service.ServiceDest[0].Port = "1234"
+	s.reconfigure.Service.ServiceDest[0].Index = 1
+	s.reconfigure.Service.ServiceDest[0].OutboundHostname = "acme.com"
+	expected := `
+backend myService-be1234_1
+    mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
+    server myService acme.com:1234
+backend https-myService-be1234_1
+    mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
+    server myService acme.com:4321`
+
+	_, actual, _ := s.reconfigure.GetTemplates()
+
+	s.Equal(expected, actual)
+}
+
 func (s ReconfigureTestSuite) Test_GetTemplates_AddsTimeoutServer_WhenPresent() {
 	expectedBack := `
 backend myService-be1234_4
@@ -398,19 +418,26 @@ backend myService-be5555_2
 	s.Equal(expectedBack, actualBack)
 }
 
-func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpRequestSetPath_WhenReqPathSearchAndReqPathReplaceArePresent() {
-	s.reconfigure.ReqPathSearch = "this"
-	s.reconfigure.ReqPathReplace = "that"
-	s.reconfigure.ServiceDest = []proxy.ServiceDest{{Port: "1234", Index: 0}}
-	expected := fmt.Sprintf(`
+func (s ReconfigureTestSuite) Test_GetTemplates_AddsHttpRequestSetPath_WhenReqPathSearchReplaceFormattedIsPresent() {
+	s.reconfigure.HttpsPort = 1234
+	s.reconfigure.ServiceDest = []proxy.ServiceDest{{
+		Port:  "1234",
+		Index: 0,
+		ReqPathSearchReplaceFormatted: []string{"this,that", "foo,bar"},
+	}}
+	expected := `
 backend myService-be1234_0
     mode http
     http-request add-header X-Forwarded-Proto https if { ssl_fc }
-    http-request set-path %%[path,regsub(%s,%s)]
-    server myService myService:1234`,
-		s.reconfigure.ReqPathSearch,
-		s.reconfigure.ReqPathReplace,
-	)
+    http-request set-path %[path,regsub(this,that)]
+    http-request set-path %[path,regsub(foo,bar)]
+    server myService myService:1234
+backend https-myService-be1234_0
+    mode http
+    http-request add-header X-Forwarded-Proto https if { ssl_fc }
+    http-request set-path %[path,regsub(this,that)]
+    http-request set-path %[path,regsub(foo,bar)]
+    server myService myService:1234`
 
 	_, backend, _ := s.reconfigure.GetTemplates()
 

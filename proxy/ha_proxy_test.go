@@ -740,15 +740,48 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEnd() {
 	s.Equal(expectedData, actualData)
 }
 
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsServicePathExclude() {
+	var actualData string
+	tmpl := s.TemplateContent
+	expectedData := fmt.Sprintf(
+		`%s
+    acl url_my-service-11111_0 path_beg /path-1
+    acl url_exclude_my-service-11111_0 path_beg /path-2 path_beg /path-3
+    acl http_my-service-1 dst_port 80
+    acl https_my-service-1 dst_port 443
+    use_backend my-service-1-be1111_0 if url_my-service-11111_0 !url_exclude_my-service-11111_0 http_my-service-1
+    use_backend https-my-service-1-be1111_0 if url_my-service-11111_0 !url_exclude_my-service-11111_0 https_my-service-1%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	dataInstance.Services["my-service-1"] = Service{
+		ServiceName: "my-service-1",
+		PathType:    "path_beg",
+		HttpsPort:   2222,
+		ServiceDest: []ServiceDest{
+			{Port: "1111", ServicePath: []string{"/path-1"}, ServicePathExclude: []string{"/path-2", "/path-3"}},
+		},
+	}
+
+	p.CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsSortedContentFrontEnd() {
 	var actualData string
 	tmpl := s.TemplateContent
 	expectedData := fmt.Sprintf(
 		`%s
     acl url_acl11111_0 path_beg /path
-    use_backend my-second-service-be1111_0 if url_acl11111_0
+    use_backend acl1-be1111_0 if url_acl11111_0
     acl url_acl21111_0 path_beg /path
-    use_backend my-first-service-be1111_0 if url_acl21111_0
+    use_backend acl2-be1111_0 if url_acl21111_0
     acl url_the-last-service1111_0 path_beg /path
     use_backend the-last-service-be1111_0 if url_the-last-service1111_0%s`,
 		tmpl,
@@ -1459,40 +1492,75 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsContentFrontEndWith
 	s.Equal(expectedData, actualData)
 }
 
-// func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToHttps_WhenRedirectWhenHttpProtoIsTrue() {
-// 	var actualData string
-// 	tmpl := s.TemplateContent
-// 	expectedData := fmt.Sprintf(
-// 		`%s
-//     acl url_my-service1111_0 path_beg /path
-//     acl domain_my-service1111_0 hdr_beg(host) -i my-domain.com
-//     acl is_my-service_http hdr(X-Forwarded-Proto) http
-//     http-request redirect scheme https if is_my-service_http url_my-service1111_0 domain_my-service1111_0
-//     acl is_my-service_https hdr(X-Forwarded-Proto) https
-//     http-request redirect scheme https if !is_my-service_https url_my-service1111_0 domain_my-service1111_0
-//     use_backend my-service-be1111_0 if url_my-service1111_0 domain_my-service1111_0%s`,
-// 		tmpl,
-// 		s.ServicesContent,
-// 	)
-// 	writeFile = func(filename string, data []byte, perm os.FileMode) error {
-// 		actualData = string(data)
-// 		return nil
-// 	}
-// 	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
-// 	dataInstance.Services["my-service"] = Service{
-// 		ServiceName:           "my-service",
-// 		PathType:              "path_beg",
-// 		RedirectWhenHttpProto: true,
-// 		AclName:               "my-service",
-// 		ServiceDest: []ServiceDest{
-// 			{Port: "1111", ServicePath: []string{"/path"}, ServiceDomain: []string{"my-domain.com"}},
-// 		},
-// 	}
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToHttps_WhenRedirectWhenHttpProtoIsTrue() {
+	var actualData string
+	tmpl := s.TemplateContent
+	expectedData := fmt.Sprintf(
+		`%s
+    acl url_my-service1111_0 path_beg /path
+    acl domain_my-service1111_0 hdr_beg(host) -i my-domain.com
+    use_backend my-service-be1111_0 if url_my-service1111_0 domain_my-service1111_0
+    acl is_my-service_http hdr(X-Forwarded-Proto) http
+    http-request redirect scheme https if is_my-service_http url_my-service1111_0 domain_my-service1111_0
+    acl is_my-service_https hdr(X-Forwarded-Proto) https
+    http-request redirect scheme https if !is_my-service_https url_my-service1111_0 domain_my-service1111_0%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	dataInstance.Services["my-service"] = Service{
+		ServiceName:           "my-service",
+		PathType:              "path_beg",
+		RedirectWhenHttpProto: true,
+		AclName:               "my-service",
+		ServiceDest: []ServiceDest{
+			{Port: "1111", ServicePath: []string{"/path"}, ServiceDomain: []string{"my-domain.com"}},
+		},
+	}
 
-// 	p.CreateConfigFromTemplates()
+	p.CreateConfigFromTemplates()
 
-// 	s.Equal(expectedData, actualData)
-// }
+	s.Equal(expectedData, actualData)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_usesHttpsRedirectCode() {
+	var actualData string
+	tmpl := s.TemplateContent
+	expectedData := fmt.Sprintf(
+		`%s
+    acl url_my-service1111_0 path_beg /path
+    acl domain_my-service1111_0 hdr_beg(host) -i my-domain.com
+    use_backend my-service-be1111_0 if url_my-service1111_0 domain_my-service1111_0
+    acl is_my-service_http hdr(X-Forwarded-Proto) http
+    http-request redirect scheme https code 301 if is_my-service_http url_my-service1111_0 domain_my-service1111_0
+    acl is_my-service_https hdr(X-Forwarded-Proto) https
+    http-request redirect scheme https code 301 if !is_my-service_https url_my-service1111_0 domain_my-service1111_0%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	dataInstance.Services["my-service"] = Service{
+		ServiceName:           "my-service",
+		PathType:              "path_beg",
+		RedirectWhenHttpProto: true,
+		AclName:               "my-service",
+		ServiceDest: []ServiceDest{
+			{Port: "1111", ServicePath: []string{"/path"}, ServiceDomain: []string{"my-domain.com"}, HttpsRedirectCode: "301"},
+		},
+	}
+
+	p.CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
 
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToDomain_WhenRedirectFromDomainIsSet() {
 	var actualData string
@@ -1702,9 +1770,12 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsDefaultPortsWithTex
 
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCerts() {
 	readDirOrig := readDir
+	enableH2Orig := os.Getenv("ENABLE_H2")
 	defer func() {
 		readDir = readDirOrig
+		os.Setenv("ENABLE_H2", enableH2Orig)
 	}()
+	os.Setenv("ENABLE_H2", "true")
 	expected := "ssl"
 	expectedCertList := []string{}
 	actualCertList := ""
@@ -1734,7 +1805,7 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCerts() {
 	tmpl := strings.Replace(
 		s.TemplateContent,
 		"\n    bind *:80\n    bind *:443",
-		"\n    bind *:80\n    bind *:443 ssl crt-list /cfg/crt-list.txt",
+		"\n    bind *:80\n    bind *:443 ssl crt-list /cfg/crt-list.txt alpn h2,http/1.1",
 		-1)
 	expectedData := fmt.Sprintf(
 		`%s%s`,
@@ -1753,6 +1824,51 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCerts() {
 
 	s.Equal(expectedData, actualData)
 	s.Equal(strings.Join(expectedCertList, "\n"), actualCertList)
+}
+
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_DoesNotAddH2_WhenEnableH2IsFalse() {
+	readDirOrig := readDir
+	enableH2Orig := os.Getenv("ENABLE_H2")
+	defer func() {
+		readDir = readDirOrig
+		os.Setenv("ENABLE_H2", enableH2Orig)
+	}()
+	os.Setenv("ENABLE_H2", "false")
+	mockedFiles := []os.FileInfo{}
+	file := FileInfoMock{
+		NameMock: func() string {
+			return "my-cert"
+		},
+		IsDirMock: func() bool {
+			return false
+		},
+	}
+	mockedFiles = append(mockedFiles, file)
+	readDir = func(dir string) ([]os.FileInfo, error) {
+		if dir == "/certs" {
+			return mockedFiles, nil
+		}
+		return []os.FileInfo{}, nil
+	}
+	var actualData string
+	tmpl := strings.Replace(
+		s.TemplateContent,
+		"\n    bind *:80\n    bind *:443",
+		"\n    bind *:80\n    bind *:443 ssl crt-list /cfg/crt-list.txt alpn http/1.1",
+		-1)
+	expectedData := fmt.Sprintf(
+		`%s%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+
+	NewHaProxy(s.TemplatesPath, s.ConfigsPath).CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
 }
 
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_AddsCaFile_WhenEnvVarIsSet() {

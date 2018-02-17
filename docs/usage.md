@@ -21,22 +21,24 @@ The following query parameters can be used to send a *reconfigure* request to *D
 |connectionMode |HAProxy supports 5 connection modes.<br><br>`http-keep-alive`: all requests and responses are processed.<br>`http-tunnel`: only the first request and response are processed, everything else is forwarded with no analysis.<br>`httpclose`: tunnel with "Connection: close" added in both directions.<br>`http-server-close`: the server-facing connection is closed after the response.<br>`forceclose`: the connection is actively closed after end of response.<br><br>In general, it is preferred to use `http-server-close` with application servers, and some static servers might benefit from `http-keep-alive`.<br>Connection mode is restricted to HTTP mode only. If specified, connection mode will be applied to the backend section.<br>**Example:** http-keep-alive|
 |delReqHeader   |Additional headers that will be deleted in the request before forwarding it to the service. Multiple headers should be separated with comma (`,`). Change the environment variable `SEPARATOR` if comma is to be used for other purposes. Please consult [Delete a header in the request](https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-request) for more info.<br>**Example:** `X-Forwarded-For,Cookie`|
 |delResHeader   |Additional headers that will be deleted in the response before forwarding it to the client. Multiple headers should be separated with comma (`,`). Change the environment variable `SEPARATOR` if comma is to be used for other purposes. Please consult [Delete a header in the response](https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#delete-a-header-in-the-response) for more info.<br>**Example:** `X-Varnish,X-Cache`|
-|distribute   |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.<br>**Example:** `true`|false|
+|distribute   |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.<br>**Default:** `true`<br>**Example:** `true`|false|
 |httpsPort      |The internal HTTPS port of a service that should be reconfigured. The port is used only in the `swarm` mode. If not specified, the `port` parameter will be used instead.<br>**Example:** `443`|
-|ignoreAuthorization|If set to true, the service destination will not require authorization. The parameter must be prefixed with the index of the service destion that should be excluded from authorization.<br>**Default:** `false`<br>**Example:** `true`|
+|ignoreAuthorization|If set to true, the service destination will not require authorization. The parameter must be prefixed with the index of the service destination that should be excluded from authorization.<br>**Default:** `false`<br>**Example:** `true`|
 |isDefaultBackend  |If set to true, the service will be set to the default_backend rule, meaning it will catch all requests not matching any other rules.<br>**Default:** `false`<br>**Example:** `true`|
 |port           |The internal port of a service that should be reconfigured. The port is used only in the `swarm` mode. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `port.1`, `port.2`, and so on). This field is **mandatory** when running in `swarm` or `service` mode.<br>**Example:** `8080`|
 |reqMode        |The request mode. The proxy should be able to work with any mode supported by HAProxy. However, actively supported and tested modes are `http`, `tcp`, and `sni`. The `sni` mode implies TCP with an SNI-based routing. The parameter can be prefixed with an index thus allowing definition of multiple modes for a single service (e.g. `http`, `tcp`, and so on).<br>**Default:** value of the `DEFAULT_REQ_MODE` environment variable.<br>**Example:** `tcp`|
-|reqPathReplace |A regular expression to apply the modification.<br>**Example:** `/demo/`|
-|reqPathSearch  |A regular expression to search the content to be replaced. If specified, `reqPathReplace` needs to be set as well.<br>**Example:** `/something/`|
+|reqPathReplace |**This field is deprecated. Use `reqPathSearchReplace` instead.**|
+|reqPathSearch  |**This field is deprecated. Use `reqPathSearchReplace` instead.**|
+|reqPathSearchReplace|A regular expression to search and replace request paths. Search and replace values are separated with comma (`,`). Multiple search and replace combinations can be separated with colon (`:`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `reqPathSearchReplace.1`, `reqPathSearchReplace.2`, and so on). <br>**Example:** `/replace-something/,/with-else/:/replace-with-empty,:/foo,/bar`|
 |serviceName    |The name of the service. It must match the name of the Swarm service. This parameter is **mandatory**. If used through *Docker Flow Swarm Listener*, this parameter is added automatically.<br>**Example:** `go-demo`|
 |setReqHeader   |Additional headers that will be set to the request before forwarding it to the service. If a specified header exists, it will be replaced with the new one. Multiple headers should be separated with comma (`,`). Change the environment variable `SEPARATOR` if comma is to be used for other purposes. Please consult [Set a header to the request](https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#set-a-header-in-the-request) for more info.<br>**Example:** `X-Forwarded-Port %[dst_port],X-Forwarded-Ssl on if { ssl_fc }`|
 |setResHeader   |Additional headers that will be set to the response before forwarding it to the client. If a specified header exists, it will be replaced with the new one. Multiple headers should be separated with comma (`,`). Change the environment variable `SEPARATOR` if comma is to be used for other purposes. Please consult [Set a header to the response](https://www.haproxy.com/doc/aloha/7.0/haproxy/http_rewriting.html#set-a-header-in-the-response) for more info.<br>**Example:** `X-Via %[env(HOSTNAME)],Server haproxy`|
 |srcPort        |The source (entry) port of a service. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `srcPort.1`, `srcPort.2`, and so on). The parameter is mandatory when specifying multiple destinations of a single service. If this parameter is used with `http` mode, the port needs to be specified with the environment variable `BIND_PORTS` (see [Environment Variables](http://proxy.dockerflow.com/config/#environment-variables) for more info) and the port needs to be published on service level.<br>**Example:** `80`|
 |timeoutServer  |The server timeout in seconds.<br>**Default:** `20`<br>**Example:** `60`|
 |timeoutTunnel  |The tunnel timeout in seconds.<br>**Default:** `3600`<br>**Example:** `3600`|
+|userDef        |User defined value. This value is not used with current template. It is designed as a way to provide additional data that can be used with **custom templates**. The parameter must be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `userDef.1`, `userDef.2`, and so on).|
 
-Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization`, `serviceDomain``allowedMethods`, `deniedMethods`, `denyHttp`, `httpsOnly`, `redirectFromDomain`, `ReqMode`, or `outboundHostname` parameters. In that case, `srcPort` is required.
+Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `servicePathExclude`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization`, `serviceDomain`, `allowedMethods`, `deniedMethods`, `denyHttp`, `httpsOnly`, `redirectFromDomain`, `reqMode`, `reqPathSearchReplace`, `outboundHostname`, or `userDef` parameters. In that case, `srcPort` is required.
 
 ### HTTP Mode Query Parameters
 
@@ -54,12 +56,13 @@ The following query parameters can be used only when `reqMode` is set to `http` 
 |outboundHostname|The hostname where the service is running, for instance on a separate swarm. If specified, the proxy will dispatch requests to that domain. The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `outboundHostname.1`, `outboundHostname.2`, and so on).<br>**Example:** `ecme.com`|
 |pathType     |The ACL derivative. Defaults to *path_beg*. See [HAProxy path](https://cbonte.github.io/haproxy-dconv/configuration-1.5.html#7.3.6-path) for more info.<br>**Example:** `path_beg`|
 |redirectFromDomain|If a request is sent to one of the domains in this list, it will be redirected to one of the values of the `serviceDomain`. Multiple domains can be separated with comma (e.g. `acme.com,something.acme.com`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service.<br>**Example:** `acme.com,something.acme.com`|
-|redirectWhenHttpProto|**This parameter is temporarily disabled until the problems around it are solved**. Whether to redirect to https when X-Forwarded-Proto is set and the request is made over an HTTP port.<br>**Example:** `true`<br>**Default Value:** `false`|
+|redirectWhenHttpProto|Whether to redirect to https when X-Forwarded-Proto is set and the request is made over an HTTP port.<br>**Example:** `true`<br>**Default Value:** `false`|
 |serviceCert  |Content of the PEM-encoded certificate to be used by the proxy when serving traffic over SSL.|
 |serviceDomain  |The domain of the service. If set, the proxy will allow access only to requests coming to that domain. Multiple domains can be separated with comma (e.g. `acme.com,something.else.com`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `serviceDomain.1`, `serviceDomain.2`, and so on).  Asterisk sign can be placed to beginning of value and in this case **serviceDomainAlgo** parameter will be **replaced** to `hdr_end(host)`. This parameter is **mandatory** if `servicePath` is not specified.<br>**Example:** `ecme.com`|
 |serviceDomainAlgo|Algorithm that should be applied to domain ACLs. Any ACL works only with one flag: `-i : ignore case during matching of all subsequent patterns`. If not set, the value of the environment variable `SERVICE_DOMAIN_ALGO` will be used instead. If defaults to `hdr_beg(host)`<br>**Examples:**<br>`hdr(host)`: matches only if domain is the same as `serviceDomain`<br>`hdr_dom(host)`: matches the specified `serviceDomain` and any subdomain (a string either isolated or delimited by dots). **Example:** if `hdr_dom(host)` contains `www.ecme.com` and `serviceDomain` equals `ecme.com` the rule will be passed.<br>`req.ssl_sni`: matches Server Name TLS extension|
 |serviceHeader|Headers used to filter requests. If set, the proxy will allow access only to requests that contain specified headers. A header consists of a key and value separated with colon (e.g. `X-Version:3`). Multiple headers can be separated with comma (e.g. `X-Version:3,name:viktor`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `serviceHeader.1`, `serviceHeader.2`, and so on). <br>**Example:** `X-Version:3,name:viktor`|
 |servicePath  |The URL path of the service. Multiple values should be separated with comma (`,`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `servicePath.1`, `servicePath.2`, and so on). This parameter **is mandatory** unless `serviceDomain` is specified.<br>**Example:** `/api/v1/books`|
+|servicePathExclude|The URL path that should be excluded from the rules. Multiple values should be separated with comma (`,`). The parameter can be prefixed with an index thus allowing definition of multiple destinations for a single service (e.g. `servicePathExclude.1`, `servicePathExclude.2`, and so on).<br>**Example:** `/metrics`|
 |sessionType  |Determines the type of sticky sessions. If set to `sticky-server`, session cookie will be set by the proxy. Any other value means that sticky sessions are not used and load balancing is performed by Docker's Overlay network.<br>**Example:** `sticky-server`|
 |sslVerifyNone|If set to true, backend server certificates are not verified. This flag should be set for SSL enabled backend services.<br>**Example:** `true`<br>**Default Value:** `false`|
 |templateBePath|The path to the template representing a snippet of the backend configuration. If specified, the backend template will be loaded from the specified file. See the [Templates](#templates) section for more info.<br>**Example:** `/tmpl/be.tmpl`|
@@ -70,7 +73,7 @@ The following query parameters can be used only when `reqMode` is set to `http` 
 |usersPassEncrypted|Indicates whether passwords provided by `users` or `usersSecret` contain encrypted data. Passwords can be encrypted with the command `mkpasswd -m sha-512 password1`.<br>**Example:** `true`<br>**Default Value:** `false`|
 |verifyClientSsl|Whether to verify client SSL and, if it is not valid, deny request and return 403 Forbidden status code. SSL is validated against the `ca-file` specified through the environment variable `CA_FILE`.<br>**Example:** true<br>**Default Value:** `false`|
 
-Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization`, `serviceDomain`, `allowedMethods`, `deniedMethods`, `denyHttp`, `httpsOnly`, `redirectFromDomain`, `ReqMode`, or `outboundHostname` parameters. In that case, `srcPort` is required.
+Multiple destinations for a single service can be specified by adding index as a suffix to `servicePath`, `servicePathExclude`, `srcPort`, `port`, `userAgent`, `ignoreAuthorization`, `serviceDomain`, `allowedMethods`, `deniedMethods`, `denyHttp`, `httpsOnly`, `redirectFromDomain`, `ReqMode`, `reqPathSearchReplace`, `outboundHostname`, or `userDef` parameters. In that case, `srcPort` is required.
 
 ### TCP Mode HTTP Query Parameters
 
@@ -116,9 +119,11 @@ The map between the HTTP query parameters and environment variables is as follow
 |compressionAlgo      |COMPRESSION_ALGO        |
 |compressionType      |COMPRESSION_TYPE        |
 |deniedMethods        |DENIED_METHODS          |
+|denyHttp             |DENY_HTTP               |
 |distribute           |DISTRIBUTE              |
 |httpsOnly            |HTTPS_ONLY              |
 |httpsPort            |HTTPS_PORT              |
+|ignoreAuthorization  |IGNORE_AUTHORIZATION    |
 |isDefaultBackend     |IS_DEFAULT_BACKEND      |
 |outboundHostname     |OUTBOUND_HOSTNAME       |
 |pathType             |PATH_TYPE               |
@@ -126,12 +131,12 @@ The map between the HTTP query parameters and environment variables is as follow
 |redirectFromDomain   |REDIRECT_FROM_DOMAIN    |
 |redirectWhenHttpProto|REDIRECT_WHEN_HTTP_PROTO|
 |reqMode              |REQ_MODE                |
-|reqPathReplace       |REQ_PATH_REPLACE        |
-|reqPathSearch        |REQ_PATH_SEARCH         |
+|reqPathSearchReplace |REQ_PATH_SEARCH_REPLACE |
 |serviceCert          |SERVICE_CERT            |
 |serviceDomain        |SERVICE_DOMAIN          |
 |serviceName          |SERVICE_NAME            |
 |servicePath          |SERVICE_PATH            |
+|servicePathExclude   |SERVICE_PATH_EXCLUDE    |
 |setReqHeader         |SET_REQ_HEADER          |
 |setResHeader         |SET_RES_HEADER          |
 |srcPort              |SRC_PORT                |
@@ -157,7 +162,7 @@ The following query arguments can be used to send a *remove* request to *Docker 
 |-----------|----------------------------------------------------------------------------|--------|-------|-------|
 |aclName    |Mandatory if ACL name was specified in reconfigure request                  |No      |       |05-go-demo-acl|
 |serviceName|The name of the service. It must match the name of the service              |Yes     |       |go-demo|
-|distribute |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.|No|false|true|
+|distribute |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.|No|true|false|
 
 ## Certificates
 
@@ -180,7 +185,7 @@ When a new replica is deployed, it will synchronize with other replicas and recu
 |Query      |Description                                                                 |Required|Default|Example    |
 |-----------|----------------------------------------------------------------------------|--------|-------|-----------|
 |certName   |The file name of the certificate                                            |Yes     |       |my-cert.pem|
-|distribute |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.|No|false|true|
+|distribute |Whether to distribute a request to all the instances of the proxy. Used only in the *swarm* mode.|No|true|false|
 
 An example is as follows.
 

@@ -36,6 +36,11 @@ type ServiceDest struct {
 	ReqMode string
 	// Internal use only. Do not modify.
 	ReqModeFormatted string
+	// A regular expression to search and replace the content.
+	// Search and replace values are separated with comma (`,`).
+	// Multiple search/replace combinations can be separated with colon (`:`).
+	// This field deprecates `ReqPathSearch` and `ReqPathReplace`.
+	ReqPathSearchReplace string
 	// The domain of the service.
 	// If set, the proxy will allow access only to requests coming to that domain.
 	ServiceDomain []string
@@ -43,6 +48,8 @@ type ServiceDest struct {
 	ServiceHeader map[string]string
 	// The URL path of the service.
 	ServicePath []string
+	// The URL path that should be excluded from the rules.
+	ServicePathExclude []string
 	// The source (entry) port of a service.
 	// Useful only when specifying multiple destinations of a single service.
 	SrcPort int
@@ -54,8 +61,14 @@ type ServiceDest struct {
 	VerifyClientSsl bool
 	// If specified, only requests with the same agent will be forwarded to the backend.
 	UserAgent UserAgent
+	// User defined value.
+	// This value is not used with current template.
+	// It is designed as a way to provide additional data that can be used with custom templates.
+	UserDef string
 	// Internal use only
 	Index int
+	// Internal use only
+	ReqPathSearchReplaceFormatted []string
 }
 
 // UserAgent holds data used to generate proxy configuration. It is extracted as a separate struct since each user agent needs an ACL identifier. If specified, only requests with the same agent will be forwarded to the backend.
@@ -115,9 +128,11 @@ type Service struct {
 	PathType string `split_words:"true"`
 	// Whether to redirect to https when X-Forwarded-Proto is http
 	RedirectWhenHttpProto bool `split_words:"true"`
+	// TODO: Deprecated since Dec. 2017.
 	// A regular expression to apply the modification.
 	// If specified, `reqPathSearch` needs to be set as well.
 	ReqPathReplace string `split_words:"true"`
+	// TODO: Deprecated since Dec. 2017.
 	// A regular expression to search the content to be replaced.
 	// If specified, `reqPathReplace` needs to be set as well.
 	ReqPathSearch string `split_words:"true"`
@@ -394,24 +409,46 @@ func getServiceDest(sr *Service, provider ServiceParameterProvider, index int) S
 	if len(outboundHostname) == 0 {
 		outboundHostname = provider.GetString("outboundHostname")
 	}
+	reqPathSearchReplaceFormatted := []string{}
+	if len(sr.ReqPathSearch) > 0 {
+		reqPathSearchReplaceFormatted = append(
+			reqPathSearchReplaceFormatted,
+			fmt.Sprintf("%s,%s", sr.ReqPathSearch, sr.ReqPathReplace),
+		)
+	}
+	reqPathSearchReplace := provider.GetString(fmt.Sprintf("reqPathSearchReplace%s", suffix))
+	if len(reqPathSearchReplace) == 0 {
+		reqPathSearchReplace = provider.GetString("reqPathSearchReplace")
+	}
+	if len(reqPathSearchReplace) > 0 {
+		searchReplace := strings.Split(reqPathSearchReplace, ":")
+		reqPathSearchReplaceFormatted = append(
+			reqPathSearchReplaceFormatted,
+			searchReplace...,
+		)
+	}
 	return ServiceDest{
-		AllowedMethods:      getSliceFromString(provider, fmt.Sprintf("allowedMethods%s", suffix)),
-		DeniedMethods:       getSliceFromString(provider, fmt.Sprintf("deniedMethods%s", suffix)),
-		DenyHttp:            getBoolParam(provider, fmt.Sprintf("denyHttp%s", suffix)),
-		HttpsOnly:           getBoolParam(provider, fmt.Sprintf("httpsOnly%s", suffix)),
-		HttpsRedirectCode:   provider.GetString(fmt.Sprintf("httpsRedirectCode%s", suffix)),
-		IgnoreAuthorization: getBoolParam(provider, fmt.Sprintf("ignoreAuthorization%s", suffix)),
-		OutboundHostname:    outboundHostname,
-		Port:                provider.GetString(fmt.Sprintf("port%s", suffix)),
-		RedirectFromDomain:  getSliceFromString(provider, fmt.Sprintf("redirectFromDomain%s", suffix)),
-		ReqMode:             reqMode,
-		ServiceDomain:       getSliceFromString(provider, fmt.Sprintf("serviceDomain%s", suffix)),
-		ServiceHeader:       header,
-		ServicePath:         getSliceFromString(provider, fmt.Sprintf("servicePath%s", suffix)),
-		SrcPort:             srcPort,
-		VerifyClientSsl:     getBoolParam(provider, fmt.Sprintf("verifyClientSsl%s", suffix)),
-		UserAgent:           userAgent,
-		Index:               sdIndex,
+		AllowedMethods:                getSliceFromString(provider, fmt.Sprintf("allowedMethods%s", suffix)),
+		DeniedMethods:                 getSliceFromString(provider, fmt.Sprintf("deniedMethods%s", suffix)),
+		DenyHttp:                      getBoolParam(provider, fmt.Sprintf("denyHttp%s", suffix)),
+		HttpsOnly:                     getBoolParam(provider, fmt.Sprintf("httpsOnly%s", suffix)),
+		HttpsRedirectCode:             provider.GetString(fmt.Sprintf("httpsRedirectCode%s", suffix)),
+		IgnoreAuthorization:           getBoolParam(provider, fmt.Sprintf("ignoreAuthorization%s", suffix)),
+		OutboundHostname:              outboundHostname,
+		Port:                          provider.GetString(fmt.Sprintf("port%s", suffix)),
+		RedirectFromDomain:            getSliceFromString(provider, fmt.Sprintf("redirectFromDomain%s", suffix)),
+		ReqMode:                       reqMode,
+		ReqPathSearchReplace:          reqPathSearchReplace,
+		ReqPathSearchReplaceFormatted: reqPathSearchReplaceFormatted,
+		ServiceDomain:                 getSliceFromString(provider, fmt.Sprintf("serviceDomain%s", suffix)),
+		ServiceHeader:                 header,
+		ServicePath:                   getSliceFromString(provider, fmt.Sprintf("servicePath%s", suffix)),
+		ServicePathExclude:            getSliceFromString(provider, fmt.Sprintf("servicePathExclude%s", suffix)),
+		SrcPort:                       srcPort,
+		VerifyClientSsl:               getBoolParam(provider, fmt.Sprintf("verifyClientSsl%s", suffix)),
+		UserAgent:                     userAgent,
+		UserDef:                       provider.GetString(fmt.Sprintf("userDef%s", suffix)),
+		Index:                         sdIndex,
 	}
 }
 

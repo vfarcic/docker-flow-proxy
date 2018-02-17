@@ -2,7 +2,6 @@ package integration_test
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/suite"
 )
 
 // Setup
@@ -61,6 +62,9 @@ func TestGeneralIntegrationSwarmTestSuite(t *testing.T) {
 		log.Fatal(err)
 	}
 
+	exec.Command("/bin/sh", "-c", "docker image pull mongo").Output()
+	exec.Command("/bin/sh", "-c", "docker image pull vfarcic/go-demo:no-health").Output()
+
 	s.createService(`docker service create --name go-demo-db \
     --network go-demo \
     mongo`)
@@ -73,6 +77,7 @@ func TestGeneralIntegrationSwarmTestSuite(t *testing.T) {
 	suite.Run(t, s)
 
 	s.removeServices("go-demo-api", "go-demo-db", "proxy", "proxy-env", "redis")
+	exec.Command("/bin/sh", "-c", "docker network rm proxy").Output()
 	exec.Command("/bin/sh", "-c", "docker system prune -f").Output()
 }
 
@@ -86,6 +91,17 @@ func (s IntegrationSwarmTestSuite) Test_Reconfigure() {
 	s.NoError(err)
 	if resp != nil {
 		s.Equal(200, resp.StatusCode, s.getProxyConf(""))
+	}
+}
+
+func (s IntegrationSwarmTestSuite) Test_ExcludePaths() {
+	s.reconfigureGoDemo("&servicePathExclude=/demo/hello")
+
+	resp, err := s.sendHelloRequest()
+
+	s.NoError(err)
+	if resp != nil {
+		s.Equal(503, resp.StatusCode, s.getProxyConf(""))
 	}
 }
 
@@ -448,6 +464,22 @@ func (s IntegrationSwarmTestSuite) Test_RewritePaths() {
 	s.NoError(err)
 	s.Equal(200, resp.StatusCode, s.getProxyConf(""))
 
+	// With reqPathSearchReplace
+
+	url = fmt.Sprintf(
+		`http://%s:8080/v1/docker-flow-proxy/reconfigure?serviceName=go-demo-api&servicePath=/else&port=8080&reqPathSearchReplace=/else/,/demo/`,
+		s.hostIP,
+	)
+	resp, err = http.Get(url)
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf(""))
+
+	url = fmt.Sprintf("http://%s/else/hello", s.hostIP)
+	resp, err = http.Get(url)
+
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode, s.getProxyConf(""))
+
 	// With empty reqPathReplace
 
 	url = fmt.Sprintf(
@@ -779,7 +811,6 @@ func (s *IntegrationSwarmTestSuite) createGoDemoService() {
     --network go-demo \
     --network proxy \
     --label com.df.notify=true \
-    --label com.df.distribute=true \
     --label com.df.servicePath=/demo \
     --label com.df.port=8080 \
     vfarcic/go-demo:no-health`

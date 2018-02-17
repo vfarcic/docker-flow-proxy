@@ -141,7 +141,6 @@ services:
       replicas: 3
       labels:
         - com.df.notify=true
-        - com.df.distribute=true
         - com.df.servicePath=/demo
         - com.df.port=8080
 
@@ -190,6 +189,8 @@ Since Mongo database is much bigger than the `main` service, it takes more time 
 After a few moments, the `swarm-listener` service will detect the `main` service from the `go-demo` stack and send the `proxy` a request to reconfigure itself. We can see the result by sending an HTTP request to the proxy.
 
 ```bash
+exit
+
 curl -i "$(docker-machine ip node-1)/demo/hello"
 ```
 

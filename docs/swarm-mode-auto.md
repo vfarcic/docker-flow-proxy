@@ -102,7 +102,6 @@ docker service create --name go-demo \
     --network go-demo \
     --network proxy \
     --label com.df.notify=true \
-    --label com.df.distribute=true \
     --label com.df.servicePath=/demo \
     --label com.df.port=8080 \
     vfarcic/go-demo
@@ -139,7 +138,7 @@ We sent a request to the proxy (the only service listening to the port 80) and g
 
 The way the process works is as follows.
 
-[Docker Flow: Swarm Listener](https://github.com/vfarcic/docker-flow-swarm-listener) is running inside one of the Swarm manager nodes and queries Docker API in search for newly created services. Once it finds a new service, it looks for its labels. If the service contains the `com.df.notify` (it can hold any value), the rest of the labels with keys starting with `com.df.` are retrieved. All those labels are used to form request parameters. Those parameters are appended to the address specified as the `DF_NOTIFY_CREATE_SERVICE_URL` environment variable defined in the `swarm-listener` service. Finally, a request is sent. In this particular case, the request was made to reconfigure the proxy with the service `go-demo` (the name of the service), using `/demo` as the path, and running on the port `8080`. The `distribute` label is not necessary in this example since we're running only a single instance of the proxy. However, in production we should run at least two proxy instances (for fault tolerance) and the `distribute` argument means that reconfiguration should be applied to all.
+[Docker Flow: Swarm Listener](https://github.com/vfarcic/docker-flow-swarm-listener) is running inside one of the Swarm manager nodes and queries Docker API in search for newly created services. Once it finds a new service, it looks for its labels. If the service contains the `com.df.notify` (it can hold any value), the rest of the labels with keys starting with `com.df.` are retrieved. All those labels are used to form request parameters. Those parameters are appended to the address specified as the `DF_NOTIFY_CREATE_SERVICE_URL` environment variable defined in the `swarm-listener` service. Finally, a request is sent. In this particular case, the request was made to reconfigure the proxy with the service `go-demo` (the name of the service), using `/demo` as the path, and running on the port `8080`.
 
 Please see the [Reconfigure](usage.md#reconfigure) section for the list of all the arguments that can be used with the proxy.
 
@@ -231,7 +230,6 @@ docker service create --name go-demo \
   --network go-demo \
   --network proxy \
   --label com.df.notify=true \
-  --label com.df.distribute=true \
   --label com.df.servicePath=/demo \
   --label com.df.port=8080 \
   --replicas 3 \
@@ -336,9 +334,9 @@ From now on, the username and password are `secret-user` and `secret-pass`. Unli
 
 ## Rewriting Paths
 
-In some cases, you might want to rewrite the path of the incoming request before forwarding it to the destination service. We can do that using request parameters `reqPathSearch` and `reqPathReplace`.
+In some cases, you might want to rewrite the path of the incoming request before forwarding it to the destination service. We can do that using request parameter `reqPathSearchReplace`.
 
-As an example, we'll create the `go-demo` service that will be configured in the proxy to accept requests with the path starting with `/something`. Since the `go-demo` service allows only requests that start with `/demo`, we'll use `reqPathSearch` and `reqPathReplace` to rewrite the path.
+As an example, we'll create the `go-demo` service that will be configured in the proxy to accept requests with the path starting with `/something`. Since the `go-demo` service allows only requests that start with `/demo`, we'll use `reqPathSearchReplace` to rewrite the path.
 
 The command is as follows.
 
@@ -350,16 +348,14 @@ docker service create --name go-demo \
     --network go-demo \
     --network proxy \
     --label com.df.notify=true \
-    --label com.df.distribute=true \
     --label com.df.servicePath=/something \
     --label com.df.port=8080 \
-    --label com.df.reqPathSearch='/something/' \
-    --label com.df.reqPathReplace='/demo/' \
+    --label com.df.reqPathSearchReplace='/something/,/demo/' \
     --replicas 3 \
     vfarcic/go-demo
 ```
 
-Please notice that, this time, the `servicePath` is `/something`. The `reqPathSearch` specifies the regular expression that will be used to search for part of the address and the `reqPathReplace` will replace it. In this case, `/something/` will be replaced with `/demo/`. The proxy uses the *regsub* function within the *http-request set-path* directive to apply a regex-based substitution which operates as the well-known *sed* utility with `"s/<regex>/<subst>/"`. For more information, please consult [Configuration: 4.2 http-request](https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4.2-http-request) and [Configuration: 7.3.1 regsub](https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#7.3.1-regsub).
+The `reqPathSearchReplace` specifies the regular expression that will be used to search for part of the address and replace it. In this case, `/something/` will be replaced with `/demo/`. The proxy uses the *regsub* function within the *http-request set-path* directive to apply a regex-based substitution which operates as the well-known *sed* utility with `"s/<regex>/<subst>/"`. For more information, please consult [Configuration: 4.2 http-request](https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#4.2-http-request) and [Configuration: 7.3.1 regsub](https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#7.3.1-regsub).
 
 Please wait a few moments until the `go-demo` service is running. You can see the status of the service by executing `docker service ps go-demo`.
 
@@ -382,12 +378,11 @@ hello, world!
 
 We sent a request to `/something/hello`. The proxy accepted the request, rewrote the path to `/demo/hello`, and forwarded it to the `go-demo` service.
 
-The `reqPathSearch` label accepts regular expressions. We can, for example, rewrite any path that starts with `/something/` to `/demo/hello`.
+The `reqPathSearchReplace` label accepts regular expressions. We can, for example, rewrite any path that starts with `/something/` to `/demo/hello`.
 
 ```bash
 docker service update \
-    --label-add com.df.reqPathSearch='/something/.*' \
-    --label-add com.df.reqPathReplace='/demo/hello' \
+    --label-add com.df.reqPathSearchReplace='/something/.*,/demo/hello' \
     go-demo
 ```
 
@@ -423,7 +418,6 @@ docker service create --name go-demo \
   --network go-demo \
   --network proxy \
   --label com.df.notify=true \
-  --label com.df.distribute=true \
   --label com.df.servicePath=/demo \
   --label com.df.port=8080 \
   --replicas 3 \
@@ -527,7 +521,6 @@ docker service create --name go-demo \
     --network go-demo \
     --network proxy \
     --label com.df.notify=true \
-    --label com.df.distribute=true \
     --label com.df.servicePath=/demo \
     --label com.df.port=8080 \
     --label com.df.users=admin:password \
@@ -640,7 +633,6 @@ docker service create --name go-demo \
     --network go-demo \
     --network proxy \
     --label com.df.notify=true \
-    --label com.df.distribute=true \
     --label com.df.servicePath=/demo \
     --label com.df.port=8080 \
     vfarcic/go-demo
@@ -666,7 +658,6 @@ Let us create a service that will allow us to test whether `tcp` protocol works.
 docker service create --name redis \
     --network proxy \
     --label com.df.notify=true \
-    --label com.df.distribute=true \
     --label com.df.port=6379 \
     --label com.df.srcPort=6379 \
     --label com.df.reqMode=tcp \

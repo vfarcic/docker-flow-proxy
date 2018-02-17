@@ -32,7 +32,6 @@ docker service create --name go-demo \
     --network go-demo \
     --network proxy \
     --label com.df.notify=true \
-    --label com.df.distribute=true \
     --label com.df.servicePath=/demo \
     --label com.df.port=8080 \
     --replicas 3 \

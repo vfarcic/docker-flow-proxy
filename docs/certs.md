@@ -178,7 +178,7 @@ The relevant part of the output is as follows.
 ```
 frontend services
     bind *:80
-    bind *:443 ssl crt-list /cfg/crt-list.txt
+    bind *:443 ssl crt-list /cfg/crt-list.txt alpn h2,http/1.1
     mode http
 
     acl url_go-demo path_beg /demo

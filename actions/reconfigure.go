@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"../proxy"
 	"bytes"
 	"fmt"
 	"html/template"
@@ -9,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"../proxy"
 )
 
 const serviceTemplateFeFilename = "service-formatted-fe.ctmpl"
