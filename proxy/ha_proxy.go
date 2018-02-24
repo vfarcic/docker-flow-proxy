@@ -51,6 +51,7 @@ type configData struct {
 // NewHaProxy returns an instance of the proxy
 func NewHaProxy(templatesPath, configsPath string) proxy {
 	dataInstance.Services = map[string]Service{}
+	dataInstance.Groups = map[string][]Service{}
 	return HaProxy{
 		templatesPath: templatesPath,
 		configsPath:   configsPath,
@@ -176,14 +177,44 @@ func (m HaProxy) Reload() error {
 }
 
 // AddService puts a service into `dataInstance` map.
-// The key of the map is `ServiceName`
+// The key of the map is `ServiceName` if `ServiceGroup` is not specified; otherwise `ServiceGroup`.
 func (m HaProxy) AddService(service Service) {
-	dataInstance.Services[service.ServiceName] = service
+	if len(service.ServiceGroup) > 0 {
+		dataInstance.Groups[service.ServiceGroup] = append(dataInstance.Groups[service.ServiceGroup], service)
+
+		if _, found := dataInstance.Services[service.ServiceGroup]; !found {
+			dataInstance.Services[service.ServiceGroup] = service
+		}
+	} else {
+		dataInstance.Services[service.ServiceName] = service
+	}
 }
 
-// RemoveService deletes a service from the `dataInstance` map using `ServiceName` as the key
+// RemoveService deletes a service from the `dataInstance` map using `ServiceName` as the key. If there is no service
+// with this name, the given parameter it will be used as `ServiceGroup`.
 func (m HaProxy) RemoveService(service string) {
-	delete(dataInstance.Services, service)
+	if _, found := dataInstance.Services[service]; found {
+		delete(dataInstance.Services, service)
+		return
+	}
+
+	for group, services := range dataInstance.Groups {
+		for idx, srv := range services {
+			if srv.ServiceName == service {
+				list := append(services[:idx], services[idx+1:]...)
+
+				if len(list) == 0 {
+					delete(dataInstance.Services, group)
+					delete(dataInstance.Groups, group)
+				} else {
+					dataInstance.Services[group] = list[0]
+					dataInstance.Groups[group] = list
+				}
+
+				return
+			}
+		}
+	}
 }
 
 // GetServices returns a map with all the services used by the proxy.
