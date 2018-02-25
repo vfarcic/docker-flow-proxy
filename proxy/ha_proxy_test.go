@@ -1527,41 +1527,6 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToHttps_WhenRed
 	s.Equal(expectedData, actualData)
 }
 
-func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_usesHttpsRedirectCode() {
-	var actualData string
-	tmpl := s.TemplateContent
-	expectedData := fmt.Sprintf(
-		`%s
-    acl url_my-service1111_0 path_beg /path
-    acl domain_my-service1111_0 hdr_beg(host) -i my-domain.com
-    use_backend my-service-be1111_0 if url_my-service1111_0 domain_my-service1111_0
-    acl is_my-service_http hdr(X-Forwarded-Proto) http
-    http-request redirect scheme https code 301 if is_my-service_http url_my-service1111_0 domain_my-service1111_0
-    acl is_my-service_https hdr(X-Forwarded-Proto) https
-    http-request redirect scheme https code 301 if !is_my-service_https url_my-service1111_0 domain_my-service1111_0%s`,
-		tmpl,
-		s.ServicesContent,
-	)
-	writeFile = func(filename string, data []byte, perm os.FileMode) error {
-		actualData = string(data)
-		return nil
-	}
-	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
-	dataInstance.Services["my-service"] = Service{
-		ServiceName:           "my-service",
-		PathType:              "path_beg",
-		RedirectWhenHttpProto: true,
-		AclName:               "my-service",
-		ServiceDest: []ServiceDest{
-			{Port: "1111", ServicePath: []string{"/path"}, ServiceDomain: []string{"my-domain.com"}, HttpsRedirectCode: "301"},
-		},
-	}
-
-	p.CreateConfigFromTemplates()
-
-	s.Equal(expectedData, actualData)
-}
-
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToDomain_WhenRedirectFromDomainIsSet() {
 	var actualData string
 	tmpl := s.TemplateContent
