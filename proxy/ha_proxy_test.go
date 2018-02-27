@@ -2338,6 +2338,18 @@ func (s *HaProxyTestSuite) Test_AddService_AddsService_WhenNoGroups() {
 	s.Equal(dataInstance.Services[s1.ServiceName], s1)
 }
 
+func (s *HaProxyTestSuite) Test_AddService_AddsService_WhenServiceNameMatchesAnotherGroup() {
+	s1 := Service{ServiceName: "my-service-1", ServiceGroup: "my-service"}
+	s2 := Service{ServiceName: "my-service"}
+	p := NewHaProxy("anything", "doesn't").(HaProxy)
+
+	p.AddService(s1)
+	p.AddService(s2)
+
+	s.Len(dataInstance.Services, 1)
+	s.Equal(dataInstance.Services[s1.ServiceGroup].ServiceName, s1.ServiceName)
+}
+
 func (s *HaProxyTestSuite) Test_AddService_AddsService_ForOneGroupWithTwoServices() {
 	s1 := Service{ServiceName: "my-service-1", ServiceGroup: "group-1"}
 	s2 := Service{ServiceName: "my-service-2", ServiceGroup: "group-1"}

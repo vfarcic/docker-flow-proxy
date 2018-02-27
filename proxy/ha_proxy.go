@@ -194,6 +194,11 @@ func (m HaProxy) AddService(service Service) {
 			dataInstance.Services[service.ServiceGroup] = service
 		}
 	} else {
+		if _, found := dataInstance.Services[service.ServiceName]; found {
+			logPrintf("The service name is already used by another service or group.")
+			return
+		}
+
 		dataInstance.Services[service.ServiceName] = service
 	}
 }
