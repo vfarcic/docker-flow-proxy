@@ -183,7 +183,7 @@ func (m HaProxy) AddService(service Service) {
 			logPrintf("The service name cannot be the same as the service group. On remove, it will remove the group.")
 			return
 		} else if _, found := dataInstance.Services[service.ServiceName]; found {
-			logPrintf("The service name is already used by a service group.")
+			logPrintf("The service name is already used by another service or group.")
 			return
 		}
 
