@@ -179,6 +179,14 @@ func (m HaProxy) Reload() error {
 // The key of the map is `ServiceName` if `ServiceGroup` is not specified; otherwise `ServiceGroup`.
 func (m HaProxy) AddService(service Service) {
 	if len(service.ServiceGroup) > 0 {
+		if service.ServiceName == service.ServiceGroup {
+			logPrintf("The service name cannot be the same as the service group. On remove, it will remove the group.")
+			return
+		} else if _, found := dataInstance.Services[service.ServiceName]; found {
+			logPrintf("The service name is already used by a service group.")
+			return
+		}
+
 		if _, found := dataInstance.Services[service.ServiceGroup]; found {
 			dataInstance.Services[service.ServiceGroup].GroupedServiceNames[service.ServiceName] = true
 		} else {

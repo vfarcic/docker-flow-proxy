@@ -2352,6 +2352,27 @@ func (s *HaProxyTestSuite) Test_AddService_AddsService_ForOneGroupWithTwoService
 	s.Len(dataInstance.Services[s1.ServiceGroup].GroupedServiceNames, 2)
 }
 
+func (s *HaProxyTestSuite) Test_AddService_AddsService_WhenServiceNameMatchesTheGroupName() {
+	s1 := Service{ServiceName: "my-service-1", ServiceGroup: "my-service-1"}
+	p := NewHaProxy("anything", "doesn't").(HaProxy)
+
+	p.AddService(s1)
+	s.Len(dataInstance.Services, 0)
+}
+
+func (s *HaProxyTestSuite) Test_AddService_AddsService_WhenServiceNameMatchesOtherGroupName() {
+	s1 := Service{ServiceName: "my-service-1", ServiceGroup: "my-service"}
+	s2 := Service{ServiceName: "my-service-2", ServiceGroup: "my-service"}
+	s3 := Service{ServiceName: "my-service"}
+	p := NewHaProxy("anything", "doesn't").(HaProxy)
+
+	p.AddService(s1)
+	p.AddService(s2)
+	p.AddService(s3)
+
+	s.Len(dataInstance.Services, 1)
+}
+
 // RemoveService
 
 func (s *HaProxyTestSuite) Test_AddService_RemovesService_ByServiceName_WhenNoGroups() {
