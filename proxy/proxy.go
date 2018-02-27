@@ -5,7 +5,6 @@ var proxyInstance proxy = HaProxy{}
 // Data contains the information about all the services
 type Data struct {
 	Services map[string]Service
-	Groups map[string][]Service
 }
 
 var dataInstance = Data{}

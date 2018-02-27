@@ -51,7 +51,6 @@ type configData struct {
 // NewHaProxy returns an instance of the proxy
 func NewHaProxy(templatesPath, configsPath string) proxy {
 	dataInstance.Services = map[string]Service{}
-	dataInstance.Groups = map[string][]Service{}
 	return HaProxy{
 		templatesPath: templatesPath,
 		configsPath:   configsPath,
@@ -180,9 +179,10 @@ func (m HaProxy) Reload() error {
 // The key of the map is `ServiceName` if `ServiceGroup` is not specified; otherwise `ServiceGroup`.
 func (m HaProxy) AddService(service Service) {
 	if len(service.ServiceGroup) > 0 {
-		dataInstance.Groups[service.ServiceGroup] = append(dataInstance.Groups[service.ServiceGroup], service)
-
-		if _, found := dataInstance.Services[service.ServiceGroup]; !found {
+		if _, found := dataInstance.Services[service.ServiceGroup]; found {
+			dataInstance.Services[service.ServiceGroup].GroupedServiceNames[service.ServiceName] = true
+		} else {
+			service.GroupedServiceNames = map[string]bool{service.ServiceName: true}
 			dataInstance.Services[service.ServiceGroup] = service
 		}
 	} else {
@@ -192,23 +192,16 @@ func (m HaProxy) AddService(service Service) {
 
 // RemoveService deletes a service from the `dataInstance` map using `ServiceName` as the key. If there is no service
 // with this name, the given parameter it will be used as `ServiceGroup`.
-func (m HaProxy) RemoveService(service string) {
-	if _, found := dataInstance.Services[service]; found {
-		delete(dataInstance.Services, service)
-		return
-	}
+func (m HaProxy) RemoveService(serviceName string) {
+	if _, found := dataInstance.Services[serviceName]; found {
+		delete(dataInstance.Services, serviceName)
+	} else {
+		for groupName, service := range dataInstance.Services {
+			if _, found := service.GroupedServiceNames[serviceName]; found {
+				delete(service.GroupedServiceNames, serviceName)
 
-	for group, services := range dataInstance.Groups {
-		for idx, srv := range services {
-			if srv.ServiceName == service {
-				list := append(services[:idx], services[idx+1:]...)
-
-				if len(list) == 0 {
-					delete(dataInstance.Services, group)
-					delete(dataInstance.Groups, group)
-				} else {
-					dataInstance.Services[group] = list[0]
-					dataInstance.Groups[group] = list
+				if len(service.GroupedServiceNames) == 0 {
+					delete(dataInstance.Services, groupName)
 				}
 
 				return

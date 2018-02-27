@@ -2291,7 +2291,7 @@ func (s *HaProxyTestSuite) Test_RunCmd_AddsExtraArguments() {
 
 // AddService
 
-func (s *HaProxyTestSuite) Test_AddService_AddsService() {
+func (s *HaProxyTestSuite) Test_AddService_AddsService_WhenNoGroups() {
 	s1 := Service{ServiceName: "my-service-1"}
 	s2 := Service{ServiceName: "my-service-2"}
 	p := NewHaProxy("anything", "doesn't").(HaProxy)
@@ -2303,9 +2303,23 @@ func (s *HaProxyTestSuite) Test_AddService_AddsService() {
 	s.Equal(dataInstance.Services[s1.ServiceName], s1)
 }
 
+func (s *HaProxyTestSuite) Test_AddService_AddsService_ForOneGroupWithTwoServices() {
+	s1 := Service{ServiceName: "my-service-1", ServiceGroup: "group-1"}
+	s2 := Service{ServiceName: "my-service-2", ServiceGroup: "group-1"}
+	p := NewHaProxy("anything", "doesn't").(HaProxy)
+
+	p.AddService(s1)
+	p.AddService(s2)
+
+	s.Len(dataInstance.Services, 1)
+
+	s.Equal(dataInstance.Services[s1.ServiceGroup].ServiceName, s1.ServiceName)
+	s.Len(dataInstance.Services[s1.ServiceGroup].GroupedServiceNames, 2)
+}
+
 // RemoveService
 
-func (s *HaProxyTestSuite) Test_AddService_RemovesService() {
+func (s *HaProxyTestSuite) Test_AddService_RemovesService_ByServiceName_WhenNoGroups() {
 	s1 := Service{ServiceName: "my-service-1"}
 	s2 := Service{ServiceName: "my-service-2"}
 	p := NewHaProxy("anything", "doesn't").(HaProxy)
@@ -2317,6 +2331,33 @@ func (s *HaProxyTestSuite) Test_AddService_RemovesService() {
 	s.Len(dataInstance.Services, 1)
 }
 
+func (s *HaProxyTestSuite) Test_AddService_RemovesService_ByServiceName_ForOneGroupWithTwoServices() {
+	s1 := Service{ServiceName: "my-service-1", ServiceGroup: "group-1"}
+	s2 := Service{ServiceName: "my-service-2", ServiceGroup: "group-1"}
+	p := NewHaProxy("anything", "doesn't").(HaProxy)
+
+	p.AddService(s1)
+	p.AddService(s2)
+	p.RemoveService(s1.ServiceName)
+
+	s.Len(dataInstance.Services, 1)
+	s.Len(dataInstance.Services[s1.ServiceGroup].GroupedServiceNames, 1)
+
+	p.RemoveService(s2.ServiceName)
+	s.Len(dataInstance.Services, 0)
+}
+
+func (s *HaProxyTestSuite) Test_AddService_RemovesService_ByGroupName_ForOneGroupWithTwoServices() {
+	s1 := Service{ServiceName: "my-service-1", ServiceGroup: "group-1"}
+	s2 := Service{ServiceName: "my-service-2", ServiceGroup: "group-1"}
+	p := NewHaProxy("anything", "doesn't").(HaProxy)
+
+	p.AddService(s1)
+	p.AddService(s2)
+	p.RemoveService(s1.ServiceGroup)
+
+	s.Len(dataInstance.Services, 0)
+}
 // Util
 
 func (s *HaProxyTestSuite) getTemplateWithLogs() string {
