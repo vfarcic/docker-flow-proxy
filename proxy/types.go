@@ -143,10 +143,6 @@ type Service struct {
 	// The name of the service.
 	// It must match the name of the Swarm service.
 	ServiceName string `split_words:"true"`
-	// Allows multiple services to be recognized as a single service. If any of them is removed, the remaining ones will ensure the response.
-	ServiceGroup string `split_words:"true"`
-	// Stores the names of the services that are behind a ServiceGroup.
-	GroupedServiceNames map[string]bool
 	// Determines the type of sticky sessions. If set to `sticky-server`, session cookie will be set by the proxy. Any other value means that sticky sessions are not used and load balancing is performed by Docker's Overlay network. Please open an issue if you'd like support for other types of sticky sessions.
 	SessionType string `split_words:"true"`
 	// Additional headers that will be set to the request before forwarding it to the service. If a specified header exists, it will be replaced with the new one.

@@ -176,38 +176,14 @@ func (m HaProxy) Reload() error {
 }
 
 // AddService puts a service into `dataInstance` map.
-// The key of the map is `ServiceName` if `ServiceGroup` is not specified; otherwise `ServiceGroup`.
+// The key of the map is `ServiceName`
 func (m HaProxy) AddService(service Service) {
-	if len(service.ServiceGroup) > 0 {
-		if _, found := dataInstance.Services[service.ServiceGroup]; found {
-			dataInstance.Services[service.ServiceGroup].GroupedServiceNames[service.ServiceName] = true
-		} else {
-			service.GroupedServiceNames = map[string]bool{service.ServiceName: true}
-			dataInstance.Services[service.ServiceGroup] = service
-		}
-	} else {
-		dataInstance.Services[service.ServiceName] = service
-	}
+	dataInstance.Services[service.ServiceName] = service
 }
 
-// RemoveService deletes a service from the `dataInstance` map using `ServiceName` as the key. If there is no service
-// with this name, the given parameter it will be used as `ServiceGroup`.
-func (m HaProxy) RemoveService(serviceName string) {
-	if _, found := dataInstance.Services[serviceName]; found {
-		delete(dataInstance.Services, serviceName)
-	} else {
-		for groupName, service := range dataInstance.Services {
-			if _, found := service.GroupedServiceNames[serviceName]; found {
-				delete(service.GroupedServiceNames, serviceName)
-
-				if len(service.GroupedServiceNames) == 0 {
-					delete(dataInstance.Services, groupName)
-				}
-
-				return
-			}
-		}
-	}
+// RemoveService deletes a service from the `dataInstance` map using `ServiceName` as the key
+func (m HaProxy) RemoveService(service string) {
+	delete(dataInstance.Services, service)
 }
 
 // GetServices returns a map with all the services used by the proxy.

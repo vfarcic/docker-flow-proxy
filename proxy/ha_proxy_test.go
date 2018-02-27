@@ -1527,6 +1527,41 @@ func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToHttps_WhenRed
 	s.Equal(expectedData, actualData)
 }
 
+func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_usesHttpsRedirectCode() {
+	var actualData string
+	tmpl := s.TemplateContent
+	expectedData := fmt.Sprintf(
+		`%s
+    acl url_my-service1111_0 path_beg /path
+    acl domain_my-service1111_0 hdr_beg(host) -i my-domain.com
+    use_backend my-service-be1111_0 if url_my-service1111_0 domain_my-service1111_0
+    acl is_my-service_http hdr(X-Forwarded-Proto) http
+    http-request redirect scheme https code 301 if is_my-service_http url_my-service1111_0 domain_my-service1111_0
+    acl is_my-service_https hdr(X-Forwarded-Proto) https
+    http-request redirect scheme https code 301 if !is_my-service_https url_my-service1111_0 domain_my-service1111_0%s`,
+		tmpl,
+		s.ServicesContent,
+	)
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		actualData = string(data)
+		return nil
+	}
+	p := NewHaProxy(s.TemplatesPath, s.ConfigsPath)
+	dataInstance.Services["my-service"] = Service{
+		ServiceName:           "my-service",
+		PathType:              "path_beg",
+		RedirectWhenHttpProto: true,
+		AclName:               "my-service",
+		ServiceDest: []ServiceDest{
+			{Port: "1111", ServicePath: []string{"/path"}, ServiceDomain: []string{"my-domain.com"}, HttpsRedirectCode: "301"},
+		},
+	}
+
+	p.CreateConfigFromTemplates()
+
+	s.Equal(expectedData, actualData)
+}
+
 func (s HaProxyTestSuite) Test_CreateConfigFromTemplates_ForwardsToDomain_WhenRedirectFromDomainIsSet() {
 	var actualData string
 	tmpl := s.TemplateContent
@@ -2291,7 +2326,7 @@ func (s *HaProxyTestSuite) Test_RunCmd_AddsExtraArguments() {
 
 // AddService
 
-func (s *HaProxyTestSuite) Test_AddService_AddsService_WhenNoGroups() {
+func (s *HaProxyTestSuite) Test_AddService_AddsService() {
 	s1 := Service{ServiceName: "my-service-1"}
 	s2 := Service{ServiceName: "my-service-2"}
 	p := NewHaProxy("anything", "doesn't").(HaProxy)
@@ -2303,23 +2338,9 @@ func (s *HaProxyTestSuite) Test_AddService_AddsService_WhenNoGroups() {
 	s.Equal(dataInstance.Services[s1.ServiceName], s1)
 }
 
-func (s *HaProxyTestSuite) Test_AddService_AddsService_ForOneGroupWithTwoServices() {
-	s1 := Service{ServiceName: "my-service-1", ServiceGroup: "group-1"}
-	s2 := Service{ServiceName: "my-service-2", ServiceGroup: "group-1"}
-	p := NewHaProxy("anything", "doesn't").(HaProxy)
-
-	p.AddService(s1)
-	p.AddService(s2)
-
-	s.Len(dataInstance.Services, 1)
-
-	s.Equal(dataInstance.Services[s1.ServiceGroup].ServiceName, s1.ServiceName)
-	s.Len(dataInstance.Services[s1.ServiceGroup].GroupedServiceNames, 2)
-}
-
 // RemoveService
 
-func (s *HaProxyTestSuite) Test_AddService_RemovesService_ByServiceName_WhenNoGroups() {
+func (s *HaProxyTestSuite) Test_AddService_RemovesService() {
 	s1 := Service{ServiceName: "my-service-1"}
 	s2 := Service{ServiceName: "my-service-2"}
 	p := NewHaProxy("anything", "doesn't").(HaProxy)
@@ -2331,33 +2352,6 @@ func (s *HaProxyTestSuite) Test_AddService_RemovesService_ByServiceName_WhenNoGr
 	s.Len(dataInstance.Services, 1)
 }
 
-func (s *HaProxyTestSuite) Test_AddService_RemovesService_ByServiceName_ForOneGroupWithTwoServices() {
-	s1 := Service{ServiceName: "my-service-1", ServiceGroup: "group-1"}
-	s2 := Service{ServiceName: "my-service-2", ServiceGroup: "group-1"}
-	p := NewHaProxy("anything", "doesn't").(HaProxy)
-
-	p.AddService(s1)
-	p.AddService(s2)
-	p.RemoveService(s1.ServiceName)
-
-	s.Len(dataInstance.Services, 1)
-	s.Len(dataInstance.Services[s1.ServiceGroup].GroupedServiceNames, 1)
-
-	p.RemoveService(s2.ServiceName)
-	s.Len(dataInstance.Services, 0)
-}
-
-func (s *HaProxyTestSuite) Test_AddService_RemovesService_ByGroupName_ForOneGroupWithTwoServices() {
-	s1 := Service{ServiceName: "my-service-1", ServiceGroup: "group-1"}
-	s2 := Service{ServiceName: "my-service-2", ServiceGroup: "group-1"}
-	p := NewHaProxy("anything", "doesn't").(HaProxy)
-
-	p.AddService(s1)
-	p.AddService(s2)
-	p.RemoveService(s1.ServiceGroup)
-
-	s.Len(dataInstance.Services, 0)
-}
 // Util
 
 func (s *HaProxyTestSuite) getTemplateWithLogs() string {
