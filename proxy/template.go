@@ -138,10 +138,10 @@ backend {{$.AclName}}-be{{.Port}}_{{.Index}}
 	{{- end}}
 	{{- if ne $.ConnectionMode ""}}
     option {{$.ConnectionMode}}
-    {{- end}}
-    {{- if $.Debug}}
+        {{- end}}
+        {{- if $.Debug}}
     log global
-    {{- end}}`
+        {{- end}}`
 	tmpl += getHeaders(sr)
 	tmpl += `{{- if ne $.TimeoutServer ""}}
     timeout server {{$.TimeoutServer}}s
