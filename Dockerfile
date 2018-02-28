@@ -43,7 +43,7 @@ EXPOSE 443
 EXPOSE 8080
 
 RUN apk --no-cache add tini
-ENTRYPOINT ["/sbin/tini","--"]
+ENTRYPOINT ["/sbin/tini", "-g", "--"]
 CMD ["docker-flow-proxy", "server"]
 HEALTHCHECK --interval=5s --start-period=3s --timeout=5s CMD check.sh
 
