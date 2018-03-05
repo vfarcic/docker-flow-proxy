@@ -280,7 +280,7 @@ backend https-myService-be1234_32
 func (s ReconfigureTestSuite) Test_GetTemplates_AddSllVerifyNone_WhenSslVerifyNoneIsSet() {
 	s.reconfigure.Service.ServiceDest[0].Port = "1234"
 	s.reconfigure.Service.ServiceDest[0].Index = 6
-	s.reconfigure.SslVerifyNone = true
+	s.reconfigure.Service.ServiceDest[0].SslVerifyNone = true
 	expected := `
 backend myService-be1234_6
     mode http

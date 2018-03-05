@@ -547,12 +547,12 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 			ServiceHeader:                 map[string]string{"X-Version": "3", "name": "Viktor"},
 			ServicePath:                   []string{"/"},
 			ServicePathExclude:            []string{"/excluded-path"},
+			SslVerifyNone:                 true,
 		}},
 		ServiceDomainAlgo: "hdr_dom",
 		ServiceName:       "serviceName",
 		SetReqHeader:      []string{"set-header-1", "set-header-2"},
 		SetResHeader:      []string{"set-header-1", "set-header-2"},
-		SslVerifyNone:     true,
 		TemplateBePath:    "templateBePath",
 		TemplateFePath:    "templateFePath",
 		TimeoutServer:     "timeoutServer",
@@ -585,7 +585,7 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 		strings.Join(expected.ServiceDest[0].ServiceDomain, ","),
 		strings.Join(expected.ServiceDest[0].RedirectFromDomain, ","),
 		expected.Distribute,
-		expected.SslVerifyNone,
+		expected.ServiceDest[0].SslVerifyNone,
 		expected.ServiceDomainAlgo,
 		strings.Join(expected.AddReqHeader, ","),
 		strings.Join(expected.AddResHeader, ","),
@@ -600,7 +600,6 @@ func (s *ServerTestSuite) Test_GetServiceFromUrl_ReturnsProxyService() {
 	)
 	req, _ := http.NewRequest("GET", addr, nil)
 	srv := serve{}
-
 	actual := srv.GetServiceFromUrl(req)
 
 	s.Equal(expected, *actual)
@@ -679,7 +678,6 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 		ServiceName:           "my-ServiceName",
 		SetReqHeader:          []string{"set-header-1", "set-header-2"},
 		SetResHeader:          []string{"set-header-1", "set-header-2"},
-		SslVerifyNone:         true,
 		TemplateBePath:        "my-TemplateBePath",
 		TemplateFePath:        "my-TemplateFePath",
 		TimeoutServer:         "my-TimeoutServer",
@@ -688,6 +686,7 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 			{
 				HttpsOnly:                     true,
 				HttpsRedirectCode:             "302",
+				IgnoreAuthorization:           true,
 				OutboundHostname:              "my-OutboundHostname",
 				Port:                          "1111",
 				ReqPathSearchReplace:          "/something,/else:/this,/that",
@@ -702,7 +701,7 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 				ServicePathExclude:            []string{"some-path", "some-path2"},
 				VerifyClientSsl:               true,
 				DenyHttp:                      true,
-				IgnoreAuthorization:           true,
+				SslVerifyNone:                 true,
 			},
 		},
 	}
@@ -734,7 +733,7 @@ func (s *ServerTestSuite) Test_GetServicesFromEnvVars_ReturnsServices() {
 	os.Setenv("DFP_SERVICE_SERVICE_DOMAIN_ALGO", service.ServiceDomainAlgo)
 	os.Setenv("DFP_SERVICE_SERVICE_NAME", service.ServiceName)
 	os.Setenv("DFP_SERVICE_SERVICE_PATH_EXCLUDE", strings.Join(service.ServiceDest[0].ServicePathExclude, ","))
-	os.Setenv("DFP_SERVICE_SSL_VERIFY_NONE", strconv.FormatBool(service.SslVerifyNone))
+	os.Setenv("DFP_SERVICE_SSL_VERIFY_NONE", strconv.FormatBool(service.ServiceDest[0].SslVerifyNone))
 	os.Setenv("DFP_SERVICE_TEMPLATE_BE_PATH", service.TemplateBePath)
 	os.Setenv("DFP_SERVICE_TEMPLATE_FE_PATH", service.TemplateFePath)
 	os.Setenv("DFP_SERVICE_TIMEOUT_SERVER", service.TimeoutServer)

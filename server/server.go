@@ -270,6 +270,7 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 	verifyClientSsl, _ := strconv.ParseBool(os.Getenv(prefix + "_VERIFY_CLIENT_SSL"))
 	denyHTTP, _ := strconv.ParseBool(os.Getenv(prefix + "_DENY_HTTP"))
 	ignoreAuthorization, _ := strconv.ParseBool(os.Getenv(prefix + "_IGNORE_AUTHORIZATION"))
+	sslVerifyNone, _ := strconv.ParseBool(os.Getenv(prefix + "_SSL_VERIFY_NONE"))
 
 	if len(path) > 0 || len(port) > 0 {
 		sd = append(
@@ -291,6 +292,7 @@ func (m *serve) getServiceFromEnvVars(prefix string) (proxy.Service, error) {
 				ServicePath:                   path,
 				ServicePathExclude:            servicePathExclude,
 				SrcPort:                       srcPort,
+				SslVerifyNone:                 sslVerifyNone,
 				VerifyClientSsl:               verifyClientSsl,
 			},
 		)

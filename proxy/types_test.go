@@ -192,6 +192,44 @@ func (s *TypesTestSuite) Test_GetServiceFromProvider_ReturnsProxyServiceWithInde
 	s.Equal(expected, *actual)
 }
 
+func (s *TypesTestSuite) Test_GetServiceFromProvider_UsesDefaultValues_WhenBoolIndexIsNotPresent() {
+	expected := s.getExpectedService()
+	serviceMap := s.getServiceMap(expected, ".1", ",")
+	delete(serviceMap, "sslVerifyNone.1")
+	serviceMap["sslVerifyNone"] = "true"
+	provider := mapParameterProvider{&serviceMap}
+
+	actual := GetServiceFromProvider(&provider)
+
+	s.Equal(expected, *actual)
+}
+
+func (s *TypesTestSuite) Test_GetServiceFromProvider_UsesDefaultValues_WhenSliceIndexIsNotPresent() {
+	expected := s.getExpectedService()
+	serviceMap := s.getServiceMap(expected, ".1", ",")
+	delete(serviceMap, "servicePath.1")
+	delete(serviceMap, "allowedMethods.1")
+	serviceMap["servicePath"] = strings.Join(expected.ServiceDest[0].ServicePath, ",")
+	serviceMap["allowedMethods"] = strings.Join(expected.ServiceDest[0].AllowedMethods, ",")
+	provider := mapParameterProvider{&serviceMap}
+
+	actual := GetServiceFromProvider(&provider)
+
+	s.Equal(expected, *actual)
+}
+
+func (s *TypesTestSuite) Test_GetServiceFromProvider_UsesDefaultValues_WhenStringIndexIsNotPresent() {
+	expected := s.getExpectedService()
+	serviceMap := s.getServiceMap(expected, ".1", ",")
+	delete(serviceMap, "httpsRedirectCode.1")
+	serviceMap["httpsRedirectCode"] = expected.ServiceDest[0].HttpsRedirectCode
+	provider := mapParameterProvider{&serviceMap}
+
+	actual := GetServiceFromProvider(&provider)
+
+	s.Equal(expected, *actual)
+}
+
 func (s *TypesTestSuite) Test_GetServiceFromProvider_UsesSeparatorFromEnvVar() {
 	separatorOrig := os.Getenv("SEPARATOR")
 	defer func() { os.Setenv("SEPARATOR", separatorOrig) }()
@@ -221,35 +259,6 @@ func (s *TypesTestSuite) Test_GetServiceFromProvider_AddsTasksWhenSessionTypeIsN
 	actual := GetServiceFromProvider(&provider)
 
 	s.Equal("tasks."+expected.ServiceName, actualHost)
-	s.Equal(expected, *actual)
-}
-
-func (s *TypesTestSuite) Test_GetServiceFromProvider_MovesServiceDomainToIndexedEntries_WhenPortIsEmpty() {
-	expected := Service{
-		ServiceDest: []ServiceDest{{
-			AllowedMethods:     []string{},
-			DeniedMethods:      []string{},
-			Index:              1,
-			Port:               "1234",
-			RedirectFromDomain: []string{},
-			ReqMode:            "reqMode",
-			ReqPathSearchReplaceFormatted: []string{},
-			ServiceDomain:                 []string{"domain1", "domain2"},
-			ServiceHeader:                 map[string]string{},
-			ServicePath:                   []string{"/"},
-			ServicePathExclude:            []string{},
-		}},
-		ServiceName: "serviceName",
-	}
-	serviceMap := map[string]string{
-		"serviceDomain": strings.Join(expected.ServiceDest[0].ServiceDomain, ","),
-		"serviceName":   expected.ServiceName,
-		"port.1":        expected.ServiceDest[0].Port,
-		"reqMode.1":     expected.ServiceDest[0].ReqMode,
-		"servicePath.1": strings.Join(expected.ServiceDest[0].ServicePath, ","),
-	}
-	provider := mapParameterProvider{&serviceMap}
-	actual := GetServiceFromProvider(&provider)
 	s.Equal(expected, *actual)
 }
 
@@ -374,7 +383,6 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix, separator 
 		"sessionType":           expected.SessionType,
 		"setReqHeader":          strings.Join(expected.SetReqHeader, separator),
 		"setResHeader":          strings.Join(expected.SetResHeader, separator),
-		"sslVerifyNone":         strconv.FormatBool(expected.SslVerifyNone),
 		"templateBePath":        expected.TemplateBePath,
 		"templateFePath":        expected.TemplateFePath,
 		"timeoutServer":         expected.TimeoutServer,
@@ -396,6 +404,7 @@ func (s *TypesTestSuite) getServiceMap(expected Service, indexSuffix, separator 
 		"serviceDomain" + indexSuffix:        strings.Join(expected.ServiceDest[0].ServiceDomain, separator),
 		"serviceHeader" + indexSuffix:        header,
 		"servicePath" + indexSuffix:          strings.Join(expected.ServiceDest[0].ServicePath, separator),
+		"sslVerifyNone" + indexSuffix:        strconv.FormatBool(expected.ServiceDest[0].SslVerifyNone),
 		"userAgent" + indexSuffix:            strings.Join(expected.ServiceDest[0].UserAgent.Value, separator),
 		"userDef" + indexSuffix:              expected.ServiceDest[0].UserDef,
 		"verifyClientSsl" + indexSuffix:      strconv.FormatBool(expected.ServiceDest[0].VerifyClientSsl),
@@ -429,13 +438,14 @@ func (s *TypesTestSuite) getExpectedService() Service {
 			OutboundHostname:              "outboundHostname",
 			Port:                          "1234",
 			RedirectFromDomain:            []string{"sub.domain1", "sub.domain2"},
+			ReqMode:                       "reqMode",
+			ReqPathSearchReplace:          "something,else:foo,bar",
+			ReqPathSearchReplaceFormatted: []string{"reqPathSearch,reqPathReplace", "something,else", "foo,bar"},
 			ServiceDomain:                 []string{"domain1", "domain2"},
 			ServiceHeader:                 map[string]string{"X-Version": "3", "name": "Viktor"},
 			ServicePath:                   []string{"/"},
 			ServicePathExclude:            []string{},
-			ReqMode:                       "reqMode",
-			ReqPathSearchReplace:          "something,else:foo,bar",
-			ReqPathSearchReplaceFormatted: []string{"reqPathSearch,reqPathReplace", "something,else", "foo,bar"},
+			SslVerifyNone:                 true,
 			UserAgent:                     UserAgent{Value: []string{"agent-1", "agent-2/replace-with_"}, AclName: "agent_1_agent_2_replace_with_"},
 			UserDef:                       "userDef",
 			VerifyClientSsl:               true,
@@ -444,7 +454,6 @@ func (s *TypesTestSuite) getExpectedService() Service {
 		ServiceName:    "serviceName",
 		SetReqHeader:   []string{"set-header-1", "set-header-2"},
 		SetResHeader:   []string{"set-header-1", "set-header-2"},
-		SslVerifyNone:  true,
 		TemplateBePath: "templateBePath",
 		TemplateFePath: "templateFePath",
 		TimeoutServer:  "timeoutServer",

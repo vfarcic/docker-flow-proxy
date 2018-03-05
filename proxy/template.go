@@ -172,10 +172,10 @@ backend {{$.AclName}}-be{{.Port}}_{{.Index}}
     cookie {{$.ServiceName}} insert indirect nocache
 		{{- end}}
 		{{- range $i, $t := $.Tasks}}
-    server {{$.ServiceName}}_{{$i}} {{$t}}:{{$sd.Port}} check cookie {{$.ServiceName}}_{{$i}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
+    server {{$.ServiceName}}_{{$i}} {{$t}}:{{$sd.Port}} check cookie {{$.ServiceName}}_{{$i}}{{if eq $sd.SslVerifyNone true}} ssl verify none{{end}}
 		{{- end}}
 		{{- if not $.Tasks}}
-    server {{$.ServiceName}} {{if eq $sd.OutboundHostname ""}}{{$.ServiceName}}{{end}}{{if ne $sd.OutboundHostname ""}}{{$sd.OutboundHostname}}{{end}}:{{$sd.Port}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
+    server {{$.ServiceName}} {{if eq $sd.OutboundHostname ""}}{{$.ServiceName}}{{end}}{{if ne $sd.OutboundHostname ""}}{{$sd.OutboundHostname}}{{end}}:{{$sd.Port}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $sd.SslVerifyNone true}} ssl verify none{{end}}
         {{- end}}
         {{- if not .IgnoreAuthorization}}
             {{- if and ($.Users) (not .IgnoreAuthorization)}}
@@ -235,10 +235,10 @@ backend https-{{$.AclName}}-be{{.Port}}_{{.Index}}
     cookie {{$.ServiceName}} insert indirect nocache
 		    {{- end}}
 		    {{- range $i, $t := $.Tasks}}
-    server {{$.ServiceName}}_{{$i}} {{$t}}:{{$.HttpsPort}} check cookie {{$.ServiceName}}_{{$i}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
+    server {{$.ServiceName}}_{{$i}} {{$t}}:{{$.HttpsPort}} check cookie {{$.ServiceName}}_{{$i}}{{if eq $sd.SslVerifyNone true}} ssl verify none{{end}}
 		    {{- end}}
 		    {{- if not $.Tasks}}
-    server {{$.ServiceName}} {{if eq $sd.OutboundHostname ""}}{{$.ServiceName}}{{end}}{{if ne $sd.OutboundHostname ""}}{{$sd.OutboundHostname}}{{end}}:{{$.HttpsPort}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $.SslVerifyNone true}} ssl verify none{{end}}
+    server {{$.ServiceName}} {{if eq $sd.OutboundHostname ""}}{{$.ServiceName}}{{end}}{{if ne $sd.OutboundHostname ""}}{{$sd.OutboundHostname}}{{end}}:{{$.HttpsPort}}{{if eq $.CheckResolvers true}} check resolvers docker{{end}}{{if eq $sd.SslVerifyNone true}} ssl verify none{{end}}
             {{- end}}
             {{- if not .IgnoreAuthorization}}
                 {{- if $.Users}}
