@@ -3,14 +3,6 @@ COPY tmp/qemu-arm-static /usr/bin/qemu-arm-static
 
 MAINTAINER Raymond Mouthaan <raymondmmouthaan@gmail.com>
 
-ARG DFP_VERSION=18.03.04-114
-ENV DEBIAN_FRONTEND noninteractive
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && curl -kSL https://github.com/vfarcic/docker-flow-proxy/releases/download/${DFP_VERSION}/docker-flow-proxy_linux_arm -o /usr/local/bin/docker-flow-proxy \
-    && mkdir -p /cfg/tmpl /templates /certs /logs
-
 ENV CERTS="" \
     CAPTURE_REQUEST_HEADER="" \
     CFG_TEMPLATE_PATH="/cfg/tmpl/haproxy.tmpl" \
@@ -37,16 +29,21 @@ ENV CERTS="" \
     SKIP_ADDRESS_VALIDATION="true" \
     SSL_BIND_OPTIONS="no-sslv3" SSL_BIND_CIPHERS="ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS"
 
+COPY scripts/check.sh /usr/local/bin/check.sh
+RUN chmod +x /usr/local/bin/check.sh
+
+COPY errorfiles /errorfiles
+COPY haproxy.cfg /cfg/haproxy.cfg
+RUN mkdir -p /cfg/tmpl /templates /certs /logs
+COPY haproxy.tmpl /cfg/tmpl/haproxy.tmpl
+
+COPY docker-flow-proxy_linux_arm /usr/local/bin/docker-flow-proxy
+RUN chmod +x /usr/local/bin/docker-flow-proxy
+
+HEALTHCHECK --interval=5s --start-period=3s --timeout=5s CMD check.sh
+
 EXPOSE 80
 EXPOSE 443
 EXPOSE 8080
 
 CMD ["docker-flow-proxy", "server"]
-HEALTHCHECK --interval=5s --start-period=3s --timeout=5s CMD check.sh
-
-COPY scripts/check.sh /usr/local/bin/check.sh
-RUN chmod +x /usr/local/bin/check.sh
-COPY errorfiles /errorfiles
-COPY haproxy.cfg /cfg/haproxy.cfg
-COPY haproxy.tmpl /cfg/tmpl/haproxy.tmpl
-RUN chmod +x /usr/local/bin/docker-flow-proxy
